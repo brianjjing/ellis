@@ -1,0 +1,41 @@
+# Field key -> N-400 location. TODO(open-question-1): part numbers must be re-verified against the current
+# edition (04/01/24 vs 01/20/25) before mapping to the official fillable PDF's field names. Until then the
+# form filler produces a draft PDF in this order (sections, not official part numbers).
+edition: "UNVERIFIED (04/01/24 vs 01/20/25)"
+pdf_field_names: {}   # official AcroForm field names go here once the edition is verified
+parts:
+  - title: "Information about your eligibility"
+    fields: [eligibility_basis, lpr_since]
+  - title: "Information about you"
+    fields: [name.family, name.given, name.on_green_card, names.used, name_change.requested, a_number,
+             uscis_account_number, ssn, dob, country_of_birth, nationality]
+  - title: "Biographic information"
+    fields: [ethnicity, race, height, weight, eye_color, hair_color, sex]
+  - title: "Contact information"
+    fields: [contact.phone, contact.email]
+  - title: "Residence information"
+    list: addresses
+  - title: "Marital history"
+    fields: [marital.status, marital.times_married, spouse.name, spouse.dob, spouse.marriage_date,
+             spouse.citizenship_status]
+  - title: "Children"
+    fields: [children.count]
+    list: children
+  - title: "Employment and schools"
+    list: employment
+  - title: "Time outside the United States"
+    fields: [trips.any]
+    list: trips
+  - title: "Additional information (background)"
+    prefix: background.
+  - title: "Oath requirements"
+    prefix: oath.
+  - title: "Fee"
+    fields: [fee.method, fee.benefit_type]
+  - title: "Preparer"
+    note: "Left blank: whether software assistance or the clinic must be listed is NEEDS EXPERT CHECK (open question 8). The reviewer completes this section."
+online_order: [eligibility_basis, lpr_since, name.family, name.given, names.used, name_change.requested, a_number,
+               uscis_account_number, ssn, dob, country_of_birth, nationality, sex, ethnicity, race, height, weight,
+               eye_color, hair_color, contact.phone, contact.email, addresses, employment, trips.any, trips,
+               marital.status, marital.times_married, spouse.name, spouse.dob, spouse.marriage_date,
+               spouse.citizenship_status, children.count, children, background., oath.]

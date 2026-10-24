@@ -1,0 +1,179 @@
+# Phase 1 field catalog. Drives the liaison's fallback queue, the facts panel, the gate and the form filler.
+# capture: V = voice, S = secure entry on screen, D = document extraction, E = derived, P = screen picker
+# confirm: readback = needs a one-field read-back before confirmed (all dates, anything hedged)
+#          direct   = a clear, unhedged answer to the liaison's own question is confirmed
+# TODO(open-question-1): N-400 part numbers come from the verified edition; fields map by key.
+version: fields-2026.10-a
+
+sections:
+  - {key: consent, label_es: "Inicio", label_en: "Consent", stage: 0}
+  - {key: eligibility, label_es: "Elegibilidad", label_en: "Eligibility", stage: 1}
+  - {key: identity, label_es: "Identidad", label_en: "Identity", stage: 2}
+  - {key: biographics, label_es: "Descripción física", label_en: "Biographic information", stage: 2}
+  - {key: contact, label_es: "Contacto", label_en: "Contact", stage: 2}
+  - {key: addresses, label_es: "Domicilios", label_en: "Addresses", stage: 2}
+  - {key: employment, label_es: "Trabajo y estudios", label_en: "Employment and school", stage: 2}
+  - {key: travel, label_es: "Viajes fuera del país", label_en: "Time outside the US", stage: 2}
+  - {key: marital, label_es: "Estado civil", label_en: "Marital history", stage: 2}
+  - {key: children, label_es: "Hijos", label_en: "Children", stage: 2}
+  - {key: background, label_es: "Preguntas de antecedentes", label_en: "Background questions", stage: 2}
+  - {key: oath, label_es: "Preguntas del juramento", label_en: "Oath questions", stage: 2}
+  - {key: fee, label_es: "Tarifa", label_en: "Fee", stage: 2}
+
+fields:
+  - {key: consent, section: consent, type: bool, required: true, capture: V, confirm: direct,
+     label_es: "Consentimiento", label_en: "Consent"}
+  - {key: lpr_since, section: eligibility, type: date, required: true, capture: DV, confirm: readback, material: true,
+     document_authoritative: true, label_es: "Residente desde", label_en: "Resident since", rb_doc_es: "que es residente desde", rb_es: "la fecha desde la que es residente",
+     question_es: "¿Desde cuándo es residente permanente?"}
+  - {key: dob, section: eligibility, type: date, required: true, capture: DV, confirm: readback, material: true,
+     document_authoritative: true, label_es: "Fecha de nacimiento", label_en: "Date of birth", rb_doc_es: "que su fecha de nacimiento es", rb_es: "su fecha de nacimiento",
+     question_es: "¿Cuál es su fecha de nacimiento?"}
+  - {key: eligibility_basis, section: eligibility, type: enum, options: ["5yr"], required: true, capture: E,
+     label_es: "Tipo de solicitud", label_en: "Eligibility basis"}
+  - {key: filing.planned_date, section: eligibility, type: date, required: false, capture: V, confirm: readback,
+     label_es: "Fecha en que piensa presentar", label_en: "Planned filing date"}
+
+  - {key: name.given, section: identity, type: name, required: true, capture: DV, confirm: direct, material: true,
+     document_authoritative: true, rb_doc_es: "que su nombre es", rb_es: "su nombre", label_es: "Nombre(s)", label_en: "Given name(s)",
+     question_es: "¿Cuál es su nombre, sin apellidos, como aparece en sus documentos?"}
+  - {key: name.family, section: identity, type: name, required: true, capture: DV, confirm: direct, material: true,
+     document_authoritative: true, rb_doc_es: "que sus apellidos son", rb_es: "sus apellidos", label_es: "Apellidos", label_en: "Family name(s)",
+     question_es: "¿Y sus apellidos, como aparecen en sus documentos?"}
+  - {key: name.on_green_card, section: identity, type: name, required: true, capture: D, material: true,
+     label_es: "Nombre en la tarjeta de residente", label_en: "Name on green card", upload: green_card}
+  - {key: names.used, section: identity, type: string_list, required: true, capture: V, confirm: direct,
+     label_es: "Otros nombres que ha usado", label_en: "Other names used", none_ok: true,
+     question_es: "¿Ha usado otros nombres, por ejemplo un apellido de casada?"}
+  - {key: name_change.requested, section: identity, type: optional_name, required: true, capture: V, confirm: direct,
+     label_es: "Cambio de nombre", label_en: "Name change requested", none_ok: true,
+     question_es: "El formulario tiene una pregunta para pedir un cambio de nombre. ¿Quiere usarla?",
+     followup_es: "¿Qué nombre quiere pedir?"}
+  - {key: a_number, section: identity, type: a_number, required: true, capture: SD, masked: true, token: "[A_NUMBER]",
+     material: true, label_es: "Número A", label_en: "A-number"}
+  - {key: ssn, section: identity, type: ssn, required: false, capture: S, masked: true, token: "[SSN]",
+     label_es: "Número de Seguro Social", label_en: "SSN"}
+  - {key: uscis_account_number, section: identity, type: uscis_account, required: false, capture: S, masked: true,
+     token: "[USCIS_ACCOUNT]", label_es: "Número de cuenta de USCIS", label_en: "USCIS online account number"}
+  - {key: passport_number, section: identity, type: passport_number, required: false, capture: SD, masked: true,
+     token: "[PASSPORT_NUMBER]", label_es: "Número de pasaporte", label_en: "Passport number"}
+  - {key: country_of_birth, section: identity, type: country, required: true, capture: DV, confirm: direct,
+     label_es: "País de nacimiento", label_en: "Country of birth", rb_doc_es: "que nació en", rb_es: "su país de nacimiento", question_es: "¿En qué país nació?"}
+  - {key: nationality, section: identity, type: country, required: true, capture: DV, confirm: direct,
+     label_es: "Nacionalidad", label_en: "Nationality", rb_doc_es: "que su nacionalidad es", rb_es: "su nacionalidad", question_es: "¿De qué país es ciudadano o ciudadana?"}
+
+  - {key: sex, section: biographics, type: enum, options: [female, male], required: true, capture: P,
+     label_es: "Sexo", label_en: "Sex"}
+  - {key: height, section: biographics, type: string, required: true, capture: P, label_es: "Estatura", label_en: "Height"}
+  - {key: weight, section: biographics, type: string, required: true, capture: P, label_es: "Peso", label_en: "Weight"}
+  - {key: eye_color, section: biographics, type: enum, required: true, capture: P, label_es: "Color de ojos", label_en: "Eye color",
+     options: [black, blue, brown, gray, green, hazel, maroon, pink, unknown]}
+  - {key: hair_color, section: biographics, type: enum, required: true, capture: P, label_es: "Color de pelo", label_en: "Hair color",
+     options: [bald, black, blond, brown, gray, red, sandy, white, unknown]}
+  - {key: ethnicity, section: biographics, type: enum, required: true, capture: P, label_es: "Origen étnico", label_en: "Ethnicity",
+     options: [hispanic_or_latino, not_hispanic_or_latino]}
+  - {key: race, section: biographics, type: enum, required: true, capture: P, label_es: "Raza", label_en: "Race",
+     options: [white, asian, black, american_indian_alaska_native, native_hawaiian_pacific_islander]}
+
+  - {key: contact.phone, section: contact, type: phone, required: true, capture: S, label_es: "Teléfono", label_en: "Phone"}
+  - {key: contact.email, section: contact, type: email, required: false, capture: S, label_es: "Correo electrónico", label_en: "Email"}
+
+  - {key: trips.any, section: travel, type: bool, required: true, capture: V, confirm: direct,
+     label_es: "¿Viajes fuera del país?", label_en: "Any trips outside the US",
+     question_es: "¿Ha salido de Estados Unidos por más de un día en los últimos cinco años?"}
+
+  - {key: marital.status, section: marital, type: enum, required: true, capture: V, confirm: direct,
+     options: [single, married, divorced, widowed, separated, annulled],
+     label_es: "Estado civil", label_en: "Marital status", question_es: "¿Cuál es su estado civil? ¿Soltera, casada, divorciada o viuda?"}
+  - {key: marital.times_married, section: marital, type: int, required: true, capture: V, confirm: direct,
+     requires: {marital.status: [married, divorced, widowed, separated, annulled]},
+     label_es: "Veces casado(a)", label_en: "Times married", question_es: "¿Cuántas veces se ha casado?"}
+  - {key: spouse.name, section: marital, type: name, required: true, capture: DV, confirm: direct, requires: {marital.status: [married]},
+     label_es: "Nombre del cónyuge", label_en: "Spouse name", question_es: "¿Cómo se llama su esposo o esposa?"}
+  - {key: spouse.dob, section: marital, type: date, required: true, capture: DV, confirm: readback, requires: {marital.status: [married]},
+     rb_es: "la fecha de nacimiento de su cónyuge", label_es: "Fecha de nacimiento del cónyuge", label_en: "Spouse date of birth", question_es: "¿Cuál es la fecha de nacimiento de su esposo o esposa?"}
+  - {key: spouse.marriage_date, section: marital, type: date, required: true, capture: DV, confirm: readback, requires: {marital.status: [married]},
+     rb_es: "la fecha de su matrimonio", label_es: "Fecha de matrimonio", label_en: "Date of marriage", question_es: "¿Cuándo se casaron?"}
+  - {key: spouse.citizenship_status, section: marital, type: enum, required: true, capture: V, confirm: direct, requires: {marital.status: [married]},
+     options: [us_citizen, lpr, other], label_es: "Ciudadanía del cónyuge", label_en: "Spouse citizenship",
+     question_es: "¿Su esposo o esposa es ciudadano estadounidense, residente permanente, u otra cosa?"}
+
+  - {key: children.count, section: children, type: int, required: true, capture: V, confirm: direct,
+     label_es: "Número de hijos", label_en: "Number of children", question_es: "¿Cuántos hijos tiene, contando a los adultos?"}
+
+  - {key: fee.method, section: fee, type: enum, options: [online, paper], required: true, capture: V, confirm: direct,
+     label_es: "Forma de presentar", label_en: "Filing method",
+     question_es: "¿Piensa presentar la solicitud en línea o en papel?"}
+  - {key: fee.benefit_type, section: fee, type: benefit, required: false, capture: V, confirm: direct,
+     label_es: "Beneficio público", label_en: "Means-tested benefit",
+     question_es: "Hay una forma de pedir que no le cobren la solicitud o que le cobren menos. ¿Recibe algún beneficio como Medi-Cal o CalFresh?"}
+  - {key: fee.household_size, section: fee, type: int, required: false, capture: S, label_es: "Personas en el hogar", label_en: "Household size"}
+  - {key: fee.income, section: fee, type: int, required: false, capture: S, masked: true, token: "[INCOME]",
+     label_es: "Ingreso anual del hogar", label_en: "Household income"}
+
+# Repeating groups. Items are fields like addresses[0].city.
+lists:
+  addresses:
+    section: addresses
+    coverage_years: 5
+    min_items: 1
+    item:
+      - {key: city, type: string, capture: V, confirm: direct, label_es: "Ciudad", label_en: "City",
+         question_es: "¿En qué ciudad vive ahora?", question_prev_es: "¿En qué ciudad vivía antes de eso?"}
+      - {key: state, type: us_state, capture: V, confirm: direct, label_es: "Estado", label_en: "State",
+         question_es: "¿En qué estado?"}
+      - {key: zip, type: zip, capture: V, confirm: direct, label_es: "Código postal", label_en: "ZIP code",
+         question_es: "¿Cuál es el código postal?"}
+      - {key: street, type: string, capture: S, masked: true, token: "[STREET]", label_es: "Calle y número", label_en: "Street"}
+      - {key: from, type: date, capture: V, confirm: readback, label_es: "Desde", label_en: "From", rb_es: "la fecha desde la que vive ahí",
+         question_es: "¿Desde cuándo vive ahí?", question_prev_es: "¿Desde cuándo vivió ahí?"}
+      - {key: to, type: date_or_present, capture: E, label_es: "Hasta", label_en: "To"}
+  employment:
+    section: employment
+    coverage_years: 5
+    min_items: 1
+    item:
+      - {key: employer, type: string, capture: V, confirm: direct, label_es: "Empleador o escuela", label_en: "Employer or school",
+         question_es: "¿Dónde trabaja ahora? Dígame el nombre del lugar.", question_prev_es: "¿Dónde trabajaba antes de eso?"}
+      - {key: city, type: string, capture: V, confirm: direct, label_es: "Ciudad", label_en: "City", question_es: "¿En qué ciudad?"}
+      - {key: occupation, type: string, capture: V, confirm: direct, label_es: "Ocupación", label_en: "Occupation",
+         question_es: "¿Qué trabajo hace o hacía ahí?"}
+      - {key: from, type: date, capture: V, confirm: readback, label_es: "Desde", label_en: "From", rb_es: "la fecha en que empezó ese trabajo",
+         question_es: "¿Desde cuándo trabaja ahí?", question_prev_es: "¿Desde cuándo trabajó ahí?"}
+      - {key: to, type: date_or_present, capture: E, label_es: "Hasta", label_en: "To"}
+  trips:
+    section: travel
+    requires: {trips.any: [true]}
+    item:
+      - {key: departure, type: date, capture: VD, confirm: readback, material: true, label_es: "Salida", label_en: "Departure", rb_es: "la fecha de salida",
+         question_es: "¿Cuándo salió?"}
+      - {key: return, type: date, capture: VD, confirm: readback, material: true, label_es: "Regreso", label_en: "Return", rb_es: "la fecha de regreso",
+         question_es: "¿Y cuándo regresó?"}
+      - {key: countries, type: string, capture: V, confirm: direct, label_es: "País", label_en: "Countries",
+         question_es: "¿A qué país fue?"}
+      - {key: reason, type: string, capture: V, confirm: direct, required: false, label_es: "Motivo", label_en: "Reason",
+         question_es: "¿Cuál fue el motivo del viaje?"}
+      - {key: home_kept, type: bool, capture: V, confirm: direct, required_if_days_gt: 180,
+         label_es: "Mantuvo su casa", label_en: "Kept home during trip",
+         question_es: "¿Mantuvo su casa aquí durante ese viaje?"}
+    more_field: trips.more
+    more_question_es: "¿Hizo algún otro viaje fuera del país de más de un día?"
+  children:
+    section: children
+    count_field: children.count
+    item:
+      - {key: name, type: name, capture: V, confirm: direct, label_es: "Nombre", label_en: "Name",
+         question_es: "¿Cómo se llama su hijo o hija número {n}?"}
+      - {key: dob, type: date, capture: V, confirm: readback, label_es: "Fecha de nacimiento", label_en: "Date of birth", rb_es: "la fecha de nacimiento",
+         question_es: "¿Cuál es su fecha de nacimiento?"}
+      - {key: residence_city, type: string, capture: V, confirm: direct, label_es: "Ciudad donde vive", label_en: "Residence",
+         question_es: "¿En qué ciudad vive?"}
+      - {key: relationship, type: enum, options: [biological, stepchild, adopted], capture: V, confirm: direct,
+         label_es: "Relación", label_en: "Relationship", question_es: "¿Es hijo biológico, adoptado o hijastro?"}
+
+# Not required; QA challenges and reviewer notes ask for these.
+free_fields:
+  - {key_prefix: "employment.gap", type: string, section: employment, label_es: "Explicación de periodo sin trabajo", label_en: "Employment gap explanation"}
+  - {key_prefix: "trips.no_other_citations", type: bool, section: background, label_es: "Otras multas", label_en: "Other citations"}
+  - {key_prefix: "followup.", type: string, section: background, label_es: "Respuesta adicional", label_en: "Follow-up answer"}
+  - {key_prefix: "background.detail.", type: string, section: background, label_es: "Detalle", label_en: "Detail"}

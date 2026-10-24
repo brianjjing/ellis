@@ -1,0 +1,83 @@
+# Liaison scripts (draft Spanish, needs native review — handoff §16). locked = interruptible=False.
+version: es-1
+disclosure:
+  locked: true
+  text: "Hola, soy Ellis, un asistente de inteligencia artificial que trabaja con {clinic_name}. No soy abogado y no puedo darle consejos legales. Le ayudo a preparar su solicitud de ciudadanía; usted revisa y firma todo, y nosotros nunca la enviamos por usted. Guardamos el texto de esta conversación, no el audio. ¿Está de acuerdo en continuar?"
+third_party_check:
+  locked: false
+  text: "¿Hay alguien más escuchando con usted?"
+third_party_welcome:
+  locked: false
+  text: "Bienvenida. Las respuestas tienen que ser de {name}; usted puede ayudarle a entender. {name_vocative}, ¿está de acuerdo en continuar?"
+stop:
+  locked: true
+  text: "Gracias por decírmelo. Esto es algo que debe revisar un profesional de inmigración con licencia antes de presentar su solicitud. Su clínica se comunicará con usted sobre esta parte. No puedo aconsejarle sobre esto. ¿Quiere seguir con otra sección?"
+stop_repeat:
+  locked: false
+  text: "Esa es una pregunta para un profesional con licencia; yo no puedo responderla. Lo que sí puedo hacer es ayudarle con el resto de la solicitud."
+stop_offer_end:
+  locked: false
+  text: "Entiendo. Si prefiere, podemos terminar por hoy. Todo lo demás está guardado. ¿Quiere seguir con otra sección o terminar?"
+flag_neutral:
+  locked: false
+  text: "Gracias. Lo anoto para que lo revise una persona de su clínica. No es una decisión sobre su caso."
+flag_absence:
+  locked: false
+  text: "Gracias. Ese viaje duró más de seis meses, así que lo anoto para que lo revise una persona de su clínica. No es una decisión sobre su caso."
+flag_card:
+  locked: false
+  text: "Gracias. Esto lo marcamos para que lo revise una persona antes de que presente su solicitud. Le muestro una tarjeta en la pantalla."
+cant_advise:
+  locked: false
+  text: "Esa es una pregunta para su clínica; yo no puedo responderla. Lo que sí puedo hacer es ayudarle con su solicitud."
+will_i_qualify:
+  locked: false
+  text: "Eso lo decide USCIS. Lo que sí le puedo decir es lo que calcula el sistema: {rule_explain}"
+secure_entry:
+  locked: true
+  text: "Por favor escriba su {label} en la pantalla. No lo diga en voz alta."
+secure_entry_repeat:
+  locked: true
+  text: "Por seguridad, no diga ese número en voz alta. Por favor escríbalo en la pantalla."
+upload_request:
+  locked: false
+  text: "¿Puede tomar una foto de su {document_label}? Puede seguir hablando conmigo mientras se sube."
+biographics_request:
+  locked: false
+  text: "En la pantalla le aparecen unas preguntas sobre su descripción física, como estatura y color de ojos. Puede llenarlas cuando quiera."
+consent_declined:
+  locked: false
+  text: "Está bien. No guardamos nada más. Si cambia de opinión, puede volver con el mismo enlace."
+consent_thanks:
+  locked: false
+  text: "Gracias. Empecemos."
+session_close:
+  locked: false
+  text: "Hoy terminamos {sections_done}. Para la próxima vez: {next_items}. Todo está guardado."
+session_close_all_done:
+  locked: false
+  text: "Ya tenemos todas sus respuestas. Su clínica va a revisar su caso y le avisaremos cuando pueda revisar y firmar. Todo está guardado."
+tool_failure:
+  locked: false
+  text: "Perdón, no pude guardar eso. ¿Me lo repite?"
+not_understood:
+  locked: false
+  text: "Perdón, no le entendí bien."
+take_your_time:
+  locked: false
+  text: "Tómese su tiempo."
+another_day:
+  locked: false
+  text: "¿Seguimos otro día? Todo lo que dijo está guardado."
+rules_later:
+  locked: false
+  text: "Gracias. Las fechas las confirmo más adelante."
+readback_document:
+  locked: false
+  text: "Su {document_label} dice: {label}, {spoken}. ¿Es correcto?"
+readback_applicant:
+  locked: false
+  text: "Le leo {label} que me dio: {spoken}. ¿Es correcto?"
+readback_third_party:
+  locked: false
+  text: "{name_vocative}, le leo {label}: {spoken}. ¿Es correcto?"

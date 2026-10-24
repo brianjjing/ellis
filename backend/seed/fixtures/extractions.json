@@ -1,0 +1,193 @@
+{
+ "452b7812a36950449a5132bf4db1bb6e12a1b255591c58e5ad86172e4ef0dcda": {
+  "file": "maria_green_card.png",
+  "document_type": "green_card",
+  "extraction": {
+   "quality": "high",
+   "quality_reasons": [],
+   "family_name": "TORRES",
+   "given_name": "MARIA",
+   "a_number": "A123456789",
+   "country_of_birth": "Mexico",
+   "dob": "1988-05-02",
+   "resident_since": "2022-01-15",
+   "card_expires": "2032-01-15",
+   "category": "IR6",
+   "side": "both"
+  }
+ },
+ "8feafdbc428390d9b7ca3a98a08373189a0fd4d6c4a77399669cd83448fb6c8b": {
+  "file": "maria_passport.png",
+  "document_type": "passport",
+  "extraction": {
+   "quality": "high",
+   "quality_reasons": [],
+   "family_name": "TORRES",
+   "given_name": "MARIA",
+   "nationality": "Mexico",
+   "dob": "1988-05-02",
+   "passport_number": "G12345678",
+   "expiry": "2031-06-30",
+   "stamps": [
+    {
+     "date": "2024-03-13",
+     "port": "San Ysidro",
+     "direction": "entry"
+    }
+   ]
+  }
+ },
+ "db774d7a30c1caacd21d94ec1865b33869fb4e6e1ad466df98847b8c46c945c4": {
+  "file": "maria_lease.png",
+  "document_type": "lease",
+  "extraction": {
+   "quality": "high",
+   "quality_reasons": [],
+   "tenant_names": [
+    "Maria Torres",
+    "Luis Torres"
+   ],
+   "city": "Salinas",
+   "state": "CA",
+   "start": "2021-11-01",
+   "end": null
+  }
+ },
+ "5f932925f56dc9d42350bed6c53f332ce5aeb1e776d201ea802f83ec38690bca": {
+  "file": "maria_court_receipt.png",
+  "document_type": "court_record",
+  "extraction": {
+   "quality": "high",
+   "quality_reasons": [],
+   "case_no": "TR-2023-0042177",
+   "court": "Monterey County Superior Court",
+   "date": "2023-07-21",
+   "disposition": "paid",
+   "amount_paid": "238.00",
+   "violation": "speeding"
+  }
+ },
+ "6a6cab7f0e7773da1218e0c20004391f717af054ccf853b1901aee64710a66a0": {
+  "file": "maria_tax_2023.png",
+  "document_type": "tax_transcript",
+  "extraction": {
+   "quality": "high",
+   "quality_reasons": [],
+   "tax_year": "2023",
+   "return_filed": true,
+   "filing_status": "married_filing_jointly",
+   "taxpayer_name": "Maria Torres"
+  }
+ },
+ "dc786d528482073d5543681a77554c93a9592f87adac0a4ef51d11a8c78ae12d": {
+  "file": "ana_green_card_glare.png",
+  "document_type": "green_card",
+  "extraction": {
+   "quality": "low",
+   "quality_reasons": [
+    "glare"
+   ],
+   "family_name": "HERNANDEZ RUIZ",
+   "given_name": "ANA LUCIA",
+   "a_number": null,
+   "country_of_birth": "Mexico",
+   "dob": null,
+   "resident_since": null
+  }
+ },
+ "740ec538500e44f124ee2c63016d2ef30d9d34c8663843a2496ee24b1477075d": {
+  "file": "ana_green_card_clear.png",
+  "document_type": "green_card",
+  "extraction": {
+   "quality": "high",
+   "quality_reasons": [],
+   "family_name": "HERNANDEZ RUIZ",
+   "given_name": "ANA LUCIA",
+   "a_number": "A098765432",
+   "country_of_birth": "Mexico",
+   "dob": "1995-09-11",
+   "resident_since": "2020-06-02",
+   "card_expires": "2030-06-02",
+   "category": "CR6",
+   "side": "both"
+  }
+ },
+ "682f4225a0d9c4e5036436dd30032f40456c65cc5c88793e152667dc72e88836": {
+  "file": "ana_marriage_certificate.png",
+  "document_type": "marriage_certificate",
+  "extraction": {
+   "quality": "high",
+   "quality_reasons": [],
+   "spouse_1_name": "ANA LUCIA HERNANDEZ RUIZ",
+   "spouse_2_name": "DANIEL MORALES",
+   "marriage_date": "2023-04-15",
+   "place": "Watsonville, CA"
+  }
+ },
+ "e17bd8e26cf1882d2f7fea555cb14d1dfbbb45cf29a38b9aae0fc8021df6c58c": {
+  "file": "ana_passport.png",
+  "document_type": "passport",
+  "extraction": {
+   "quality": "high",
+   "quality_reasons": [],
+   "family_name": "HERNÁNDEZ RUIZ",
+   "given_name": "ANA LUCÍA",
+   "nationality": "Mexico",
+   "dob": "1995-09-11",
+   "passport_number": "G87654321",
+   "stamps": []
+  }
+ },
+ "441359850e92987c548bb4cf545ff8e415327b70acb1a390b2a667a7626fe46f": {
+  "file": "rosa_benefit_letter.png",
+  "document_type": "benefit_letter",
+  "extraction": {
+   "quality": "high",
+   "quality_reasons": [],
+   "program": "medi-cal",
+   "beneficiary_name": "Rosa Delgado Peña",
+   "date": "2026-01-10"
+  }
+ },
+ "90c46ef3ede72a0639ee16da0c20d8033b04e8bb05c05103a9d3333bfeb78dcb": {
+  "file": "rosa_irs_2022.png",
+  "document_type": "tax_transcript",
+  "extraction": {
+   "quality": "high",
+   "quality_reasons": [],
+   "tax_year": "2022",
+   "return_filed": false,
+   "taxpayer_name": "Rosa Delgado Peña"
+  }
+ },
+ "cb2668313ca437f7f18d30598ecd8f0c330c78195da64636bb986d9eb94d23cb": {
+  "file": "rosa_green_card.png",
+  "document_type": "green_card",
+  "extraction": {
+   "quality": "high",
+   "quality_reasons": [],
+   "family_name": "DELGADO PEÑA",
+   "given_name": "ROSA",
+   "a_number": "A045678123",
+   "country_of_birth": "Mexico",
+   "dob": "1965-02-14",
+   "resident_since": "2008-03-10",
+   "side": "both"
+  }
+ },
+ "39f894b54738234c3c506fe087ad8f472418b400f213329ecfe26defba06b215": {
+  "file": "jorge_green_card.png",
+  "document_type": "green_card",
+  "extraction": {
+   "quality": "high",
+   "quality_reasons": [],
+   "family_name": "RAMIREZ SOTO",
+   "given_name": "JORGE",
+   "a_number": "A076543210",
+   "country_of_birth": "Mexico",
+   "dob": "1982-08-08",
+   "resident_since": "2014-05-20",
+   "side": "both"
+  }
+ }
+}
