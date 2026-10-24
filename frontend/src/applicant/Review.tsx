@@ -2,10 +2,7 @@
 import { useEffect, useState } from 'react'
 import { api, ApiError } from '../api'
 import { Roadmap, type CaseView } from './ApplicantApp'
-
-function langOf(data: CaseView): 'es' | 'en' {
-  return (data.language || 'es-MX').startsWith('en') ? 'en' : 'es'
-}
+import { langOf } from './i18n'
 
 export function ReviewSignoff({ data, reload, onSigned, onBack }: { data: CaseView; reload: () => void; onSigned: () => void; onBack: () => void }) {
   const lang = langOf(data)

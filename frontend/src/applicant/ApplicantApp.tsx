@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, ApiError, debounce, stream } from '../api'
 import { Icon } from '../icons'
-import { LANGUAGES, Lang, t } from './i18n'
+import { LANGUAGES, Lang, langOf, t } from './i18n'
 import Session from './Session'
 import { BiographicsSheet, ReferralCard, SecureEntrySheet, UploadSheet } from './Sheets'
 import { PacketReady, ReviewSignoff } from './Review'
@@ -144,18 +144,18 @@ export default function ApplicantApp({ token }: { token: string }) {
   )
 }
 
-function ProfessionalOptions({ reload }: { reload: () => void }) {
+function ProfessionalOptions({ reload, lang }: { reload: () => void; lang: Lang }) {
   const [url, setUrl] = useState<string | null>(null)
   return (
     <section className="panel" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
-      <strong>Una parte de su solicitud la completa un profesional con licencia.</strong>
-      <span className="small">Cuando ya haya hablado con su profesional:</span>
+      <strong>{lang === 'en' ? 'Part of your application is completed by a licensed professional.' : 'Una parte de su solicitud la completa un profesional con licencia.'}</strong>
+      <span className="small">{lang === 'en' ? 'Once you have talked to your professional:' : 'Cuando ya haya hablado con su profesional:'}</span>
       <div className="btns">
-        <button className="btn md" onClick={async () => setUrl((await api('/api/a/professional_draft', { body: {} })).url)}>Descargar un borrador para mi profesional</button>
-        <button className="btn md" onClick={async () => { await api('/api/a/representation', { body: { professional_files: true } }); reload() }}>Mi profesional presentará por mí</button>
+        <button className="btn md" onClick={async () => setUrl((await api('/api/a/professional_draft', { body: {} })).url)}>{lang === 'en' ? 'Download a draft for my professional' : 'Descargar un borrador para mi profesional'}</button>
+        <button className="btn md" onClick={async () => { await api('/api/a/representation', { body: { professional_files: true } }); reload() }}>{lang === 'en' ? 'My professional will file for me' : 'Mi profesional presentará por mí'}</button>
       </div>
-      {url && <a className="btn md strong" href={url} target="_blank" rel="noreferrer">Abrir el borrador</a>}
-      <span className="small">Ellis no envía nada a nadie.</span>
+      {url && <a className="btn md strong" href={url} target="_blank" rel="noreferrer">{lang === 'en' ? 'Open the draft' : 'Abrir el borrador'}</a>}
+      <span className="small">{lang === 'en' ? "Ellis doesn't send anything to anyone." : 'Ellis no envía nada a nadie.'}</span>
     </section>
   )
 }
@@ -272,10 +272,11 @@ function MicPrompt({ lang, onGo }: { lang: Lang; onGo: (voice: boolean) => void 
 }
 
 export function Roadmap({ data }: { data: CaseView }) {
+  const lang = langOf(data)
   const [open, setOpen] = useState(false)
   const cur = data.roadmap.current
   return (
-    <section className="roadmap" aria-label="Etapas">
+    <section className="roadmap" aria-label={lang === 'en' ? 'Stages' : 'Etapas'}>
       <button className="roadmap-dots" onClick={() => setOpen(!open)} aria-expanded={open}>
         {data.roadmap.stages.map((s: any, i: number) => (
           <span key={s.key} className={`rm-dot ${i < cur ? 'done' : i === cur ? 'cur' : ''}`}>
@@ -286,7 +287,7 @@ export function Roadmap({ data }: { data: CaseView }) {
       </button>
       {open && (
         <ul className="rm-future">
-          {data.roadmap.future.map((f: string) => <li key={f}>{f} · <span className="soft">Próximamente</span></li>)}
+          {data.roadmap.future.map((f: string) => <li key={f}>{f} · <span className="soft">{lang === 'en' ? 'Coming soon' : 'Próximamente'}</span></li>)}
         </ul>
       )}
     </section>
@@ -294,49 +295,52 @@ export function Roadmap({ data }: { data: CaseView }) {
 }
 
 function Progress({ data, onTalk, onUpload, onReview, reload }: { data: CaseView; onTalk: () => void; onUpload: () => void; onReview: () => void; reload: () => void }) {
+  const lang = langOf(data)
   const icon: Record<string, string> = { done: '✓', partial: '◐', blocked: '■', not_started: '○' }
-  const label: Record<string, string> = { done: 'Listo', partial: 'A medias', blocked: 'Con su profesional', not_started: 'Falta' }
+  const label = lang === 'en'
+    ? { done: 'Done', partial: 'Partial', blocked: "With your professional", not_started: 'Missing' }
+    : { done: 'Listo', partial: 'A medias', blocked: 'Con su profesional', not_started: 'Falta' }
   const decline = async (id: string) => { await api(`/api/a/gaps/${id}/decline`, { body: {} }); reload() }
   return (
     <main className="a-main">
-      <h1 className="display">Hola, {data.first_name}.</h1>
-      {data.case_blocked && <div className="panel warn">Su clínica le contactará.</div>}
+      <h1 className="display">{lang === 'en' ? `Hi, ${data.first_name}.` : `Hola, ${data.first_name}.`}</h1>
+      {data.case_blocked && <div className="panel warn">{lang === 'en' ? 'Your clinic will contact you.' : 'Su clínica le contactará.'}</div>}
       {data.state === 'ready' && (
         <div className="panel ok">
-          <strong>Su clínica revisó su caso.</strong> Ahora revise usted cada respuesta.
-          <button className="btn md primary" onClick={onReview}>Revisar y firmar</button>
+          <strong>{lang === 'en' ? 'Your clinic reviewed your case.' : 'Su clínica revisó su caso.'}</strong> {lang === 'en' ? 'Now review each answer yourself.' : 'Ahora revise usted cada respuesta.'}
+          <button className="btn md primary" onClick={onReview}>{lang === 'en' ? 'Review and sign' : 'Revisar y firmar'}</button>
         </div>
       )}
       {data.reviewer_notes?.length > 0 && (
         <section className="panel">
-          <div className="label">NOTAS DE SU CLÍNICA</div>
+          <div className="label">{lang === 'en' ? 'NOTES FROM YOUR CLINIC' : 'NOTAS DE SU CLÍNICA'}</div>
           {data.reviewer_notes.map((n: any) => <p key={n.id} className="lead">{n.label ? <strong>{n.label}: </strong> : null}{n.note}</p>)}
         </section>
       )}
-      <button className="btn lg primary a-big" onClick={onTalk}><Icon name="mic" size={20} />Seguir hablando</button>
-      {data.referrals?.some((r: any) => r.variant === 'stop_now') && <ProfessionalOptions reload={reload} />}
+      <button className="btn lg primary a-big" onClick={onTalk}><Icon name="mic" size={20} />{lang === 'en' ? 'Keep talking' : 'Seguir hablando'}</button>
+      {data.referrals?.some((r: any) => r.variant === 'stop_now') && <ProfessionalOptions reload={reload} lang={lang} />}
       <section>
-        <h2 className="h3 rule">Secciones del formulario</h2>
+        <h2 className="h3 rule">{lang === 'en' ? 'Form sections' : 'Secciones del formulario'}</h2>
         {data.progress.map((p: any) => (
           <div key={p.section} className={`row prog ${p.state}`}>
             <span aria-hidden="true" className="prog-icon">{icon[p.state]}</span>
             <span className="grow">{p.label}</span>
-            <span className="soft">{label[p.state]}</span>
+            <span className="soft">{label[p.state as keyof typeof label]}</span>
           </div>
         ))}
       </section>
       <section>
-        <h2 className="h3 rule">Lo que falta</h2>
-        {data.gaps.length === 0 ? <p className="soft">Nada por ahora.</p> : data.gaps.map((g: any) => (
+        <h2 className="h3 rule">{lang === 'en' ? "What's missing" : 'Lo que falta'}</h2>
+        {data.gaps.length === 0 ? <p className="soft">{lang === 'en' ? 'Nothing for now.' : 'Nada por ahora.'}</p> : data.gaps.map((g: any) => (
           <div key={g.id} className="row gap-row">
             <span className="grow">{g.label}</span>
-            <button className="btn" onClick={onUpload}><Icon name="camera" />Subir</button>
-            <button className="btn" onClick={() => decline(g.id)}>No lo tengo</button>
+            <button className="btn" onClick={onUpload}><Icon name="camera" />{lang === 'en' ? 'Upload' : 'Subir'}</button>
+            <button className="btn" onClick={() => decline(g.id)}>{lang === 'en' ? "I don't have it" : 'No lo tengo'}</button>
           </div>
         ))}
       </section>
       <section className="panel">
-        <span className="grow">Para revisión de su clínica</span>
+        <span className="grow">{lang === 'en' ? "For your clinic's review" : 'Para revisión de su clínica'}</span>
         <strong className="count">{data.open_review_items}</strong>
       </section>
       <Roadmap data={data} />
