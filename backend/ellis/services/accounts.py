@@ -38,7 +38,8 @@ def independent_clinic(s: Session) -> Clinic:
     return c
 
 
-def create_account(s: Session, name: str, email: str, password: str) -> Account:
+def check_new_identity(s: Session, email: str, password: str) -> str:
+    """Validates a new login (applicant or staff) and returns the normalized email."""
     e = _norm(email)
     if "@" not in e:
         raise AccountError(400, "bad_email", "Enter a valid email address.")
@@ -46,6 +47,11 @@ def create_account(s: Session, name: str, email: str, password: str) -> Account:
         raise AccountError(400, "weak_password", f"Use at least {MIN_PASSWORD} characters for your password.")
     if email_taken(s, e):
         raise AccountError(409, "exists", "An account with that email already exists.")
+    return e
+
+
+def create_account(s: Session, name: str, email: str, password: str) -> Account:
+    e = check_new_identity(s, email, password)
     acct = Account(email=e, name=(name or "").strip(), password_hash=auth.hash_password(password), created_at=now())
     s.add(acct)
     s.flush()

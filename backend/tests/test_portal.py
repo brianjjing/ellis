@@ -51,3 +51,56 @@ def test_authenticate_both_kinds(seeded):
         s.query(StaffUser).filter_by(email="dana@valle.demo").one().active = False
         s.flush()
         assert accounts.authenticate(s, "dana@valle.demo", "ellis-demo") is None
+
+
+# ---------------------------------------------------------------- Task 2: unified auth routes
+
+def signup(client, name="Ana Pérez", email="ana@x.test", password="password1", **extra):
+    return client.post("/api/auth/signup", json={"kind": "applicant", "name": name, "email": email,
+                                                  "password": password, **extra})
+
+
+def login(client, email, password="ellis-demo"):
+    return client.post("/api/auth/login", json={"email": email, "password": password})
+
+
+def test_signup_applicant_sets_cookie(client):
+    r = signup(client)
+    assert r.status_code == 200 and r.json()["kind"] == "applicant"
+    c = client.get("/api/a/case")
+    assert c.status_code == 200 and c.json()["clinic"]["name"] == "Independent"
+
+
+def test_signup_clinic_creates_admin(client):
+    r = client.post("/api/auth/signup", json={"kind": "clinic", "name": "Lu Admin", "email": "lu@casa.test",
+                                              "password": "password1", "clinic_name": "Casa Legal"})
+    assert r.status_code == 200 and r.json()["kind"] == "staff"
+    me = client.get("/api/clinic/me").json()
+    assert me["role"] == "admin" and me["clinic"]["name"] == "Casa Legal"
+    assert client.get("/api/clinic/cases").json()["cases"] == []
+    r = client.post("/api/auth/signup", json={"kind": "clinic", "name": "X", "email": "x@casa.test",
+                                              "password": "password1"})
+    assert r.status_code == 400
+
+
+def test_login_routes_by_role(client):
+    assert login(client, "dana@valle.demo").json()["kind"] == "staff"
+    assert client.get("/api/auth/me").json()["kind"] == "staff"
+    client.post("/api/auth/logout")
+    assert client.get("/api/auth/me").json() == {"kind": "guest"}
+
+
+def test_login_replaces_other_role(client):
+    signup(client)
+    login(client, "dana@valle.demo")
+    assert client.get("/api/auth/me").json()["kind"] == "staff"
+    assert client.get("/api/a/case").status_code == 401
+    login(client, "ana@x.test", "password1")
+    me = client.get("/api/auth/me").json()
+    assert me["kind"] == "applicant" and me["account"]["email"] == "ana@x.test"
+    assert client.get("/api/clinic/me").status_code == 401
+
+
+def test_wrong_password_401(client):
+    r = login(client, "dana@valle.demo", "nope-nope")
+    assert r.status_code == 401 and r.json()["error"]["code"] == "bad_credentials"
