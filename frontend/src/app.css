@@ -140,3 +140,7 @@ button { font-family: inherit; }
 /* The profile link at the foot of the sidebar marks its page like the nav links above it. */
 .account[aria-current='page'] { background: var(--white); box-shadow: inset 3px 0 0 var(--green); }
 @media (min-width: 800px) { .sidebar { min-height: 100vh; } } /* side by side: profile pinned to the bottom */
+
+/* Sign-in: "or" divider between the email login and the clinic link/code path (existing tokens only). */
+.or { display: flex; align-items: center; gap: 12px; color: var(--ink-soft); font-size: 15px; }
+.or::before, .or::after { content: ''; flex: 1; height: 1px; background: var(--line); }

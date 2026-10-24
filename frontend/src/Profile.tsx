@@ -3,6 +3,7 @@ import Shell from './Shell'
 import { Flag, Icon } from './icons'
 import { api } from './api'
 import { navigate } from './main'
+import { signOut, useAuth } from './auth'
 import { fact, useCase } from './applicant/ApplicantApp'
 import { LANGUAGES, langOf, type Lang } from './applicant/i18n'
 import { DOCS_EN } from './applicant/Sheets'
@@ -59,7 +60,8 @@ export default function Profile() {
 
   const decline = async (id: string) => { await api(`/api/a/gaps/${id}/decline`, { body: {} }); reload() }
   const setLanguage = async (locale: string) => { await api('/api/a/language', { body: { locale } }); setPicking(false); reload() }
-  const signOut = async () => { await api('/api/a/logout', { body: {} }); navigate('/signin', true) }
+  const { refresh } = useAuth()
+  const logOut = () => signOut(refresh)
   // Deep links like /profile?tab=flags land on the Advanced section.
   useEffect(() => { if (location.search.includes('tab=')) document.getElementById('advanced')?.scrollIntoView() }, [])
 
@@ -100,7 +102,7 @@ export default function Profile() {
             )}
             <div className="btns" style={{ paddingTop: 20 }}>
               {data.packet_ready && <a href="/review" data-nav className="btn md">Download my packet</a>}
-              <button type="button" className="btn md strong" onClick={signOut}>Sign out</button>
+              <button type="button" className="btn md strong" onClick={logOut}>Sign out</button>
             </div>
           </div>
           <h2 id="advanced" className="h3 rule" style={{ marginTop: 28 }}>Advanced</h2>
