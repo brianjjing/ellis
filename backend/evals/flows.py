@@ -248,6 +248,24 @@ def rosa(verbose=False) -> Ctx:
 FLOWS = {"f1": maria, "f2": jorge, "f3": ana, "f4": rosa}
 
 
+# Planted issues per flow (success metric: planted-issue recall 100%, false alarms reported).
+PLANTED = {"f1": {"absence_gt_180", "date_conflict", "citation"}, "f2": {"arrest"},
+           "f3": {"name_mismatch", "date_conflict"}, "f4": {"taxes"}}
+NOT_EXPECTED = {"f4": {"absence_gt_180", "absence_gte_365", "presence_short"}}
+
+
+def metrics(name: str, case_id: str) -> dict:
+    with session_scope() as s:
+        cats = {f.category for f in s.scalars(select(Flag).where(Flag.case_id == case_id))}
+        turns = len(s.scalars(select(Utterance).where(Utterance.case_id == case_id,
+                                                      Utterance.speaker == "applicant")).all())
+    planted = PLANTED[name]
+    found = planted & cats
+    false_alarms = sorted((cats - planted) & NOT_EXPECTED.get(name, set()))
+    return {"planted": sorted(planted), "found": sorted(found), "recall": len(found) / len(planted),
+            "false_alarms": false_alarms, "all_flags": sorted(cats), "applicant_turns": turns}
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("flow", choices=sorted(FLOWS) + ["all"])
@@ -258,7 +276,9 @@ def main():
     for name in (sorted(FLOWS) if a.flow == "all" else [a.flow]):
         x = FLOWS[name](a.verbose)
         g = x.gate()
-        print(f"{name}: state={x.state()} gate={'passes' if g['passes'] else [f['code'] for f in g['failing']]}")
+        m = metrics(name, x.case_id)
+        print(f"{name}: state={x.state()} gate={'passes' if g['passes'] else [f['code'] for f in g['failing']]} "
+              f"planted-issue recall={m['recall']:.0%} false_alarms={m['false_alarms']} flags={m['all_flags']}")
         if g["failing"] and a.verbose:
             for f in g["failing"]:
                 print("   ", f)

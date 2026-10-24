@@ -622,7 +622,7 @@ def flag_dict(fl: Flag, applicant: bool = False) -> dict[str, Any]:
 
 def raise_flag(s: Session, case: Case, category: str, layer: int, field: str | None = None,
                rule_id: str | None = None, detail: dict | None = None, actor: str = "case_api",
-               actor_type: str = "system") -> Flag | None:
+               actor_type: str = "system", return_existing: bool = False) -> Flag | None:
     """Create a flag + review item, deduped on (category, field) while open. Stop categories route to stop_now."""
     info = cat_info(category)
     if info["speed"] == STOP_NOW:
@@ -634,7 +634,12 @@ def raise_flag(s: Session, case: Case, category: str, layer: int, field: str | N
         # the keyword backstop and the official question describe the same thing: one item
         existing = _open_flags(s, case, category)
     if existing:
-        return None
+        if field and existing[0].field is None:
+            existing[0].field = field  # the keyword hit and the official question are one item
+            existing[0].section = catalog.section_of(field)
+            for ri in s.scalars(select(ReviewItem).where(ReviewItem.flag_id == existing[0].id)):
+                ri.field = field
+        return existing[0] if return_existing else None
     summary = facts_summary(s, case, category, field)
     decided = s.scalars(select(ReviewItem).where(
         ReviewItem.case_id == case.id, ReviewItem.category == category, ReviewItem.status == "closed",
@@ -689,10 +694,11 @@ def facts_summary(s: Session, case: Case, category: str, field: str | None) -> s
 
 
 def referral_card(s: Session, case: Case, fl: Flag) -> dict[str, Any]:
-    from .clinic_service import clinic_phone, reviewer_first_name
+    from .clinic_service import clinic_phone, referral_overrides, reviewer_first_name
+    overrides = referral_overrides(s, case)
     if fl.speed == STOP_NOW:
         return {"variant": "stop_now", "flag_id": fl.id,
-                "title": "Su clínica le va a contactar sobre esta parte",
+                "title": overrides.get("stop_now") or "Su clínica le va a contactar sobre esta parte",
                 "body": "Esto debe revisarlo un profesional con licencia antes de presentar su solicitud. "
                         "Ellis no puede aconsejarle sobre esto.",
                 "who": reviewer_first_name(s, case), "phone": clinic_phone(s, case),
@@ -701,7 +707,8 @@ def referral_card(s: Session, case: Case, fl: Flag) -> dict[str, Any]:
     gaps = [g.label_es or g.reason for g in s.scalars(select(Gap).where(
         Gap.case_id == case.id, Gap.status == "open"))
         if fl.id in (g.key or "") or (fl.field and fl.field in (g.key or "")) or fl.category in (g.key or "")]
-    return {"variant": "flag_continue", "flag_id": fl.id, "title": "Esto lo revisará una persona de su clínica",
+    return {"variant": "flag_continue", "flag_id": fl.id,
+            "title": overrides.get("flag_continue") or "Esto lo revisará una persona de su clínica",
             "item": item_text(s, case, fl), "prepare": gaps,
             "who": reviewer_first_name(s, case), "phone": clinic_phone(s, case), "actions": ["Entendido"]}
 
@@ -801,9 +808,10 @@ def _layer1(s: Session, case: Case, field: str, value: Any, utterance_text: str 
             if hit:
                 stop_now(s, case, hit, layer=1, field=field)
                 return {"stop": hit}
-            return {"flag": raise_flag(s, case, "citation", layer=1, field=field)}
+            return {"flag": raise_flag(s, case, "citation", layer=1, field=field, return_existing=True)}
         if on_yes == "flag_continue":
-            return {"flag": raise_flag(s, case, q.get("category", "liaison_note"), layer=1, field=field)}
+            return {"flag": raise_flag(s, case, q.get("category", "liaison_note"), layer=1, field=field,
+                                       return_existing=True)}
         stop_now(s, case, q.get("category", "arrest"), layer=1, field=field)
         return {"stop": q.get("category", "arrest")}
     if field.startswith("oath.") and value in ("no", "not_sure"):

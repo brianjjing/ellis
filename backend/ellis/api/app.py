@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import logging
 import os
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
@@ -29,7 +30,17 @@ class NoToolBodies(logging.Filter):
 
 
 def create_app(start_workers: bool | None = None) -> FastAPI:
-    app = FastAPI(title="Ellis Case API", version="0.1.0")
+    @asynccontextmanager
+    async def lifespan(_: FastAPI):
+        if os.environ.get("ELLIS_AUTO_CREATE", "1") == "1":
+            create_all()
+        run = settings.run_agents_inprocess if start_workers is None else start_workers
+        if run:
+            from ..agents.runner import start_background_runner
+            start_background_runner()
+        yield
+
+    app = FastAPI(title="Ellis Case API", version="0.1.0", lifespan=lifespan)
     logging.getLogger("uvicorn.access").addFilter(NoToolBodies())
 
     from .routes import applicant, clinic, tools, voice, webhooks
@@ -62,15 +73,6 @@ def create_app(start_workers: bool | None = None) -> FastAPI:
         return {"ok": True, "agent_backend": settings.agent_backend,
                 "voice": {"cartesia": bool(settings.cartesia_api_key)},
                 "liaison_brain": "claude" if settings.anthropic_api_key else "scripted"}
-
-    @app.on_event("startup")
-    def _startup():
-        if os.environ.get("ELLIS_AUTO_CREATE", "1") == "1":
-            create_all()
-        run = settings.run_agents_inprocess if start_workers is None else start_workers
-        if run:
-            from ..agents.runner import start_background_runner
-            start_background_runner()
 
     # Serve the built web client when present (single-origin deploys); dev uses the Vite proxy.
     dist = Path(os.environ.get("ELLIS_WEB_DIST", BACKEND_DIR.parent / "frontend" / "dist"))

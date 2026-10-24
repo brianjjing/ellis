@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "e2e": "node e2e/happy-path.cjs"
   },
   "dependencies": {
     "react": "^19.3.1",
