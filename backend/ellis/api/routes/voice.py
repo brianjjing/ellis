@@ -54,6 +54,9 @@ class VoiceSession:
         self.silence_said: set[int] = set()
         self.closed = False
         self.tasks: list[asyncio.Task] = []
+        self.resume_count = 0  # turn.resume events this turn: the model thought the applicant was done, then
+                               # detected they kept talking -- a real (if indirect) uncertainty signal, since
+                               # Cartesia's turn events carry no confidence/probability field to read directly
 
     async def send(self, msg: dict) -> None:
         if not self.closed:
@@ -65,15 +68,17 @@ class VoiceSession:
     async def run(self) -> None:
         start = await self.ws.receive_json()
         want_voice = start.get("mode", "voice") == "voice"
+        language = start.get("language") if start.get("language") in ("es", "en") else "es"
+        locale = start.get("locale") or ("en-US" if language == "en" else "es-MX")
         from ...voice.llm import extractor
         self.liaison = Liaison(InProcessClient(self.case_id), today=today(),
-                               channel="voice" if want_voice else "text", llm=extractor())
+                               channel="voice" if want_voice else "text", llm=extractor(), language=language)
         lines = await asyncio.to_thread(self.liaison.start)
         patient = bool(self.liaison.cfg.get("patient_mode"))
         cartesia_ok = False
         if want_voice and settings.cartesia_api_key:
             try:
-                self.tts = cartesia.TTS(speed=0.85 if patient else 1.0)
+                self.tts = cartesia.TTS(speed=0.85 if patient else 1.0, locale=locale)
                 await asyncio.wait_for(self.tts.connect(), 8)
                 self.stt = cartesia.STT(patient=patient)
                 await asyncio.wait_for(self.stt.connect(), 8)
@@ -141,6 +146,7 @@ class VoiceSession:
     async def user_started(self) -> None:
         """turn.start: barge-in on an interruptible line; ignored (held) on a locked one."""
         self.user_active = True
+        self.resume_count = 0
         cur = self.current
         if cur and not cur["locked"] and not cur.get("interrupted"):
             cur["interrupted"] = True
@@ -164,15 +170,18 @@ class VoiceSession:
                     await self.send({"type": "user_partial", "text": ev.get("transcript", "")})
                 elif t == "turn.resume":
                     self.user_active = True
+                    self.resume_count += 1
                 elif t == "turn.end":
                     self.user_active = False
-                    await self.turn(ev.get("transcript", ""))
+                    uncertain = self.resume_count > 0
+                    self.resume_count = 0
+                    await self.turn(ev.get("transcript", ""), uncertain=uncertain)
                 elif t == "error":
                     await self.send({"type": "error", "message": "voice service error"})
         except Exception as e:  # noqa: BLE001
             log.warning("stt loop ended: %s", e)
 
-    async def turn(self, text: str) -> None:
+    async def turn(self, text: str, uncertain: bool = False) -> None:
         text = (text or "").strip()
         if not text or self.liaison is None or self.liaison.ended:
             return
@@ -188,7 +197,7 @@ class VoiceSession:
         self.last_interrupt = None
         self.silence_said.clear()
         async with self.lock:
-            lines = await asyncio.to_thread(self.liaison.handle, text, field, word)
+            lines = await asyncio.to_thread(self.liaison.handle, text, field, word, uncertain)
         for ln in lines:
             await self.q.put(ln)
 

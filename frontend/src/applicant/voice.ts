@@ -41,13 +41,15 @@ export class VoiceClient {
   pcmBuf: number[] = []
   ended = false
   patient = false
+  locale = 'es-MX'
   h: Handlers
 
   constructor(h: Handlers) {
     this.h = h
   }
 
-  async start(wantVoice: boolean) {
+  async start(wantVoice: boolean, lang: string = 'es', locale: string = 'es-MX') {
+    this.locale = locale
     this.h.onState('connecting')
     // ponytail: request the context at STT's native 16 kHz so the browser's own (band-limited) resampler
     // does the downsampling. The old code ran the context at the device rate (44.1/48 kHz) and then
@@ -71,7 +73,7 @@ export class VoiceClient {
     if (this.ended) { this.stream?.getTracks().forEach((t) => t.stop()); return }
     const ws = new WebSocket(wsUrl('/api/a/voice'))
     this.ws = ws
-    ws.onopen = () => ws.send(JSON.stringify({ type: 'start', mode: wantVoice ? 'voice' : 'text' }))
+    ws.onopen = () => ws.send(JSON.stringify({ type: 'start', mode: wantVoice ? 'voice' : 'text', language: lang, locale }))
     ws.onmessage = (e) => this.onMessage(JSON.parse(e.data))
     ws.onclose = () => {
       if (!this.ended) this.h.onError('offline')
@@ -104,7 +106,7 @@ export class VoiceClient {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
     if (!SR || !this.stream) return
     const r = new SR()
-    r.lang = 'es-MX'
+    r.lang = this.locale
     r.continuous = true
     r.interimResults = true
     r.onresult = (ev: any) => {
@@ -206,9 +208,10 @@ export class VoiceClient {
     const synth = window.speechSynthesis
     if (!synth) { this.send({ type: 'spoken', line_id: l.id }); return }
     const u = new SpeechSynthesisUtterance(l.text)
-    u.lang = 'es-MX'
+    u.lang = this.locale
     u.rate = this.patient ? 0.85 : 1
-    const v = synth.getVoices().find((x) => x.lang === 'es-MX') || synth.getVoices().find((x) => x.lang.startsWith('es'))
+    const baseLang = this.locale.split('-')[0]
+    const v = synth.getVoices().find((x) => x.lang === this.locale) || synth.getVoices().find((x) => x.lang.startsWith(baseLang))
     if (v) u.voice = v
     u.onboundary = (ev) => {
       const rest = l.text.slice(ev.charIndex)

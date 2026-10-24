@@ -10,7 +10,7 @@ import re
 from datetime import date
 from typing import Any
 
-from ..extraction.schemas import LABELS_ES
+from ..extraction.schemas import LABELS_EN, LABELS_ES
 from ..rules import engine as rules
 from ..services import catalog
 
@@ -76,12 +76,17 @@ def case_manager(ctx: dict) -> list[dict]:
             newer = [x for x in ctx["documents"] if x["document_type"] == d["document_type"]
                      and x["uploaded_at"] > d["uploaded_at"]]
             if not newer:
-                label = LABELS_ES.get(d["document_type"], "documento")
+                label_es = LABELS_ES.get(d["document_type"], "documento")
+                label_en = LABELS_EN.get(d["document_type"], "document")
                 rs = d.get("quality_reasons") or []
-                why = "con reflejo en las fechas" if "glare" in rs else "borrosa" if "blurry" in rs else "incompleta"
+                why_es = "con reflejo en las fechas" if "glare" in rs else "borrosa" if "blurry" in rs else "incompleta"
+                why_en = "has glare over the dates" if "glare" in rs else "blurry" if "blurry" in rs else "incomplete"
                 queue.insert(0, {"kind": "request_upload", "document_type": d["document_type"],
-                                 "text_es": f"La foto de su {label} salió {why}. ¿Puede tomar otra, con el documento "
-                                            f"sobre una mesa?", "reason": "retake needed"})
+                                 "text_es": f"La foto de su {label_es} salió {why_es}. ¿Puede tomar otra, con el "
+                                            f"documento sobre una mesa?",
+                                 "text_en": f"The photo of your {label_en} {why_en}. Can you take another one, "
+                                            f"with the document on a table?",
+                                 "reason": "retake needed"})
                 reasons.append(f"ask for a retake of {d['document_type']}")
     # 3. reviewer "needs more info" and QA challenges that carry a question
     for t in ctx["tasks"]:

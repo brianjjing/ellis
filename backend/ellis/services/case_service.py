@@ -252,7 +252,7 @@ def open_readback(s: Session, case: Case, field: str) -> Event | None:
 
 
 def read_back(s: Session, case: Case, field: str, briefing_version: int | None = None,
-              read_value: str | None = None) -> dict[str, Any]:
+              read_value: str | None = None, lang: str = "es") -> dict[str, Any]:
     d = catalog.field_def(field)
     if d is None:
         raise CaseError("unknown_field", f"unknown field {field}", field)
@@ -271,7 +271,7 @@ def read_back(s: Session, case: Case, field: str, briefing_version: int | None =
         chosen = doc_facts[-1]
     else:
         chosen = current_facts(s, case.id)[field]
-    spoken_form = spoken_value(field, chosen.value)
+    spoken_form = spoken_value(field, chosen.value, lang=lang)
     emit(s, case, "readback.started", {"field": field, "fact_id": chosen.id, "value": chosen.value,
                                        "briefing_version": briefing_version, "source": chosen.source},
          "liaison", "liaison")
@@ -280,36 +280,43 @@ def read_back(s: Session, case: Case, field: str, briefing_version: int | None =
             "sentence_es": f"Le leo {readback_label(field, chosen.source)}: {spoken_form}. ¿Es correcto?"}
 
 
-def readback_label(field: str, source: str) -> str:
+def readback_label(field: str, source: str, lang: str = "es") -> str:
     d = catalog.field_def(field) or {}
+    if lang == "en":
+        base = d.get("label_en", field).lower()
+        return (f"what your document says about {base}" if source == "document"
+                else f"what you told me about {base}")
     base = d.get("label_es", field).lower()
     if source == "document":
         return f"lo que dice su documento sobre {base}"
     return f"lo que me dio sobre {base}"
 
 
-def spoken_value(field: str, value: Any) -> str:
+def spoken_value(field: str, value: Any, lang: str = "es") -> str:
+    none_word = "none" if lang == "en" else "ninguno"
     if value is None:
-        return "ninguno"
+        return none_word
     if catalog.is_date_field(field) and isinstance(value, str):
         if value == "present":
-            return "el presente"
+            return "the present" if lang == "en" else "el presente"
         if len(value) == 10:
-            return rules.spoken_date_es(date.fromisoformat(value))
+            return rules.spoken_date(date.fromisoformat(value), lang=lang)
         if len(value) == 7:
             y, m = value.split("-")
-            return f"{rules.MONTHS_ES[int(m) - 1]} de {rules.year_es(int(y))}"
-        if value == "present":
-            return "el presente"
+            months = rules.MONTHS_EN if lang == "en" else rules.MONTHS_ES
+            return f"{months[int(m) - 1]} {y}" if lang == "en" else f"{months[int(m) - 1]} de {rules.year_es(int(y))}"
     if isinstance(value, bool):
-        return "sí" if value else "no"
+        return ("yes" if value else "no") if lang == "en" else ("sí" if value else "no")
     if isinstance(value, list):
-        return ", ".join(value) if value else "ninguno"
+        return ", ".join(value) if value else none_word
     if value in ("yes", "no", "not_sure"):
+        if lang == "en":
+            return {"yes": "yes", "no": "no", "not_sure": "not sure"}[value]
         return {"yes": "sí", "no": "no", "not_sure": "no está seguro"}[value]
     d = catalog.field_def(field) or {}
     if d.get("type") == "enum":
-        return ENUM_ES.get(str(value), str(value))
+        table = ENUM_EN if lang == "en" else ENUM_ES
+        return table.get(str(value), str(value))
     return str(value)
 
 
@@ -319,6 +326,13 @@ ENUM_ES = {
     "online": "en línea", "paper": "en papel", "us_citizen": "ciudadano estadounidense", "lpr": "residente permanente",
     "other": "otro", "biological": "biológico", "stepchild": "hijastro", "adopted": "adoptado",
     "female": "femenino", "male": "masculino",
+}
+
+ENUM_EN = {
+    "single": "single", "married": "married", "divorced": "divorced", "widowed": "widowed",
+    "separated": "separated", "annulled": "annulled marriage", "online": "online", "paper": "on paper",
+    "us_citizen": "a U.S. citizen", "lpr": "a permanent resident", "other": "other", "biological": "biological",
+    "stepchild": "stepchild", "adopted": "adopted", "female": "female", "male": "male",
 }
 
 
@@ -890,7 +904,9 @@ def derived_summary(der: Derived | None) -> dict[str, Any] | None:
     out = {k: d[k] for k in keys if k in d}
     out["derived_id"] = der.id
     if "earliest_filing" in d:
-        out["earliest_filing_spoken"] = rules.spoken_date_es(date.fromisoformat(d["earliest_filing"]))
+        early = date.fromisoformat(d["earliest_filing"])
+        out["earliest_filing_spoken"] = rules.spoken_date_es(early)
+        out["earliest_filing_spoken_en"] = rules.spoken_date_en(early)
     if "explain" in d:
         out["explain"] = d["explain"]
     return out

@@ -1,0 +1,130 @@
+# Liaison scripts (draft English, same review status as scripts_es.yaml — needs native review before real
+# use). locked = interruptible=False. Keep keys in sync with scripts_es.yaml; the liaison picks the file by
+# session language.
+version: en-1
+disclosure:
+  locked: true
+  text: "Hi, I'm Ellis, an AI assistant working with {clinic_name}. I'm not a lawyer and I can't give you legal advice. I help prepare your citizenship application; you review and sign everything, and we never submit it for you. We save the text of this conversation, not the audio. Do you agree to continue?"
+third_party_check:
+  locked: false
+  text: "Is someone else listening with you?"
+third_party_welcome:
+  locked: false
+  text: "Welcome. The answers need to be {name}'s; you can help them understand. {name_vocative}, do you agree to continue?"
+third_party_fallback:
+  locked: false
+  text: "Thank you. Do you agree to continue?"
+stop:
+  locked: true
+  text: "Thank you for telling me. This is something a licensed immigration professional needs to review before you file. Your clinic will follow up with you about this. I can't advise you on it. Would you like to continue with another section?"
+stop_repeat:
+  locked: false
+  text: "That's a question for a licensed professional; I can't answer it. What I can do is help you with the rest of your application."
+stop_offer_end:
+  locked: false
+  text: "I understand. If you'd like, we can stop for today. Everything else is saved. Would you like to continue with another section, or stop?"
+flag_neutral:
+  locked: false
+  text: "Thank you. I'm noting that for someone at your clinic to review. This isn't a decision about your case."
+flag_absence:
+  locked: false
+  text: "Thank you. That trip was longer than six months, so I'm noting it for someone at your clinic to review. This isn't a decision about your case."
+flag_card:
+  locked: false
+  text: "Thank you. We're marking this for someone to review before you file. I'll show you a card on the screen."
+cant_advise:
+  locked: false
+  text: "That's a question for your clinic; I can't answer it. What I can do is help you with your application."
+will_i_qualify:
+  locked: false
+  text: "That's decided by USCIS. What I can tell you is what the system calculates: {rule_explain}"
+secure_entry:
+  locked: true
+  text: "Please type your {label} on the screen. Don't say it out loud."
+secure_entry_repeat:
+  locked: true
+  text: "For your security, please don't say that number out loud. Please type it on the screen."
+upload_request:
+  locked: false
+  text: "Can you take a photo of your {document_label}? You can keep talking with me while it uploads."
+biographics_request:
+  locked: false
+  text: "On the screen you'll see some questions about your physical description, like height and eye color. You can fill those in whenever you like."
+consent_declined:
+  locked: false
+  text: "That's fine. We won't save anything else. If you change your mind, you can come back using the same link."
+consent_thanks:
+  locked: false
+  text: "Thank you. Let's get started."
+consent_retry:
+  locked: false
+  text: "Sorry, do you agree to continue? You can say yes or no."
+session_close:
+  locked: false
+  text: "Today we finished {sections_done}. For next time: {next_items}. Everything is saved."
+session_close_all_done:
+  locked: false
+  text: "We now have all your answers. Your clinic will review your case and let you know when you can review and sign. Everything is saved."
+tool_failure:
+  locked: false
+  text: "Sorry, I couldn't save that. Can you say it again?"
+not_understood:
+  locked: false
+  text: "Sorry, I didn't quite understand that."
+take_your_time:
+  locked: false
+  text: "Take your time."
+another_day:
+  locked: false
+  text: "Should we continue another day? Everything you said is saved."
+rules_later:
+  locked: false
+  text: "Thank you. I'll confirm the dates later."
+readback_document:
+  locked: false
+  text: "Your {document_label} says: {label}, {spoken}. Is that correct?"
+readback_applicant:
+  locked: false
+  text: "Let me read back {label} you gave me: {spoken}. Is that correct?"
+readback_third_party:
+  locked: false
+  text: "{name_vocative}, let me read back {label}: {spoken}. Is that correct?"
+skip_for_now:
+  locked: false
+  text: "We'll come back to that later."
+leave_as_is:
+  locked: false
+  text: "Okay, we'll leave it as it is for now."
+ask_correct_value:
+  locked: false
+  text: "Can you tell me the correct value for {label}?"
+understood:
+  locked: false
+  text: "Got it: {spoken}."
+matches_document:
+  locked: false
+  text: " That matches your document."
+matches_passport:
+  locked: false
+  text: " That matches your passport."
+window_open:
+  locked: false
+  text: "Thank you. By the rule, your filing window is already open; I'll explain what's still needed later on."
+earliest_filing:
+  locked: false
+  text: "Thank you. By the rule, you can file your application starting {date_spoken}."
+thanks:
+  locked: false
+  text: "Thank you."
+greeting_resume:
+  locked: false
+  text: "Hi, {first_name}. I'm Ellis. Let's pick up where we left off."
+followup_citation_year:
+  locked: false
+  text: "What year was that?"
+followup_citation_county:
+  locked: false
+  text: "What county was that in?"
+followup_citation_paid:
+  locked: false
+  text: "Have you already paid it, or not yet?"

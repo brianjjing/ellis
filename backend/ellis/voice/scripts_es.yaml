@@ -81,3 +81,48 @@ readback_applicant:
 readback_third_party:
   locked: false
   text: "{name_vocative}, le leo {label}: {spoken}. ¿Es correcto?"
+third_party_fallback:
+  locked: false
+  text: "Gracias. ¿Está de acuerdo en continuar?"
+consent_retry:
+  locked: false
+  text: "Perdón. ¿Está de acuerdo en continuar? Puede decir sí o no."
+skip_for_now:
+  locked: false
+  text: "Lo vemos más adelante."
+leave_as_is:
+  locked: false
+  text: "Está bien, lo dejamos así por ahora."
+ask_correct_value:
+  locked: false
+  text: "¿Me dice el dato correcto para {label}?"
+understood:
+  locked: false
+  text: "Entendido: {spoken}."
+matches_document:
+  locked: false
+  text: " Coincide con su documento."
+matches_passport:
+  locked: false
+  text: " Coincide con su pasaporte."
+window_open:
+  locked: false
+  text: "Gracias. Según la regla, la ventana para presentar su solicitud ya está abierta; le explico más adelante qué falta."
+earliest_filing:
+  locked: false
+  text: "Gracias. Según la regla, puede presentar su solicitud desde {date_spoken}."
+thanks:
+  locked: false
+  text: "Gracias."
+greeting_resume:
+  locked: false
+  text: "Hola, {first_name}. Soy Ellis. Seguimos donde nos quedamos."
+followup_citation_year:
+  locked: false
+  text: "¿En qué año fue?"
+followup_citation_county:
+  locked: false
+  text: "¿En qué condado fue?"
+followup_citation_paid:
+  locked: false
+  text: "¿Ya la pagó, o todavía no?"

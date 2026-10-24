@@ -18,6 +18,10 @@ MONTHS_ES = [
     "enero", "febrero", "marzo", "abril", "mayo", "junio",
     "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
 ]
+MONTHS_EN = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+]
 
 
 class ValidationError(ValueError):
@@ -140,6 +144,23 @@ def spoken_date_es(d: date) -> str:
 
 def short_date_es(d: date) -> str:
     return f"{d.day} de {MONTHS_ES[d.month - 1]} de {d.year}"
+
+
+_ORDINAL_EN = {1: "1st", 2: "2nd", 3: "3rd", 21: "21st", 22: "22nd", 23: "23rd", 31: "31st"}
+
+
+def spoken_date_en(d: date) -> str:
+    """Canonical spoken form: 'January 15th, 2022'."""
+    day = _ORDINAL_EN.get(d.day, f"{d.day}th")
+    return f"{MONTHS_EN[d.month - 1]} {day}, {d.year}"
+
+
+def short_date_en(d: date) -> str:
+    return f"{MONTHS_EN[d.month - 1]} {d.day}, {d.year}"
+
+
+def spoken_date(d: date, lang: str = "es") -> str:
+    return spoken_date_en(d) if lang == "en" else spoken_date_es(d)
 
 
 # ---------------------------------------------------------------- date helpers
@@ -419,6 +440,8 @@ def evaluate(facts: dict[str, Any], as_of: date, cfg: RuleConfig, fees: FeeConfi
             "rule_id": "R-ELIG-EARLY",
             "text_es": (f"La regla dice que puede presentar la solicitud desde {spoken_date_es(early)}, "
                         f"noventa días antes de cumplir cinco años como residente."),
+            "text_en": (f"The rule says you can file starting {spoken_date_en(early)}, ninety days before your "
+                        f"fifth year as a resident."),
         }
         window = statutory_window(filing, lpr, cfg)
         pp = physical_presence(window, trips, cfg)
@@ -437,12 +460,18 @@ def evaluate(facts: dict[str, Any], as_of: date, cfg: RuleConfig, fees: FeeConfi
             if ex["e65_20"]:
                 out["explain"]["exemptions"] = {"rule_id": "R-EX-65-20", "text_es": (
                     "Por su edad y sus años de residente, la regla dice que puede hacer una versión más corta "
-                    "del examen de cívica, en su idioma, y no tiene que hacer el examen de inglés.")}
+                    "del examen de cívica, en su idioma, y no tiene que hacer el examen de inglés."),
+                    "text_en": (
+                    "Because of your age and years as a resident, the rule says you can take a shorter version "
+                    "of the civics test, in your own language, and don't have to take the English test.")}
             elif ex["e55_15"] or ex["e50_20"]:
                 rid = "R-EX-55-15" if ex["e55_15"] else "R-EX-50-20"
                 out["explain"]["exemptions"] = {"rule_id": rid, "text_es": (
                     "Por su edad y sus años de residente, la regla dice que puede hacer el examen de cívica "
-                    "en español con un intérprete que usted lleve.")}
+                    "en español con un intérprete que usted lleve."),
+                    "text_en": (
+                    "Because of your age and years as a resident, the rule says you can take the civics test "
+                    "with an interpreter you bring.")}
         addr_from = _current_address_from(facts)
         rd = residence_district(addr_from, filing, cfg)
         if rd:

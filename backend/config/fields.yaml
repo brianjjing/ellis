@@ -3,6 +3,8 @@
 # confirm: readback = needs a one-field read-back before confirmed (all dates, anything hedged)
 #          direct   = a clear, unhedged answer to the liaison's own question is confirmed
 # TODO(open-question-1): N-400 part numbers come from the verified edition; fields map by key.
+# question_en / rb_en / rb_doc_en / followup_en are a draft English translation (same review status as
+# the Spanish copy) used when the applicant picks English as their session language.
 version: fields-2026.10-a
 
 sections:
@@ -25,10 +27,12 @@ fields:
      label_es: "Consentimiento", label_en: "Consent"}
   - {key: lpr_since, section: eligibility, type: date, required: true, capture: DV, confirm: readback, material: true,
      document_authoritative: true, label_es: "Residente desde", label_en: "Resident since", rb_doc_es: "que es residente desde", rb_es: "la fecha desde la que es residente",
-     question_es: "¿Desde cuándo es residente permanente?"}
+     rb_doc_en: "that you've been a resident since", rb_en: "the date you became a resident",
+     question_es: "¿Desde cuándo es residente permanente?", question_en: "Since when have you been a permanent resident?"}
   - {key: dob, section: eligibility, type: date, required: true, capture: DV, confirm: readback, material: true,
      document_authoritative: true, label_es: "Fecha de nacimiento", label_en: "Date of birth", rb_doc_es: "que su fecha de nacimiento es", rb_es: "su fecha de nacimiento",
-     question_es: "¿Cuál es su fecha de nacimiento?"}
+     rb_doc_en: "that your date of birth is", rb_en: "your date of birth",
+     question_es: "¿Cuál es su fecha de nacimiento?", question_en: "What is your date of birth?"}
   - {key: eligibility_basis, section: eligibility, type: enum, options: ["5yr"], required: true, capture: E,
      label_es: "Tipo de solicitud", label_en: "Eligibility basis"}
   - {key: filing.planned_date, section: eligibility, type: date, required: false, capture: V, confirm: readback,
@@ -36,19 +40,24 @@ fields:
 
   - {key: name.given, section: identity, type: name, required: true, capture: DV, confirm: direct, material: true,
      document_authoritative: true, rb_doc_es: "que su nombre es", rb_es: "su nombre", label_es: "Nombre(s)", label_en: "Given name(s)",
-     question_es: "¿Cuál es su nombre, sin apellidos, como aparece en sus documentos?"}
+     rb_doc_en: "that your name is", rb_en: "your name",
+     question_es: "¿Cuál es su nombre, sin apellidos, como aparece en sus documentos?",
+     question_en: "What is your given name, without surnames, as it appears on your documents?"}
   - {key: name.family, section: identity, type: name, required: true, capture: DV, confirm: direct, material: true,
      document_authoritative: true, rb_doc_es: "que sus apellidos son", rb_es: "sus apellidos", label_es: "Apellidos", label_en: "Family name(s)",
-     question_es: "¿Y sus apellidos, como aparecen en sus documentos?"}
+     rb_doc_en: "that your surname is", rb_en: "your surname",
+     question_es: "¿Y sus apellidos, como aparecen en sus documentos?", question_en: "And your surname, as it appears on your documents?"}
   - {key: name.on_green_card, section: identity, type: name, required: true, capture: D, material: true,
      label_es: "Nombre en la tarjeta de residente", label_en: "Name on green card", upload: green_card}
   - {key: names.used, section: identity, type: string_list, required: true, capture: V, confirm: direct,
      label_es: "Otros nombres que ha usado", label_en: "Other names used", none_ok: true,
-     question_es: "¿Ha usado otros nombres, por ejemplo un apellido de casada?"}
+     question_es: "¿Ha usado otros nombres, por ejemplo un apellido de casada?",
+     question_en: "Have you used other names, for example a married surname?"}
   - {key: name_change.requested, section: identity, type: optional_name, required: true, capture: V, confirm: direct,
      label_es: "Cambio de nombre", label_en: "Name change requested", none_ok: true,
      question_es: "El formulario tiene una pregunta para pedir un cambio de nombre. ¿Quiere usarla?",
-     followup_es: "¿Qué nombre quiere pedir?"}
+     question_en: "The form has a question to request a legal name change. Would you like to use it?",
+     followup_es: "¿Qué nombre quiere pedir?", followup_en: "What name would you like to request?"}
   - {key: a_number, section: identity, type: a_number, required: true, capture: SD, masked: true, token: "[A_NUMBER]",
      material: true, label_es: "Número A", label_en: "A-number"}
   - {key: ssn, section: identity, type: ssn, required: false, capture: S, masked: true, token: "[SSN]",
@@ -58,9 +67,13 @@ fields:
   - {key: passport_number, section: identity, type: passport_number, required: false, capture: SD, masked: true,
      token: "[PASSPORT_NUMBER]", label_es: "Número de pasaporte", label_en: "Passport number"}
   - {key: country_of_birth, section: identity, type: country, required: true, capture: DV, confirm: direct,
-     label_es: "País de nacimiento", label_en: "Country of birth", rb_doc_es: "que nació en", rb_es: "su país de nacimiento", question_es: "¿En qué país nació?"}
+     label_es: "País de nacimiento", label_en: "Country of birth", rb_doc_es: "que nació en", rb_es: "su país de nacimiento",
+     rb_doc_en: "that you were born in", rb_en: "your country of birth",
+     question_es: "¿En qué país nació?", question_en: "What country were you born in?"}
   - {key: nationality, section: identity, type: country, required: true, capture: DV, confirm: direct,
-     label_es: "Nacionalidad", label_en: "Nationality", rb_doc_es: "que su nacionalidad es", rb_es: "su nacionalidad", question_es: "¿De qué país es ciudadano o ciudadana?"}
+     label_es: "Nacionalidad", label_en: "Nationality", rb_doc_es: "que su nacionalidad es", rb_es: "su nacionalidad",
+     rb_doc_en: "that your nationality is", rb_en: "your nationality",
+     question_es: "¿De qué país es ciudadano o ciudadana?", question_en: "What country are you a citizen of?"}
 
   - {key: sex, section: biographics, type: enum, options: [female, male], required: true, capture: P,
      label_es: "Sexo", label_en: "Sex"}
@@ -80,33 +93,45 @@ fields:
 
   - {key: trips.any, section: travel, type: bool, required: true, capture: V, confirm: direct,
      label_es: "¿Viajes fuera del país?", label_en: "Any trips outside the US",
-     question_es: "¿Ha salido de Estados Unidos por más de un día en los últimos cinco años?"}
+     question_es: "¿Ha salido de Estados Unidos por más de un día en los últimos cinco años?",
+     question_en: "Have you left the United States for more than a day in the last five years?"}
 
   - {key: marital.status, section: marital, type: enum, required: true, capture: V, confirm: direct,
      options: [single, married, divorced, widowed, separated, annulled],
-     label_es: "Estado civil", label_en: "Marital status", question_es: "¿Cuál es su estado civil? ¿Soltera, casada, divorciada o viuda?"}
+     label_es: "Estado civil", label_en: "Marital status", question_es: "¿Cuál es su estado civil? ¿Soltera, casada, divorciada o viuda?",
+     question_en: "What is your marital status? Single, married, divorced, or widowed?"}
   - {key: marital.times_married, section: marital, type: int, required: true, capture: V, confirm: direct,
      requires: {marital.status: [married, divorced, widowed, separated, annulled]},
-     label_es: "Veces casado(a)", label_en: "Times married", question_es: "¿Cuántas veces se ha casado?"}
+     label_es: "Veces casado(a)", label_en: "Times married", question_es: "¿Cuántas veces se ha casado?",
+     question_en: "How many times have you been married?"}
   - {key: spouse.name, section: marital, type: name, required: true, capture: DV, confirm: direct, requires: {marital.status: [married]},
-     label_es: "Nombre del cónyuge", label_en: "Spouse name", question_es: "¿Cómo se llama su esposo o esposa?"}
+     label_es: "Nombre del cónyuge", label_en: "Spouse name", question_es: "¿Cómo se llama su esposo o esposa?",
+     question_en: "What is your spouse's name?"}
   - {key: spouse.dob, section: marital, type: date, required: true, capture: DV, confirm: readback, requires: {marital.status: [married]},
-     rb_es: "la fecha de nacimiento de su cónyuge", label_es: "Fecha de nacimiento del cónyuge", label_en: "Spouse date of birth", question_es: "¿Cuál es la fecha de nacimiento de su esposo o esposa?"}
+     rb_es: "la fecha de nacimiento de su cónyuge", rb_en: "your spouse's date of birth",
+     label_es: "Fecha de nacimiento del cónyuge", label_en: "Spouse date of birth", question_es: "¿Cuál es la fecha de nacimiento de su esposo o esposa?",
+     question_en: "What is your spouse's date of birth?"}
   - {key: spouse.marriage_date, section: marital, type: date, required: true, capture: DV, confirm: readback, requires: {marital.status: [married]},
-     rb_es: "la fecha de su matrimonio", label_es: "Fecha de matrimonio", label_en: "Date of marriage", question_es: "¿Cuándo se casaron?"}
+     rb_es: "la fecha de su matrimonio", rb_en: "the date you got married",
+     label_es: "Fecha de matrimonio", label_en: "Date of marriage", question_es: "¿Cuándo se casaron?",
+     question_en: "When did you get married?"}
   - {key: spouse.citizenship_status, section: marital, type: enum, required: true, capture: V, confirm: direct, requires: {marital.status: [married]},
      options: [us_citizen, lpr, other], label_es: "Ciudadanía del cónyuge", label_en: "Spouse citizenship",
-     question_es: "¿Su esposo o esposa es ciudadano estadounidense, residente permanente, u otra cosa?"}
+     question_es: "¿Su esposo o esposa es ciudadano estadounidense, residente permanente, u otra cosa?",
+     question_en: "Is your spouse a U.S. citizen, a permanent resident, or something else?"}
 
   - {key: children.count, section: children, type: int, required: true, capture: V, confirm: direct,
-     label_es: "Número de hijos", label_en: "Number of children", question_es: "¿Cuántos hijos tiene, contando a los adultos?"}
+     label_es: "Número de hijos", label_en: "Number of children", question_es: "¿Cuántos hijos tiene, contando a los adultos?",
+     question_en: "How many children do you have, counting adult children?"}
 
   - {key: fee.method, section: fee, type: enum, options: [online, paper], required: true, capture: V, confirm: direct,
      label_es: "Forma de presentar", label_en: "Filing method",
-     question_es: "¿Piensa presentar la solicitud en línea o en papel?"}
+     question_es: "¿Piensa presentar la solicitud en línea o en papel?",
+     question_en: "Do you plan to file your application online or on paper?"}
   - {key: fee.benefit_type, section: fee, type: benefit, required: false, capture: V, confirm: direct,
      label_es: "Beneficio público", label_en: "Means-tested benefit",
-     question_es: "Hay una forma de pedir que no le cobren la solicitud o que le cobren menos. ¿Recibe algún beneficio como Medi-Cal o CalFresh?"}
+     question_es: "Hay una forma de pedir que no le cobren la solicitud o que le cobren menos. ¿Recibe algún beneficio como Medi-Cal o CalFresh?",
+     question_en: "There's a way to ask for the filing fee to be reduced or waived. Do you receive a benefit like Medicaid or SNAP?"}
   - {key: fee.household_size, section: fee, type: int, required: false, capture: S, label_es: "Personas en el hogar", label_en: "Household size"}
   - {key: fee.income, section: fee, type: int, required: false, capture: S, masked: true, token: "[INCOME]",
      label_es: "Ingreso anual del hogar", label_en: "Household income"}
@@ -119,14 +144,17 @@ lists:
     min_items: 1
     item:
       - {key: city, type: string, capture: V, confirm: direct, label_es: "Ciudad", label_en: "City",
-         question_es: "¿En qué ciudad vive ahora?", question_prev_es: "¿En qué ciudad vivía antes de eso?"}
+         question_es: "¿En qué ciudad vive ahora?", question_prev_es: "¿En qué ciudad vivía antes de eso?",
+         question_en: "What city do you live in now?", question_prev_en: "What city did you live in before that?"}
       - {key: state, type: us_state, capture: V, confirm: direct, label_es: "Estado", label_en: "State",
-         question_es: "¿En qué estado?"}
+         question_es: "¿En qué estado?", question_en: "What state?"}
       - {key: zip, type: zip, capture: V, confirm: direct, label_es: "Código postal", label_en: "ZIP code",
-         question_es: "¿Cuál es el código postal?"}
+         question_es: "¿Cuál es el código postal?", question_en: "What is the ZIP code?"}
       - {key: street, type: string, capture: S, masked: true, token: "[STREET]", label_es: "Calle y número", label_en: "Street"}
       - {key: from, type: date, capture: V, confirm: readback, label_es: "Desde", label_en: "From", rb_es: "la fecha desde la que vive ahí",
-         question_es: "¿Desde cuándo vive ahí?", question_prev_es: "¿Desde cuándo vivió ahí?"}
+         rb_en: "the date you moved there",
+         question_es: "¿Desde cuándo vive ahí?", question_prev_es: "¿Desde cuándo vivió ahí?",
+         question_en: "Since when have you lived there?", question_prev_en: "Since when did you live there?"}
       - {key: to, type: date_or_present, capture: E, label_es: "Hasta", label_en: "To"}
   employment:
     section: employment
@@ -134,42 +162,48 @@ lists:
     min_items: 1
     item:
       - {key: employer, type: string, capture: V, confirm: direct, label_es: "Empleador o escuela", label_en: "Employer or school",
-         question_es: "¿Dónde trabaja ahora? Dígame el nombre del lugar.", question_prev_es: "¿Dónde trabajaba antes de eso?"}
-      - {key: city, type: string, capture: V, confirm: direct, label_es: "Ciudad", label_en: "City", question_es: "¿En qué ciudad?"}
+         question_es: "¿Dónde trabaja ahora? Dígame el nombre del lugar.", question_prev_es: "¿Dónde trabajaba antes de eso?",
+         question_en: "Where do you work now? Tell me the name of the place.", question_prev_en: "Where did you work before that?"}
+      - {key: city, type: string, capture: V, confirm: direct, label_es: "Ciudad", label_en: "City", question_es: "¿En qué ciudad?",
+         question_en: "What city?"}
       - {key: occupation, type: string, capture: V, confirm: direct, label_es: "Ocupación", label_en: "Occupation",
-         question_es: "¿Qué trabajo hace o hacía ahí?"}
+         question_es: "¿Qué trabajo hace o hacía ahí?", question_en: "What work do or did you do there?"}
       - {key: from, type: date, capture: V, confirm: readback, label_es: "Desde", label_en: "From", rb_es: "la fecha en que empezó ese trabajo",
-         question_es: "¿Desde cuándo trabaja ahí?", question_prev_es: "¿Desde cuándo trabajó ahí?"}
+         rb_en: "the date you started that job",
+         question_es: "¿Desde cuándo trabaja ahí?", question_prev_es: "¿Desde cuándo trabajó ahí?",
+         question_en: "Since when have you worked there?", question_prev_en: "Since when did you work there?"}
       - {key: to, type: date_or_present, capture: E, label_es: "Hasta", label_en: "To"}
   trips:
     section: travel
     requires: {trips.any: [true]}
     item:
       - {key: departure, type: date, capture: VD, confirm: readback, material: true, label_es: "Salida", label_en: "Departure", rb_es: "la fecha de salida",
-         question_es: "¿Cuándo salió?"}
+         rb_en: "the departure date", question_es: "¿Cuándo salió?", question_en: "When did you leave?"}
       - {key: return, type: date, capture: VD, confirm: readback, material: true, label_es: "Regreso", label_en: "Return", rb_es: "la fecha de regreso",
-         question_es: "¿Y cuándo regresó?"}
+         rb_en: "the return date", question_es: "¿Y cuándo regresó?", question_en: "And when did you come back?"}
       - {key: countries, type: string, capture: V, confirm: direct, label_es: "País", label_en: "Countries",
-         question_es: "¿A qué país fue?"}
+         question_es: "¿A qué país fue?", question_en: "What country did you go to?"}
       - {key: reason, type: string, capture: V, confirm: direct, required: false, label_es: "Motivo", label_en: "Reason",
-         question_es: "¿Cuál fue el motivo del viaje?"}
+         question_es: "¿Cuál fue el motivo del viaje?", question_en: "What was the reason for the trip?"}
       - {key: home_kept, type: bool, capture: V, confirm: direct, required_if_days_gt: 180,
          label_es: "Mantuvo su casa", label_en: "Kept home during trip",
-         question_es: "¿Mantuvo su casa aquí durante ese viaje?"}
+         question_es: "¿Mantuvo su casa aquí durante ese viaje?", question_en: "Did you keep your home here during that trip?"}
     more_field: trips.more
     more_question_es: "¿Hizo algún otro viaje fuera del país de más de un día?"
+    more_question_en: "Did you take any other trip outside the country of more than a day?"
   children:
     section: children
     count_field: children.count
     item:
       - {key: name, type: name, capture: V, confirm: direct, label_es: "Nombre", label_en: "Name",
-         question_es: "¿Cómo se llama su hijo o hija número {n}?"}
+         question_es: "¿Cómo se llama su hijo o hija número {n}?", question_en: "What is the name of child number {n}?"}
       - {key: dob, type: date, capture: V, confirm: readback, label_es: "Fecha de nacimiento", label_en: "Date of birth", rb_es: "la fecha de nacimiento",
-         question_es: "¿Cuál es su fecha de nacimiento?"}
+         rb_en: "the date of birth", question_es: "¿Cuál es su fecha de nacimiento?", question_en: "What is their date of birth?"}
       - {key: residence_city, type: string, capture: V, confirm: direct, label_es: "Ciudad donde vive", label_en: "Residence",
-         question_es: "¿En qué ciudad vive?"}
+         question_es: "¿En qué ciudad vive?", question_en: "What city do they live in?"}
       - {key: relationship, type: enum, options: [biological, stepchild, adopted], capture: V, confirm: direct,
-         label_es: "Relación", label_en: "Relationship", question_es: "¿Es hijo biológico, adoptado o hijastro?"}
+         label_es: "Relación", label_en: "Relationship", question_es: "¿Es hijo biológico, adoptado o hijastro?",
+         question_en: "Are they a biological, adopted, or step child?"}
 
 # Not required; QA challenges and reviewer notes ask for these.
 free_fields:

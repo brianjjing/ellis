@@ -91,8 +91,12 @@ def field_def(key: str) -> dict[str, Any] | None:
     return None
 
 
-def list_item_label(name: str, i: int) -> str:
-    return {"trips": "Viaje", "addresses": "Domicilio", "employment": "Trabajo", "children": "Hijo(a)"}.get(name, name) + f" {i + 1}"
+def list_item_label(name: str, i: int, lang: str = "es") -> str:
+    if lang == "en":
+        word = {"trips": "Trip", "addresses": "Address", "employment": "Job", "children": "Child"}.get(name, name)
+    else:
+        word = {"trips": "Viaje", "addresses": "Domicilio", "employment": "Trabajo", "children": "Hijo(a)"}.get(name, name)
+    return f"{word} {i + 1}"
 
 
 def label_es(key: str) -> str:
@@ -316,10 +320,17 @@ def fallback_queue(cur: dict[str, dict], derived: dict[str, Any] | None, today: 
     return items
 
 
-def question_for(key: str, cur: dict[str, dict] | None = None) -> str:
+def question_for(key: str, cur: dict[str, dict] | None = None, lang: str = "es") -> str:
     d = field_def(key) or {}
-    if d.get("list") and d.get("index", 0) > 0 and d.get("question_prev_es"):
-        q = d["question_prev_es"]
+    prev_key, q_key, label_key = (
+        ("question_prev_en", "question_en", "label_en") if lang == "en" else
+        ("question_prev_es", "question_es", "label_es"))
+    if d.get("list") and d.get("index", 0) > 0 and d.get(prev_key):
+        q = d[prev_key]
+    elif d.get(q_key):
+        q = d[q_key]
+    elif lang == "en":
+        q = f"Can you tell me {d.get(label_key, key).lower()}?"
     else:
-        q = d.get("question_es") or f"¿Me puede decir {d.get('label_es', key).lower()}?"
+        q = f"¿Me puede decir {d.get(label_key, key).lower()}?"
     return q.replace("{n}", str(d.get("index", 0) + 1))

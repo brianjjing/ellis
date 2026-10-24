@@ -55,45 +55,51 @@ def speakable(text: str) -> str:
 _voice_cache: dict[str, str] = {}
 
 
-async def spanish_voice_id() -> str | None:
-    """CARTESIA_VOICE_ID, else the first voice whose locales include es-MX (then any es)."""
-    if os.environ.get("CARTESIA_VOICE_ID"):
+async def voice_id_for(locale: str = "es-MX") -> str | None:
+    """Best Sonic voice id for a locale like 'es-MX' or 'en-US': an exact locale match, else the first
+    voice whose language matches the base code (e.g. any 'es' voice). CARTESIA_VOICE_ID pins the Spanish
+    voice specifically (documented as such in .env.example) and is left alone for other languages so a
+    fixed Spanish pin doesn't silently become the English voice too.
+    """
+    if locale.lower().startswith("es") and os.environ.get("CARTESIA_VOICE_ID"):
         return os.environ["CARTESIA_VOICE_ID"]
-    if "es" in _voice_cache:
-        return _voice_cache["es"]
+    if locale in _voice_cache:
+        return _voice_cache[locale]
     async with httpx.AsyncClient(timeout=10) as c:
         r = await c.get(f"{BASE}/voices", headers=headers(), params={"limit": 100})
         r.raise_for_status()
         data = r.json()
     voices = data.get("data", data) if isinstance(data, dict) else data
+    base_lang = locale.split("-")[0].lower()
     best = None
     for v in voices or []:
         locales = [str(x.get("locale", x) if isinstance(x, dict) else x) for x in (v.get("locales") or [])]
         lang = str(v.get("language", ""))
-        if any(lc.lower().startswith("es-mx") for lc in locales):
+        if any(lc.lower() == locale.lower() for lc in locales):
             best = v["id"]
             break
-        if best is None and (lang.startswith("es") or any(lc.lower().startswith("es") for lc in locales)):
+        if best is None and (lang.lower() == base_lang or any(lc.lower().startswith(base_lang) for lc in locales)):
             best = v["id"]
     if best:
-        _voice_cache["es"] = best
+        _voice_cache[locale] = best
     return best
 
 
 class TTS:
     """One Sonic WebSocket per call; one context per spoken line."""
 
-    def __init__(self, speed: float = 1.0):
+    def __init__(self, speed: float = 1.0, locale: str = "es-MX"):
         self.ws = None
         self.speed = speed
+        self.locale = locale
         self.voice_id: str | None = None
         self.model = os.environ.get("CARTESIA_TTS_MODEL", "sonic-3")
 
     async def connect(self) -> None:
         from websockets.asyncio.client import connect
-        self.voice_id = await spanish_voice_id()
+        self.voice_id = await voice_id_for(self.locale)
         if not self.voice_id:
-            raise RuntimeError("no Spanish voice id (set CARTESIA_VOICE_ID)")
+            raise RuntimeError(f"no voice id for locale {self.locale!r} (set CARTESIA_VOICE_ID for Spanish)")
         self.ws = await connect(f"{WS_BASE}/tts/websocket", additional_headers=headers(), max_size=2 ** 24)
 
     async def speak(self, text: str) -> AsyncIterator[dict[str, Any]]:
@@ -102,7 +108,7 @@ class TTS:
         self.context_id = ctx
         req: dict[str, Any] = {
             "context_id": ctx, "model_id": self.model, "transcript": speakable(text),
-            "voice": {"mode": "id", "id": self.voice_id}, "language": "es",
+            "voice": {"mode": "id", "id": self.voice_id}, "language": self.locale.split("-")[0],
             "output_format": {"container": "raw", "encoding": "pcm_s16le", "sample_rate": TTS_RATE},
             "add_timestamps": True, "continue": False,
         }
@@ -148,9 +154,19 @@ class STT:
         from websockets.asyncio.client import connect
         params = {"model": os.environ.get("CARTESIA_STT_MODEL", "ink-2"), "encoding": "pcm_s16le",
                   "sample_rate": str(STT_RATE)}
-        # Patient turn profile: wait longer before deciding the applicant finished (handoff: Patient profile).
+        # Turn detection is configurable on this endpoint (turn_start_threshold 0.5-0.9 default 0.8,
+        # turn_eager_end_threshold 0.3-0.8 default 0.6, turn_end_threshold 0.05-0.5 default 0.3,
+        # turn_end_timeout_ms 640-11200 default 5600; thresholds must stay end < eager_end < start).
+        # Cartesia's defaults are tuned for brisk back-and-forth; this applicant population (uncertain
+        # life history, often in a second language) benefits from more patience before the model decides
+        # a turn is over, and from a more sensitive start threshold so barge-in actually registers instead
+        # of requiring a loud, early interruption. Patient mode (handoff: Patient profile) goes further.
         if self.patient:
-            params.update({"turn_end_threshold": "0.1", "turn_end_timeout_ms": "9000"})
+            params.update({"turn_start_threshold": "0.6", "turn_eager_end_threshold": "0.4",
+                           "turn_end_threshold": "0.1", "turn_end_timeout_ms": "9000"})
+        else:
+            params.update({"turn_start_threshold": "0.65", "turn_eager_end_threshold": "0.5",
+                           "turn_end_threshold": "0.2", "turn_end_timeout_ms": "6500"})
         for kv in filter(None, os.environ.get("CARTESIA_STT_EXTRA_PARAMS", "").split("&")):
             k, _, v = kv.partition("=")
             params[k] = v

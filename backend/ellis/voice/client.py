@@ -59,12 +59,13 @@ class InProcessClient:
                 return {"saved": False, "error": {"code": e.code, "message": e.message, "field": e.field}}
         return self._run(f)
 
-    def read_back(self, field: str, read_value: str | None = None, briefing_version: int | None = None) -> dict:
+    def read_back(self, field: str, read_value: str | None = None, briefing_version: int | None = None,
+                 lang: str = "es") -> dict:
         from ..services import case_service as cs
 
         def f(s, case):
             try:
-                return cs.read_back(s, case, field, briefing_version, read_value)
+                return cs.read_back(s, case, field, briefing_version, read_value, lang=lang)
             except cs.CaseError as e:
                 return {"error": {"code": e.code, "message": e.message}}
         return self._run(f)

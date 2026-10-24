@@ -111,4 +111,15 @@ LABELS_ES = {
     "other": "documento",
 }
 
+LABELS_EN = {
+    "green_card": "green card",
+    "passport": "passport",
+    "marriage_certificate": "marriage certificate",
+    "lease": "lease",
+    "court_record": "court record or receipt",
+    "tax_transcript": "tax transcript",
+    "benefit_letter": "benefit letter",
+    "other": "document",
+}
+
 TWO_SIDED = {"green_card"}

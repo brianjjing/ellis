@@ -1,8 +1,11 @@
-// Applicant web client (/a/:token): phone-first, Spanish (es-MX), 48 px targets. Voice is the primary input;
-// the screen shows what was heard, what was saved and what is still needed.
+// Applicant web client (/a/:token): phone-first, 48 px targets. Voice is the primary input; the screen
+// shows what was heard, what was saved and what is still needed. Language (and dialect) is chosen on the
+// first screen, before the applicant starts talking; it drives both the spoken conversation (backend) and
+// this app's own chrome text (i18n.ts).
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, ApiError, debounce, stream } from '../api'
 import { Icon } from '../icons'
+import { LANGUAGES, Lang, t } from './i18n'
 import Session from './Session'
 import { BiographicsSheet, ReferralCard, SecureEntrySheet, UploadSheet } from './Sheets'
 import { PacketReady, ReviewSignoff } from './Review'
@@ -18,7 +21,9 @@ export type Overlay =
 export default function ApplicantApp({ token }: { token: string }) {
   const [data, setData] = useState<CaseView | null>(null)
   const [error, setError] = useState<{ code: string; message: string } | null>(null)
-  const [screen, setScreen] = useState<'welcome' | 'explain' | 'mic' | 'session' | 'progress' | 'review' | 'packet'>('welcome')
+  const [screen, setScreen] = useState<'language' | 'welcome' | 'explain' | 'mic' | 'session' | 'progress' | 'review' | 'packet'>('language')
+  const [lang, setLang] = useState<Lang>('es')
+  const [locale, setLocale] = useState('es-MX')
   const [wantVoice, setWantVoice] = useState(true)
   const [overlay, setOverlay] = useState<Overlay>(null)
   const [cards, setCards] = useState<any[]>([])
@@ -94,20 +99,22 @@ export default function ApplicantApp({ token }: { token: string }) {
   }
 
   return (
-    <div className="page col applicant" lang="es">
+    <div className="page col applicant" lang={lang}>
       <header className="a-head">
         <div className="stack">
-          <span className="a-clinic">Preparado para usted por {data.clinic.name}</span>
-          {data.clinic.is_demo && <span className="demo-tag">Datos de demostración</span>}
+          <span className="a-clinic">{t(lang, 'preparedFor')} {data.clinic.name}</span>
+          {data.clinic.is_demo && <span className="demo-tag">{t(lang, 'demoData')}</span>}
         </div>
         <span className="wordmark">Ellis</span>
       </header>
 
-      {screen === 'welcome' && <Welcome data={data} onStart={() => setScreen('mic')} onExplain={() => setScreen('explain')} />}
-      {screen === 'explain' && <Explainer onBack={() => setScreen('welcome')} />}
-      {screen === 'mic' && <MicPrompt onGo={(voice) => { setWantVoice(voice); setScreen('session') }} />}
+      {screen === 'language' && <LanguageSelect onChoose={(l, lc) => { setLang(l); setLocale(lc); setScreen('welcome') }} />}
+      {screen === 'welcome' && <Welcome data={data} lang={lang} onStart={() => setScreen('mic')} onExplain={() => setScreen('explain')} />}
+      {screen === 'explain' && <Explainer lang={lang} onBack={() => setScreen('welcome')} />}
+      {screen === 'mic' && <MicPrompt lang={lang} onGo={(voice) => { setWantVoice(voice); setScreen('session') }} />}
       {screen === 'session' && (
         <Session data={data} reload={load} highlight={highlight} docStatus={docStatus} wantVoice={wantVoice}
+          lang={lang} locale={locale}
           onUpload={() => setOverlay({ kind: 'upload' })}
           onEnd={() => { load(); setScreen(data.state === 'ready' ? 'review' : 'progress') }} />
       )}
@@ -145,7 +152,7 @@ function ProfessionalOptions({ reload }: { reload: () => void }) {
 }
 
 function Loading() {
-  return <div className="page col applicant"><main className="a-main"><p className="lead">Cargando…</p></main></div>
+  return <div className="page col applicant"><main className="a-main"><p className="lead">Cargando… / Loading…</p></main></div>
 }
 
 function ErrorScreen({ error, retry }: { error: { code: string; message: string }; retry: () => void }) {
@@ -160,24 +167,55 @@ function ErrorScreen({ error, retry }: { error: { code: string; message: string 
   )
 }
 
-function Welcome({ data, onStart, onExplain }: { data: CaseView; onStart: () => void; onExplain: () => void }) {
+function LanguageSelect({ onChoose }: { onChoose: (lang: Lang, locale: string) => void }) {
+  const [picked, setPicked] = useState<Lang | null>(null)
+  const group = LANGUAGES.find((l) => l.code === picked)
   return (
     <main className="a-main">
-      <h1 className="display">Prepare su solicitud de ciudadanía, hablando en español.</h1>
+      <h1 className="display">Elija su idioma / Choose your language</h1>
+      <p className="lead">Puede cambiarlo después. / You can change it later.</p>
+      {!picked ? (
+        <div className="btns" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 12 }}>
+          {LANGUAGES.map((l) => (
+            <button key={l.code} className="btn lg primary a-big" onClick={() => setPicked(l.code)}>{l.label}</button>
+          ))}
+        </div>
+      ) : (
+        <div className="btns" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 12 }}>
+          <p className="small">{t(picked, 'chooseDialect')}</p>
+          {group!.dialects.map((d) => (
+            <button key={d.code} className="btn lg a-big" onClick={() => onChoose(picked, d.code)}>{d.label}</button>
+          ))}
+          <button className="link-btn" onClick={() => setPicked(null)}>{picked === 'es' ? 'Atrás' : 'Back'}</button>
+        </div>
+      )}
+    </main>
+  )
+}
+
+function Welcome({ data, lang, onStart, onExplain }: { data: CaseView; lang: Lang; onStart: () => void; onExplain: () => void }) {
+  return (
+    <main className="a-main">
+      <h1 className="display">{t(lang, 'welcomeTitle')}</h1>
       <ul className="a-lines">
-        <li>Le haré preguntas y usted contesta con su voz.</li>
-        <li>Usted revisa y firma todo. Nosotros no enviamos nada a USCIS.</li>
-        <li>Soy un asistente de inteligencia artificial, no un abogado. Su clínica revisa su caso.</li>
+        <li>{t(lang, 'welcomeLine1')}</li>
+        <li>{t(lang, 'welcomeLine2')}</li>
+        <li>{t(lang, 'welcomeLine3')}</li>
       </ul>
-      <button className="btn lg primary a-big" onClick={onStart}><Icon name="mic" size={20} />Empezar a hablar</button>
-      <button className="link-btn" onClick={onExplain}>¿Cómo funciona?</button>
+      <button className="btn lg primary a-big" onClick={onStart}><Icon name="mic" size={20} />{t(lang, 'startTalking')}</button>
+      <button className="link-btn" onClick={onExplain}>{t(lang, 'howItWorks')}</button>
       <Roadmap data={data} />
     </main>
   )
 }
 
-function Explainer({ onBack }: { onBack: () => void }) {
-  const steps = [
+function Explainer({ lang, onBack }: { lang: Lang; onBack: () => void }) {
+  const steps = lang === 'en' ? [
+    ['1', 'We talk', 'I ask you the N-400 form questions, one at a time. You answer with your voice.'],
+    ['2', 'Upload photos', 'You can take photos of your documents while we talk.'],
+    ['3', 'Your clinic reviews', 'Someone at your clinic reviews what needs reviewing.'],
+    ['4', 'You sign', 'You review every answer and sign. You or your clinic file the application.'],
+  ] : [
     ['1', 'Hablamos', 'Le hago preguntas del formulario N-400, una a la vez. Usted contesta con su voz.'],
     ['2', 'Sube fotos', 'Puede tomar fotos de sus documentos mientras hablamos.'],
     ['3', 'Su clínica revisa', 'Una persona de su clínica revisa lo que hay que revisar.'],
@@ -185,16 +223,16 @@ function Explainer({ onBack }: { onBack: () => void }) {
   ]
   return (
     <main className="a-main">
-      <h1 className="display">¿Cómo funciona?</h1>
-      {steps.map(([n, t, d]) => (
-        <div key={n} className="row a-step"><span className="a-num">{n}</span><span className="stack"><strong>{t}</strong><span className="soft">{d}</span></span></div>
+      <h1 className="display">{t(lang, 'howItWorks')}</h1>
+      {steps.map(([n, title, desc]) => (
+        <div key={n} className="row a-step"><span className="a-num">{n}</span><span className="stack"><strong>{title}</strong><span className="soft">{desc}</span></span></div>
       ))}
-      <button className="btn lg" onClick={onBack}>Volver</button>
+      <button className="btn lg" onClick={onBack}>{lang === 'en' ? 'Back' : 'Volver'}</button>
     </main>
   )
 }
 
-function MicPrompt({ onGo }: { onGo: (voice: boolean) => void }) {
+function MicPrompt({ lang, onGo }: { lang: Lang; onGo: (voice: boolean) => void }) {
   const [denied, setDenied] = useState(false)
   const ask = async () => {
     // ponytail: getUserMedia can hang forever (e.g. OS never shows the permission prompt) instead of
@@ -211,14 +249,14 @@ function MicPrompt({ onGo }: { onGo: (voice: boolean) => void }) {
   return (
     <main className="a-main">
       {!denied ? <>
-        <h1 className="display">Su navegador le va a pedir usar el micrófono.</h1>
-        <p className="lead">Toque «Permitir».</p>
-        <button className="btn lg primary a-big" onClick={ask}><Icon name="mic" size={20} />Continuar</button>
+        <h1 className="display">{t(lang, 'micTitle')}</h1>
+        <p className="lead">{t(lang, 'micSub')}</p>
+        <button className="btn lg primary a-big" onClick={ask}><Icon name="mic" size={20} />{t(lang, 'micContinue')}</button>
       </> : <>
-        <h1 className="display">Sin micrófono no podemos hablar.</h1>
-        <p className="lead">Puede activarlo en la configuración de su navegador.</p>
-        <button className="btn lg primary a-big" onClick={ask}>Intentar otra vez</button>
-        <button className="link-btn" onClick={() => onGo(false)}>Seguir sin micrófono (escribir)</button>
+        <h1 className="display">{t(lang, 'micDeniedTitle')}</h1>
+        <p className="lead">{t(lang, 'micDeniedSub')}</p>
+        <button className="btn lg primary a-big" onClick={ask}>{t(lang, 'micRetry')}</button>
+        <button className="link-btn" onClick={() => onGo(false)}>{t(lang, 'micSkip')}</button>
       </>}
     </main>
   )
