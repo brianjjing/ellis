@@ -23,8 +23,7 @@ DEFERRED_TEXT = {"es": "Para completar con su profesional con licencia",
                  "en": "To complete with your licensed professional"}
 
 
-def case_lang(case: Case) -> str:
-    return "en" if (case.language or "").startswith("en") else "es"
+case_lang = cs.case_lang  # re-exported so evals/flows.py and others keep one source of truth
 
 
 def review_view(s: Session, case: Case) -> dict[str, Any]:

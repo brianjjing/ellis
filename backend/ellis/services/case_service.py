@@ -39,6 +39,10 @@ def today() -> date:
     return date.today()
 
 
+def case_lang(case: Case) -> str:
+    return "en" if (case.language or "").startswith("en") else "es"
+
+
 def _aware(dt: datetime | None) -> datetime | None:
     if dt is not None and dt.tzinfo is None:
         return dt.replace(tzinfo=timezone.utc)
@@ -709,33 +713,49 @@ def facts_summary(s: Session, case: Case, category: str, field: str | None) -> s
 
 def referral_card(s: Session, case: Case, fl: Flag) -> dict[str, Any]:
     from .clinic_service import clinic_phone, referral_overrides, reviewer_first_name
+    # Clinic-settable override text (Settings > Referral card text) is Spanish-only for now -- shown as-is
+    # when a clinic has set one, regardless of the applicant's language. The unoverridden defaults below are
+    # fully bilingual.
     overrides = referral_overrides(s, case)
+    lang = case_lang(case)
     if fl.speed == STOP_NOW:
-        return {"variant": "stop_now", "flag_id": fl.id,
-                "title": overrides.get("stop_now") or "Su clínica le va a contactar sobre esta parte",
-                "body": "Esto debe revisarlo un profesional con licencia antes de presentar su solicitud. "
-                        "Ellis no puede aconsejarle sobre esto.",
-                "who": reviewer_first_name(s, case), "phone": clinic_phone(s, case),
-                "actions": ["Entendido", "Esto no era sobre mí"],
+        title = overrides.get("stop_now") or (
+            "Your clinic will contact you about this" if lang == "en" else "Su clínica le va a contactar sobre esta parte")
+        body = ("A licensed professional needs to review this before you file. Ellis can't advise you on it."
+                if lang == "en" else
+                "Esto debe revisarlo un profesional con licencia antes de presentar su solicitud. "
+                "Ellis no puede aconsejarle sobre esto.")
+        actions = ["Understood", "This wasn't about me"] if lang == "en" else ["Entendido", "Esto no era sobre mí"]
+        return {"variant": "stop_now", "flag_id": fl.id, "title": title, "body": body,
+                "who": reviewer_first_name(s, case), "phone": clinic_phone(s, case), "actions": actions,
                 "show_emergency": bool(fl.detail.get("imminent"))}
+    # Gap.label_es is the only stored label (no label_en column); the gap list stays Spanish even in an
+    # English session, a smaller known gap than the card's own title/body/actions, which are fully bilingual.
     gaps = [g.label_es or g.reason for g in s.scalars(select(Gap).where(
         Gap.case_id == case.id, Gap.status == "open"))
         if fl.id in (g.key or "") or (fl.field and fl.field in (g.key or "")) or fl.category in (g.key or "")]
-    return {"variant": "flag_continue", "flag_id": fl.id,
-            "title": overrides.get("flag_continue") or "Esto lo revisará una persona de su clínica",
-            "item": item_text(s, case, fl), "prepare": gaps,
-            "who": reviewer_first_name(s, case), "phone": clinic_phone(s, case), "actions": ["Entendido"]}
+    title = overrides.get("flag_continue") or (
+        "Someone at your clinic will review this" if lang == "en" else "Esto lo revisará una persona de su clínica")
+    actions = ["Understood"] if lang == "en" else ["Entendido"]
+    return {"variant": "flag_continue", "flag_id": fl.id, "title": title,
+            "item": item_text(s, case, fl, lang), "prepare": gaps,
+            "who": reviewer_first_name(s, case), "phone": clinic_phone(s, case), "actions": actions}
 
 
-def item_text(s: Session, case: Case, fl: Flag) -> str:
-    label = fl.applicant_label_es or "Pregunta para su clínica"
+def item_text(s: Session, case: Case, fl: Flag, lang: str | None = None) -> str:
+    from .flags import category as flag_category
+    lang = lang or case_lang(case)
+    cat_label = flag_category(fl.category).get(f"label_{lang}")
+    default = "Question for your clinic" if lang == "en" else "Pregunta para su clínica"
+    label = (cat_label or (fl.applicant_label_es if lang == "es" else None) or default)
     vals = fact_values(s, case.id)
     if fl.category == "citation":
         details = [str(v) for k, v in vals.items() if k.startswith("background.detail.citation")]
         return label + (", " + ", ".join(details) if details else "")
     m = catalog.LIST_RE.match(fl.field or "")
     if m and fl.category.startswith("absence"):
-        return f"{label}: viaje {int(m['i']) + 1}"
+        trip_word = "trip" if lang == "en" else "viaje"
+        return f"{label}: {trip_word} {int(m['i']) + 1}"
     return label
 
 

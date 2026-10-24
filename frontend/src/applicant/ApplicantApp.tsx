@@ -134,12 +134,12 @@ export default function ApplicantApp({ token }: { token: string }) {
 
       {cards.length > 0 && (
         <div className="card-stack">
-          {cards.slice(-1).map((c) => <ReferralCard key={c.flag_id} card={c} onOk={() => dismissCard(c.flag_id)} onNotMe={() => notAboutMe(c.flag_id)} />)}
+          {cards.slice(-1).map((c) => <ReferralCard key={c.flag_id} card={c} lang={lang} onOk={() => dismissCard(c.flag_id)} onNotMe={() => notAboutMe(c.flag_id)} />)}
         </div>
       )}
-      {overlay?.kind === 'secure' && <SecureEntrySheet field={overlay.field} label={overlay.label} onClose={() => { setOverlay(null); load() }} />}
-      {overlay?.kind === 'upload' && <UploadSheet initial={overlay.documentType} onClose={() => { setOverlay(null); load() }} onUploaded={(id) => setDocStatus((s) => ({ ...s, [id]: 'extracting' }))} />}
-      {overlay?.kind === 'biographics' && <BiographicsSheet onClose={() => { setOverlay(null); load() }} />}
+      {overlay?.kind === 'secure' && <SecureEntrySheet field={overlay.field} label={overlay.label} lang={lang} onClose={() => { setOverlay(null); load() }} />}
+      {overlay?.kind === 'upload' && <UploadSheet initial={overlay.documentType} lang={lang} onClose={() => { setOverlay(null); load() }} onUploaded={(id) => setDocStatus((s) => ({ ...s, [id]: 'extracting' }))} />}
+      {overlay?.kind === 'biographics' && <BiographicsSheet lang={lang} onClose={() => { setOverlay(null); load() }} />}
     </div>
   )
 }
