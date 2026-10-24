@@ -12,9 +12,12 @@ import asyncio
 import base64
 import json
 import logging
+import math
 import os
 import re
 import uuid
+from array import array
+from collections import deque
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, AsyncIterator
@@ -143,12 +146,48 @@ class TTS:
             await self.ws.close()
 
 
+class Gate:
+    """Level gate in front of Ink-2. Ink-2's turn detector fires on far-field chatter even at
+    turn_start_threshold 0.9 (tested with venue babble 14 dB under the speaker), so frames that aren't
+    clearly louder than the room are sent as zeros instead: Ink-2 then only hears near-field speech.
+    Zeros, not dropped frames: the endpoint wants a continuous stream and waits on gaps.
+
+    ponytail: energy-only, no spectral VAD. A loud non-speech sound still opens it; Ink-2's own turn
+    detector then decides whether it is speech. The reference is the median level of the last 30 s, so a
+    monologue filling most of that window starts to gate itself. ELLIS_VOICE_GATE_DB is the calibration knob.
+    """
+
+    def __init__(self, margin_db: float | None = None):
+        self.margin = margin_db if margin_db is not None else float(os.environ.get("ELLIS_VOICE_GATE_DB") or 8)
+        self.levels: deque[float] = deque(maxlen=300)  # ~30 s of 100 ms frame levels
+        self.preroll: deque[bytes] = deque(maxlen=2)  # ~200 ms so a soft word onset isn't clipped on open
+        self.hang = 0
+
+    def __call__(self, pcm: bytes) -> bytes:
+        a = array("h", pcm[: len(pcm) // 2 * 2])
+        db = 10 * math.log10(sum(x * x for x in a) / max(1, len(a)) / 32768 ** 2 + 1e-12)
+        self.levels.append(db)
+        # shut for the first ~2 s (the greeting is playing) so the room is learned before anything gets through
+        room = sorted(self.levels)[len(self.levels) // 2] if len(self.levels) >= 20 else 0.0
+        if db > max(room + self.margin, -55.0):
+            out = b"".join(self.preroll) + pcm
+            self.preroll.clear()
+            self.hang = 8  # stay open ~800 ms through dips between words
+            return out
+        if self.hang:
+            self.hang -= 1
+            return pcm
+        self.preroll.append(pcm)
+        return bytes(len(pcm))
+
+
 class STT:
     """Ink-2 with turn detection. Audio in: 16 kHz pcm_s16le binary frames (~100 ms)."""
 
     def __init__(self, patient: bool = False):
         self.ws = None
         self.patient = patient
+        self.gate = Gate()
 
     async def connect(self) -> None:
         from websockets.asyncio.client import connect
@@ -174,7 +213,7 @@ class STT:
         self.ws = await connect(f"{WS_BASE}/stt/turns/websocket?{q}", additional_headers=headers(), max_size=2 ** 22)
 
     async def send_audio(self, pcm: bytes) -> None:
-        await self.ws.send(pcm)
+        await self.ws.send(self.gate(pcm))
 
     async def events(self) -> AsyncIterator[dict[str, Any]]:
         async for raw in self.ws:
