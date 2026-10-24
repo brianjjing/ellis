@@ -12,6 +12,8 @@ OATH_YES = {"oath.support_constitution": "yes", "oath.understand_oath": "yes", "
             "oath.bear_arms": "yes"}
 
 MARIA = {
+    "lpr_since": "2022-01-15", "dob": "1988-05-02", "name.given": "Maria", "name.family": "Torres",
+    "country_of_birth": "Mexico",
     "names.used": [], "name_change.requested": None, "nationality": "Mexico",
     "sex": "female", "height": "5 ft 3 in", "weight": "140 lb", "eye_color": "brown", "hair_color": "black",
     "ethnicity": "hispanic_or_latino", "race": "white",
@@ -66,6 +68,9 @@ JORGE_REST = {
 }
 
 ANA = {
+    "lpr_since": "2020-06-02", "name.given": "Ana Lucía", "name.family": "Hernández Ruiz",
+    "names.used": ["Ana Lucía Morales"], "name_change.requested": "Ana Lucía Morales", "spouse.name": "Daniel Morales",
+    "spouse.marriage_date": "2023-04-15",
     "dob": "1995-09-11", "country_of_birth": "Mexico", "nationality": "Mexico",
     "sex": "female", "height": "5 ft 4 in", "weight": "130 lb", "eye_color": "brown", "hair_color": "brown",
     "ethnicity": "hispanic_or_latino", "race": "white", "contact.phone": "8315550199",

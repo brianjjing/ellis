@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 from typing import Any
 
 from sqlalchemy import func, select
@@ -59,9 +61,11 @@ def applicant_value(s: Session, key: str, f: Fact) -> str:
     from datetime import date as _date
     from ..rules.engine import MONTHS_ES, short_date_es
     if catalog.is_date_field(key) and isinstance(f.value, str) and f.value != catalog.DEFERRED:
-        if len(f.value) == 10:
+        if f.value == "present":
+            return "hasta hoy"
+        if re.fullmatch(r"\d{4}-\d{2}-\d{2}", f.value):
             return short_date_es(_date.fromisoformat(f.value))
-        if len(f.value) == 7:
+        if re.fullmatch(r"\d{4}-\d{2}", f.value):
             return f"{MONTHS_ES[int(f.value[5:7]) - 1]} de {f.value[:4]}"
     if catalog.is_masked(key):
         last4 = cs.vault_last4(s, f.id)
@@ -146,7 +150,8 @@ def team_cards(s: Session, case: Case, limit: int = 8) -> list[dict[str, Any]]:
 def referral_cards(s: Session, case: Case) -> list[dict[str, Any]]:
     cards = []
     for fl in cs.all_open_flags(s, case):
-        if fl.speed == STOP_NOW or fl.applicant_label_es:
+        if fl.speed == STOP_NOW or (fl.applicant_label_es and fl.category not in ("date_conflict", "document_conflict",
+                                                                                 "document_owner")):
             cards.append(cs.referral_card(s, case, fl))
     return cards
 

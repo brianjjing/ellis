@@ -515,7 +515,7 @@ class Liaison:
                 res = self.c.record_fact(f, value, hedge=hedge, utterance_id=uid, interrupted_at_word=word,
                                          is_correction=True)
                 return self._after_readback(res, f, corrected=True)
-            return [script("not_understood"), Say(f"¿Cuál es {catalog.label_es(f).lower()} correcto?")]
+            return [script("not_understood"), Say(f"¿Me dice el dato correcto para {readback_label(f)}?")]
         if spanish.yes_no_unsure(text) == "not_sure" and not differs:
             self._skip_rb(f)
             self.pending = None
@@ -533,7 +533,7 @@ class Liaison:
             return self._after_readback(res, f, corrected=False)
         if yn is False:
             self.pending = {"kind": "correction", "field": f}
-            q = Say(f"¿Cuál es {catalog.label_es(f).lower()} correcto?")
+            q = Say(f"¿Me dice el dato correcto para {readback_label(f)}?")
             self.last_question = [q]
             return [q]
         n = self.attempts.get("rb:" + f, 0) + 1

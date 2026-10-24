@@ -1,0 +1,294 @@
+// Applicant web client (/a/:token): phone-first, Spanish (es-MX), 48 px targets. Voice is the primary input;
+// the screen shows what was heard, what was saved and what is still needed.
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { api, ApiError, debounce, stream } from '../api'
+import { Icon } from '../icons'
+import Session from './Session'
+import { BiographicsSheet, ReferralCard, SecureEntrySheet, UploadSheet } from './Sheets'
+import { PacketReady, ReviewSignoff } from './Review'
+
+export type CaseView = any
+
+export type Overlay =
+  | { kind: 'secure'; field: string; label: string; type?: string }
+  | { kind: 'upload'; documentType?: string }
+  | { kind: 'biographics' }
+  | null
+
+export default function ApplicantApp({ token }: { token: string }) {
+  const [data, setData] = useState<CaseView | null>(null)
+  const [error, setError] = useState<{ code: string; message: string } | null>(null)
+  const [screen, setScreen] = useState<'welcome' | 'explain' | 'mic' | 'session' | 'progress' | 'review' | 'packet'>('welcome')
+  const [overlay, setOverlay] = useState<Overlay>(null)
+  const [cards, setCards] = useState<any[]>([])
+  const [docStatus, setDocStatus] = useState<Record<string, string>>({})
+  const [highlight, setHighlight] = useState<Record<string, number>>({})
+  const prevFacts = useRef<Record<string, string>>({})
+
+  const load = useCallback(async () => {
+    try {
+      const d = await api('/api/a/case')
+      // highlight corrections (purple chip, 10 s, old → new)
+      const now = Date.now()
+      const hl: Record<string, number> = {}
+      for (const g of d.facts) for (const it of g.items) {
+        const prev = prevFacts.current[it.field]
+        if (prev !== undefined && prev !== it.value && it.corrected_from) hl[it.field] = now
+        prevFacts.current[it.field] = it.value
+      }
+      if (Object.keys(hl).length) setHighlight((h) => ({ ...h, ...hl }))
+      setData(d)
+      return d
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) return exchange()
+      throw e
+    }
+  }, [])
+
+  const exchange = useCallback(async () => {
+    try {
+      const d = await api('/api/a/session', { body: { token } })
+      for (const g of d.facts) for (const it of g.items) prevFacts.current[it.field] = it.value
+      setData(d)
+      setError(null)
+      return d
+    } catch (e) {
+      if (e instanceof ApiError) setError({ code: e.code, message: e.message })
+      else setError({ code: 'offline', message: 'Se perdió la conexión. Lo que dijo está guardado.' })
+    }
+  }, [token])
+
+  useEffect(() => {
+    exchange().then((d) => {
+      if (!d) return
+      if (d.state === 'signed') setScreen('packet')
+      else if (d.state === 'ready') setScreen('review')
+      else if (d.state !== 'consent_pending') setScreen('progress')
+    })
+  }, [exchange])
+
+  useEffect(() => {
+    if (!data) return
+    const refresh = debounce(() => load().catch(() => undefined), 250)
+    return stream('/api/a/stream', (m) => {
+      if (m.type === 'ping') return
+      const p = m.payload || {}
+      if (m.type === 'open_secure_entry') setOverlay({ kind: 'secure', field: p.field, label: p.label, type: p.type })
+      else if (m.type === 'open_upload') setOverlay({ kind: 'upload', documentType: p.document_type })
+      else if (m.type === 'open_biographics') setOverlay({ kind: 'biographics' })
+      else if (m.type === 'referral_card') setCards((c) => [...c.filter((x) => x.flag_id !== p.flag_id), p])
+      else if (m.type === 'document.status') setDocStatus((s) => ({ ...s, [p.document_id]: p.status === 'extracted' ? (p.quality === 'low' ? 'low' : 'ok') : p.status }))
+      if (m.type === 'case.state_changed' && p.to === 'ready') setScreen((sc) => (sc === 'session' ? sc : 'review'))
+      refresh()
+    })
+  }, [!!data, load])
+
+  if (error) return <ErrorScreen error={error} retry={exchange} />
+  if (!data) return <Loading />
+
+  const dismissCard = (id: string) => setCards((c) => c.filter((x) => x.flag_id !== id))
+  const notAboutMe = async (id: string) => {
+    await api(`/api/a/flags/${id}/not_about_me`, { body: {} })
+    dismissCard(id)
+  }
+
+  return (
+    <div className="page col applicant" lang="es">
+      <header className="a-head">
+        <div className="stack">
+          <span className="a-clinic">Preparado para usted por {data.clinic.name}</span>
+          {data.clinic.is_demo && <span className="demo-tag">Datos de demostración</span>}
+        </div>
+        <span className="wordmark">Ellis</span>
+      </header>
+
+      {screen === 'welcome' && <Welcome data={data} onStart={() => setScreen('mic')} onExplain={() => setScreen('explain')} />}
+      {screen === 'explain' && <Explainer onBack={() => setScreen('welcome')} />}
+      {screen === 'mic' && <MicPrompt onGo={() => setScreen('session')} />}
+      {screen === 'session' && (
+        <Session data={data} reload={load} highlight={highlight} docStatus={docStatus}
+          onUpload={() => setOverlay({ kind: 'upload' })}
+          onEnd={() => { load(); setScreen(data.state === 'ready' ? 'review' : 'progress') }} />
+      )}
+      {screen === 'progress' && <Progress data={data} onTalk={() => setScreen('mic')} onUpload={() => setOverlay({ kind: 'upload' })} reload={load}
+        onReview={() => setScreen('review')} />}
+      {screen === 'review' && <ReviewSignoff data={data} reload={load} onSigned={() => { load(); setScreen('packet') }} onBack={() => setScreen('progress')} />}
+      {screen === 'packet' && <PacketReady data={data} />}
+
+      {cards.length > 0 && (
+        <div className="card-stack">
+          {cards.slice(-1).map((c) => <ReferralCard key={c.flag_id} card={c} onOk={() => dismissCard(c.flag_id)} onNotMe={() => notAboutMe(c.flag_id)} />)}
+        </div>
+      )}
+      {overlay?.kind === 'secure' && <SecureEntrySheet field={overlay.field} label={overlay.label} onClose={() => { setOverlay(null); load() }} />}
+      {overlay?.kind === 'upload' && <UploadSheet initial={overlay.documentType} onClose={() => { setOverlay(null); load() }} onUploaded={(id) => setDocStatus((s) => ({ ...s, [id]: 'extracting' }))} />}
+      {overlay?.kind === 'biographics' && <BiographicsSheet onClose={() => { setOverlay(null); load() }} />}
+    </div>
+  )
+}
+
+function ProfessionalOptions({ reload }: { reload: () => void }) {
+  const [url, setUrl] = useState<string | null>(null)
+  return (
+    <section className="panel" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+      <strong>Una parte de su solicitud la completa un profesional con licencia.</strong>
+      <span className="small">Cuando ya haya hablado con su profesional:</span>
+      <div className="btns">
+        <button className="btn md" onClick={async () => setUrl((await api('/api/a/professional_draft', { body: {} })).url)}>Descargar un borrador para mi profesional</button>
+        <button className="btn md" onClick={async () => { await api('/api/a/representation', { body: { professional_files: true } }); reload() }}>Mi profesional presentará por mí</button>
+      </div>
+      {url && <a className="btn md strong" href={url} target="_blank" rel="noreferrer">Abrir el borrador</a>}
+      <span className="small">Ellis no envía nada a nadie.</span>
+    </section>
+  )
+}
+
+function Loading() {
+  return <div className="page col applicant"><main className="a-main"><p className="lead">Cargando…</p></main></div>
+}
+
+function ErrorScreen({ error, retry }: { error: { code: string; message: string }; retry: () => void }) {
+  return (
+    <div className="page col applicant" lang="es">
+      <main className="a-main">
+        <h1 className="display">{error.code === 'link_expired' ? 'Este enlace ya venció' : 'No pudimos abrir su caso'}</h1>
+        <p className="lead">{error.message}</p>
+        {error.code === 'offline' && <button className="btn lg primary" onClick={retry}>Intentar otra vez</button>}
+      </main>
+    </div>
+  )
+}
+
+function Welcome({ data, onStart, onExplain }: { data: CaseView; onStart: () => void; onExplain: () => void }) {
+  return (
+    <main className="a-main">
+      <h1 className="display">Prepare su solicitud de ciudadanía, hablando en español.</h1>
+      <ul className="a-lines">
+        <li>Le haré preguntas y usted contesta con su voz.</li>
+        <li>Usted revisa y firma todo. Nosotros no enviamos nada a USCIS.</li>
+        <li>Soy un asistente de inteligencia artificial, no un abogado. Su clínica revisa su caso.</li>
+      </ul>
+      <button className="btn lg primary a-big" onClick={onStart}><Icon name="mic" size={20} />Empezar a hablar</button>
+      <button className="link-btn" onClick={onExplain}>¿Cómo funciona?</button>
+      <Roadmap data={data} />
+    </main>
+  )
+}
+
+function Explainer({ onBack }: { onBack: () => void }) {
+  const steps = [
+    ['1', 'Hablamos', 'Le hago preguntas del formulario N-400, una a la vez. Usted contesta con su voz.'],
+    ['2', 'Sube fotos', 'Puede tomar fotos de sus documentos mientras hablamos.'],
+    ['3', 'Su clínica revisa', 'Una persona de su clínica revisa lo que hay que revisar.'],
+    ['4', 'Usted firma', 'Revisa cada respuesta y firma. Usted o su clínica presentan la solicitud.'],
+  ]
+  return (
+    <main className="a-main">
+      <h1 className="display">¿Cómo funciona?</h1>
+      {steps.map(([n, t, d]) => (
+        <div key={n} className="row a-step"><span className="a-num">{n}</span><span className="stack"><strong>{t}</strong><span className="soft">{d}</span></span></div>
+      ))}
+      <button className="btn lg" onClick={onBack}>Volver</button>
+    </main>
+  )
+}
+
+function MicPrompt({ onGo }: { onGo: () => void }) {
+  const [denied, setDenied] = useState(false)
+  const ask = async () => {
+    try {
+      const s = await navigator.mediaDevices.getUserMedia({ audio: true })
+      s.getTracks().forEach((t) => t.stop())
+      onGo()
+    } catch {
+      setDenied(true)
+    }
+  }
+  return (
+    <main className="a-main">
+      {!denied ? <>
+        <h1 className="display">Su navegador le va a pedir usar el micrófono.</h1>
+        <p className="lead">Toque «Permitir».</p>
+        <button className="btn lg primary a-big" onClick={ask}><Icon name="mic" size={20} />Continuar</button>
+      </> : <>
+        <h1 className="display">Sin micrófono no podemos hablar.</h1>
+        <p className="lead">Puede activarlo en la configuración de su navegador.</p>
+        <button className="btn lg primary a-big" onClick={ask}>Intentar otra vez</button>
+        <button className="link-btn" onClick={onGo}>Seguir sin micrófono (escribir)</button>
+      </>}
+    </main>
+  )
+}
+
+export function Roadmap({ data }: { data: CaseView }) {
+  const [open, setOpen] = useState(false)
+  const cur = data.roadmap.current
+  return (
+    <section className="roadmap" aria-label="Etapas">
+      <button className="roadmap-dots" onClick={() => setOpen(!open)} aria-expanded={open}>
+        {data.roadmap.stages.map((s: any, i: number) => (
+          <span key={s.key} className={`rm-dot ${i < cur ? 'done' : i === cur ? 'cur' : ''}`}>
+            <span aria-hidden="true" className="rm-mark">{i < cur ? '✓' : ''}</span>
+            <span className="rm-label">{s.label}</span>
+          </span>
+        ))}
+      </button>
+      {open && (
+        <ul className="rm-future">
+          {data.roadmap.future.map((f: string) => <li key={f}>{f} · <span className="soft">Próximamente</span></li>)}
+        </ul>
+      )}
+    </section>
+  )
+}
+
+function Progress({ data, onTalk, onUpload, onReview, reload }: { data: CaseView; onTalk: () => void; onUpload: () => void; onReview: () => void; reload: () => void }) {
+  const icon: Record<string, string> = { done: '✓', partial: '◐', blocked: '■', not_started: '○' }
+  const label: Record<string, string> = { done: 'Listo', partial: 'A medias', blocked: 'Con su profesional', not_started: 'Falta' }
+  const decline = async (id: string) => { await api(`/api/a/gaps/${id}/decline`, { body: {} }); reload() }
+  return (
+    <main className="a-main">
+      <h1 className="display">Hola, {data.first_name}.</h1>
+      {data.case_blocked && <div className="panel warn">Su clínica le contactará.</div>}
+      {data.state === 'ready' && (
+        <div className="panel ok">
+          <strong>Su clínica revisó su caso.</strong> Ahora revise usted cada respuesta.
+          <button className="btn md primary" onClick={onReview}>Revisar y firmar</button>
+        </div>
+      )}
+      {data.reviewer_notes?.length > 0 && (
+        <section className="panel">
+          <div className="label">NOTAS DE SU CLÍNICA</div>
+          {data.reviewer_notes.map((n: any) => <p key={n.id} className="lead">{n.label ? <strong>{n.label}: </strong> : null}{n.note}</p>)}
+        </section>
+      )}
+      <button className="btn lg primary a-big" onClick={onTalk}><Icon name="mic" size={20} />Seguir hablando</button>
+      {data.referrals?.some((r: any) => r.variant === 'stop_now') && <ProfessionalOptions reload={reload} />}
+      <section>
+        <h2 className="h3 rule">Secciones del formulario</h2>
+        {data.progress.map((p: any) => (
+          <div key={p.section} className={`row prog ${p.state}`}>
+            <span aria-hidden="true" className="prog-icon">{icon[p.state]}</span>
+            <span className="grow">{p.label}</span>
+            <span className="soft">{label[p.state]}</span>
+          </div>
+        ))}
+      </section>
+      <section>
+        <h2 className="h3 rule">Lo que falta</h2>
+        {data.gaps.length === 0 ? <p className="soft">Nada por ahora.</p> : data.gaps.map((g: any) => (
+          <div key={g.id} className="row gap-row">
+            <span className="grow">{g.label}</span>
+            <button className="btn" onClick={onUpload}><Icon name="camera" />Subir</button>
+            <button className="btn" onClick={() => decline(g.id)}>No lo tengo</button>
+          </div>
+        ))}
+      </section>
+      <section className="panel">
+        <span className="grow">Para revisión de su clínica</span>
+        <strong className="count">{data.open_review_items}</strong>
+      </section>
+      <Roadmap data={data} />
+    </main>
+  )
+}

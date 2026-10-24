@@ -104,7 +104,14 @@ def case_manager(ctx: dict) -> list[dict]:
     req = catalog.fallback_queue(facts, ctx.get("derived"), date.fromisoformat(ctx["today"]))
     open_sections = {it.get("section") for it in req}
     for it in (ctx.get("last_briefing") or {}).get("queue", []):
-        if it.get("kind") != "ask" or it.get("field") == "consent" or it in queue:
+        if it.get("field") == "consent" or it in queue:
+            continue
+        if it.get("kind") == "read_back" and it.get("field"):
+            f = facts.get(it["field"])
+            if f is not None and f["status"] != "confirmed" and not any(q.get("field") == it["field"] for q in queue):
+                queue.insert(0, it)
+            continue
+        if it.get("kind") != "ask":
             continue
         if (it.get("field") and it["field"] not in facts) or (not it.get("field") and it.get("section") in open_sections):
             queue.append(it)

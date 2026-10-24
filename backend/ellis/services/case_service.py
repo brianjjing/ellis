@@ -292,6 +292,8 @@ def spoken_value(field: str, value: Any) -> str:
     if value is None:
         return "ninguno"
     if catalog.is_date_field(field) and isinstance(value, str):
+        if value == "present":
+            return "el presente"
         if len(value) == 10:
             return rules.spoken_date_es(date.fromisoformat(value))
         if len(value) == 7:
@@ -656,8 +658,8 @@ def raise_flag(s: Session, case: Case, category: str, layer: int, field: str | N
     case.material_changed_at = now()
     emit(s, case, "flag.raised", {"flag_id": fl.id, "speed": FLAG_CONTINUE, "category": category, "field": field,
                                   "layer": layer, "review_item_id": ri.id}, actor_type, actor)
-    if info.get("label_es"):
-        push(s, case, "referral_card", referral_card(s, case, fl))
+    if info.get("label_es") and category not in ("date_conflict", "document_conflict", "document_owner"):
+        push(s, case, "referral_card", referral_card(s, case, fl))  # internal conflicts are settled by read-back
     return fl
 
 

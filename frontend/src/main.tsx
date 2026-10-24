@@ -1,56 +1,37 @@
 import { StrictMode, useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { flushSync } from 'react-dom'
 import './styles.css'
-import SignIn from './SignIn'
-import Chat from './Chat'
-import Form from './Form'
-import Interview from './Interview'
-import Reminders from './Reminders'
-import Advanced from './Advanced'
+import './app.css'
+import Home from './Home'
+import ApplicantApp from './applicant/ApplicantApp'
+import ClinicApp from './clinic/ClinicApp'
 
-const pages = {
-  signin: [SignIn, 'Sign in'],
-  chat: [Chat, 'Chat'],
-  form: [Form, 'N-400 form'],
-  interview: [Interview, 'Interview prep'],
-  reminders: [Reminders, 'Reminders'],
-  advanced: [Advanced, 'Advanced'],
-} as const
-
-// ponytail: hash routes (#/chat) work on any static host; move to the History API once the backend serves the app.
-function route() {
-  const r = location.hash.slice(2)
-  return Object.hasOwn(pages, r) ? (r as keyof typeof pages) : 'signin'
+// History-API routing: /a/:token (applicant), /clinic/* (staff), / (landing).
+export function navigate(to: string) {
+  history.pushState(null, '', to)
+  dispatchEvent(new PopStateEvent('popstate'))
 }
 
 function App() {
-  const [nav, setNav] = useState({ route: route(), n: 0 })
-  const [Page, title] = pages[nav.route]
-
+  const [path, setPath] = useState(location.pathname)
   useEffect(() => {
-    // Like the design's separate pages, every navigation remounts the page and starts at the top.
-    const go = () => {
-      flushSync(() => setNav((v) => ({ route: route(), n: v.n + 1 })))
-      scrollTo(0, 0)
+    const on = () => { setPath(location.pathname); scrollTo(0, 0) }
+    addEventListener('popstate', on)
+    // In-app links: <a data-nav href="/clinic/...">
+    const click = (e: MouseEvent) => {
+      const a = (e.target as Element).closest('a[data-nav]') as HTMLAnchorElement | null
+      if (a && !e.metaKey && !e.ctrlKey && a.origin === location.origin) {
+        e.preventDefault()
+        navigate(a.pathname + a.search)
+      }
     }
-    // A link to the page you're already on fires no hashchange, but in the design it reloads (and resets) the page.
-    const same = (e: MouseEvent) => {
-      if ((e.target as Element).closest('a')?.hash === location.hash) go()
-    }
-    addEventListener('hashchange', go)
-    addEventListener('click', same)
-    return () => {
-      removeEventListener('hashchange', go)
-      removeEventListener('click', same)
-    }
+    addEventListener('click', click)
+    return () => { removeEventListener('popstate', on); removeEventListener('click', click) }
   }, [])
-
-  useEffect(() => {
-    document.title = `Ellis · ${title}`
-  }, [title])
-
-  return <Page key={nav.n} />
+  const m = path.match(/^\/a\/([^/]+)/)
+  if (m) return <ApplicantApp token={decodeURIComponent(m[1])} />
+  if (path.startsWith('/clinic')) return <ClinicApp path={path} />
+  return <Home />
 }
 
 createRoot(document.getElementById('root')!).render(
