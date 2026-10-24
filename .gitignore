@@ -1,1 +1,10 @@
 .env
+__pycache__/
+*.pyc
+.venv/
+backend/ellis.db
+backend/data/
+.coverage
+.pytest_cache/
+node_modules/
+dist/

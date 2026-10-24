@@ -1,0 +1,7 @@
+# Stems matched after accent folding, on word boundaries. Spanish and English.
+# False positives are acceptable (fail closed). Expand with native review and the eval set.
+arrest: [arrest, arrested, arrestaron, arrestado, arrestada, me arrestaron, detuvieron, detenido, detenida, carcel, preso, presa, policia me llevo, esposaron, condenaron, condenado, convicto, convicted, fianza, bail, jail, custody, charged]
+removal: [deport, deported, deportaron, deportado, deportada, me sacaron del pais, corte de inmigracion, orden de salida, removal, removed]
+citizenship_claim: [vote, voted, me registre para votar, dije que era ciudadano, dije que era ciudadana, marque que era ciudadano, marque que era ciudadana, claimed to be a citizen]
+fraud: [papeles falsos, documento falso, documentos falsos, mica chueca, compre un seguro social, me case por papeles, fake documents, false documents]
+danger: [matar, hacerle dano, lastimar a, quitarme la vida, arma, armas, kill, hurt someone, suicide]

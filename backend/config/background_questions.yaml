@@ -1,0 +1,95 @@
+# Background and oath questions read verbatim by the liaison, one per utterance.
+# TODO(open-question-1): text_en must be copied verbatim from the verified N-400 edition (04/01/24 vs 01/20/25)
+# and text_es must be a native-reviewed translation. The wording below is a placeholder paraphrase (verified: false).
+# on_yes: stop_now | flag_continue | classify (stop_now if arrest/custody terms, else citation flag)
+# Default for any unclassified key: stop_now (fail closed).
+verified: false
+groups:
+  citizenship: background.citizenship
+  removal: background.removal
+  criminal_history: background.criminal_history
+  fraud: background.fraud
+  danger: background.danger
+  taxes: background.taxes
+  military: background.military
+questions:
+  - key: claimed_us_citizen
+    group: citizenship
+    on_yes: stop_now
+    category: citizenship_claim
+    text_en: "Have you EVER claimed to be a U.S. citizen (in writing or any other way)?"
+    text_es: "¿Alguna vez ha dicho que es ciudadano de los Estados Unidos, por escrito o de cualquier otra forma?"
+  - key: voted_or_registered
+    group: citizenship
+    on_yes: stop_now
+    category: citizenship_claim
+    text_en: "Have you EVER registered to vote or voted in any Federal, state, or local election in the United States?"
+    text_es: "¿Alguna vez se ha registrado para votar o ha votado en alguna elección federal, estatal o local en los Estados Unidos?"
+  - key: tax_not_filed
+    group: taxes
+    on_yes: flag_continue
+    category: taxes
+    text_en: "Since you became a lawful permanent resident, have you EVER not filed a Federal, state, or local tax return when it was required?"
+    text_es: "Desde que es residente permanente, ¿alguna vez no presentó su declaración de impuestos federal, estatal o local cuando era obligatorio?"
+  - key: overdue_taxes
+    group: taxes
+    on_yes: flag_continue
+    category: taxes
+    text_en: "Do you currently owe any overdue Federal, state, or local taxes?"
+    text_es: "¿Debe actualmente impuestos federales, estatales o locales atrasados?"
+  - key: removal_proceedings
+    group: removal
+    on_yes: stop_now
+    category: removal
+    text_en: "Have you EVER been placed in removal, exclusion, rescission, or deportation proceedings?"
+    text_es: "¿Alguna vez ha estado en un proceso de deportación, exclusión o expulsión?"
+  - key: removed_deported
+    group: removal
+    on_yes: stop_now
+    category: removal
+    text_en: "Have you EVER been removed, excluded, or deported from the United States?"
+    text_es: "¿Alguna vez lo han deportado o expulsado de los Estados Unidos?"
+  - key: arrested_cited_detained
+    group: criminal_history
+    on_yes: classify
+    category: arrest
+    text_en: "Have you EVER been arrested, cited, detained, or confined by any law enforcement officer, military official, or immigration official for any reason, or been charged with a crime or offense?"
+    text_es: "¿Alguna vez lo ha arrestado, multado, detenido o encerrado algún oficial de policía, militar o de inmigración por cualquier razón, o lo han acusado de un delito?"
+  - key: committed_crime_not_arrested
+    group: criminal_history
+    on_yes: stop_now
+    category: arrest
+    text_en: "Have you EVER committed, agreed to commit, or asked someone else to commit a crime or offense for which you were NOT arrested?"
+    text_es: "¿Alguna vez ha cometido, aceptado cometer o pedido a alguien que cometa un delito por el que NO lo arrestaron?"
+  - key: false_info_to_official
+    group: fraud
+    on_yes: stop_now
+    category: fraud
+    text_en: "Have you EVER given any U.S. Government officials any information or documentation that was false, fraudulent, or misleading?"
+    text_es: "¿Alguna vez le ha dado a un funcionario del gobierno de los Estados Unidos información o documentos falsos o engañosos?"
+  - key: harmed_or_persecuted
+    group: danger
+    on_yes: stop_now
+    category: danger
+    text_en: "Have you EVER been a member of, or helped, any group that used a weapon against any person, or harmed or threatened anyone because of race, religion, national origin, or political opinion?"
+    text_es: "¿Alguna vez ha pertenecido o ayudado a algún grupo que usó armas contra personas, o ha lastimado o amenazado a alguien por su raza, religión, origen o ideas políticas?"
+  - key: selective_service
+    group: military
+    on_no: flag_continue
+    category: selective_service
+    applies_if: {sex: male}
+    text_en: "If you are a male who lived in the United States between the ages of 18 and 26, did you register for the Selective Service?"
+    text_es: "Si usted es hombre y vivió en los Estados Unidos entre los 18 y los 26 años, ¿se registró en el Servicio Selectivo?"
+oath:
+  - key: support_constitution
+    text_en: "Do you support the Constitution and form of Government of the United States?"
+    text_es: "¿Apoya usted la Constitución y la forma de gobierno de los Estados Unidos?"
+  - key: understand_oath
+    text_en: "Do you understand the full Oath of Allegiance to the United States?"
+    text_es: "¿Entiende el Juramento de Lealtad a los Estados Unidos completo?"
+  - key: willing_full_oath
+    text_en: "Are you willing to take the full Oath of Allegiance to the United States?"
+    text_es: "¿Está dispuesto a hacer el Juramento de Lealtad a los Estados Unidos completo?"
+  - key: bear_arms
+    text_en: "If the law requires it, are you willing to bear arms on behalf of the United States?"
+    text_es: "Si la ley lo requiere, ¿está dispuesto a portar armas en nombre de los Estados Unidos?"

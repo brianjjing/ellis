@@ -1,0 +1,4 @@
+# Flag-and-continue keyword backstop (layer 4). Never stops the conversation.
+citation: [multa, multas, ticket, citacion, infraccion, exceso de velocidad, speeding]
+taxes: [no hice los impuestos, no declare impuestos, no pague impuestos, debo impuestos]
+medical_exception_question: [se me olvidan, no me acuerdo de nada, mi memoria, demencia]

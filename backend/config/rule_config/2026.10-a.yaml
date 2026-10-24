@@ -1,0 +1,19 @@
+version: 2026.10-a
+verified_on: 2026-10-23          # re-verify with USCIS before real use
+trip_day_convention: calendar_difference   # NEEDS EXPERT CHECK — TODO(open-question-2)
+paths:
+  5yr: {years_lpr: 5, physical_presence_days: 913, early_filing_days: 90, district_months: 3}
+absence:
+  rebuttable_days_gt: 180         # > 180 and < 365
+  breaks_days_gte: 365
+exemptions:
+  e50_20: {min_age: 50, min_lpr_years: 20}
+  e55_15: {min_age: 55, min_lpr_years: 15}
+  e65_20: {min_age: 65, min_lpr_years: 20}
+civics:
+  cutoff_2025_test: 2025-10-20
+sources:
+  - id: uscis-n400
+    url: https://www.uscis.gov/n-400
+  - id: uscis-policy-manual-vol12
+    url: https://www.uscis.gov/policy-manual/volume-12

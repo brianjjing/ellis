@@ -1,0 +1,20 @@
+version: fees-2024-04
+n400:
+  online: 710
+  paper: 760
+  reduced: {amount: 380, paper_only: true, form: I-942, rule: "household income <= 400% of federal poverty guidelines"}
+  waiver: {amount: 0, paper_only: true, form: I-912, rule: "means-tested benefit, or income <= 150% FPG, or hardship"}
+# Means-tested benefits that support an I-912 request. NEEDS EXPERT CHECK (Medi-Cal mapping) — TODO(open-question-9)
+means_tested_benefits: [medicaid, medi-cal, snap, calfresh, tanf, ssi, calworks]
+# Pinned federal poverty guidelines (48 contiguous states). NEEDS EXPERT CHECK — TODO(open-question-9)
+poverty_guidelines:
+  version: hhs-2025
+  base: 15650
+  per_additional_person: 5500
+sources:
+  - id: uscis-fee-schedule
+    url: https://www.uscis.gov/g-1055
+watch:
+  - id: dhs-fee-rule-2026
+    text: "DHS proposed rule (June 2026) to raise N-400 to $1,280 online / $1,330 paper and end reduced fee and waivers; not in effect as of Sep 2026"
+    status: proposed           # TODO(open-question-10): effective-date treatment of pending packets
