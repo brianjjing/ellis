@@ -80,8 +80,11 @@ def signup(body: SignupReq, request: Request, response: Response) -> dict[str, A
                     raise accounts.AccountError(400, "clinic_name", "Enter your clinic's name.")
                 return _signup_clinic(s, body, response)
             acct = accounts.create_account(s, body.name, body.email, body.password)
-            # ponytail: link_token attach (Task 3) and guest carry-over (Task 4) not built yet; guest is ignored.
+            # ponytail: link_token attach (Task 3) not built yet.
             case = accounts.create_independent_case(s, acct)
+            if body.guest:
+                accounts.save_prefill(s, case, body.guest.answers)
+                accounts.import_guest_transcript(s, case, [t.model_dump() for t in body.guest.transcript])
         except accounts.AccountError as e:
             raise err(e.status, e.code, e.message) from None
         set_applicant(response, acct, case)

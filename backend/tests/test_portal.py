@@ -109,3 +109,72 @@ def test_wrong_password_401(client):
 def test_demo_applicant_login(client):
     r = login(client, "maria@valle.demo")
     assert r.status_code == 200 and r.json()["case_id"] == "c_maria"
+
+
+# ---------------------------------------------------------------- Tasks 4 and 7: guest guide and carry-over
+
+STOP_PHRASE = "No, porque me arrestaron por una pelea en 2016"
+
+
+def test_guest_asks_then_estimates(client):
+    from datetime import date
+    from ellis.config import rule_config
+    from ellis.rules.engine import earliest_filing
+    r = client.post("/api/guest/chat", json={"messages": [], "answers": {}}).json()
+    assert "permanent resident" in r["reply"]
+    r = client.post("/api/guest/chat", json={"messages": [{"who": "you", "text": "since March 4 2021"}],
+                                             "answers": {}}).json()
+    assert r["answers"]["lpr_since"] == "2021-03-04"
+    assert r["estimate"]["earliest_filing"] == earliest_filing(date(2021, 3, 4), rule_config()).isoformat()
+
+
+def test_guest_stop_topic(client):
+    from ellis.services.guest import STOP_REPLY
+    r = client.post("/api/guest/chat", json={"messages": [{"who": "you", "text": STOP_PHRASE}]}).json()
+    assert r["stop"] is True and r["reply"] == STOP_REPLY
+
+
+def test_guest_writes_nothing(client):
+    from sqlalchemy import func, select
+    from ellis.db import CallSession, Event, Utterance
+    def counts():
+        with session_scope() as s:
+            return [s.scalar(select(func.count()).select_from(t)) for t in (Event, Utterance, CallSession)]
+    before = counts()
+    for text in ("hi", "since 2021", "yes"):
+        client.post("/api/guest/chat", json={"messages": [{"who": "you", "text": text}]})
+    assert counts() == before
+
+
+def test_prefill_applied_on_consent(client):
+    from ellis.db import Case
+    from ellis.services import case_service as cs
+    signup(client, guest={"answers": {"lpr_since": "2021-03-04", "married_to_citizen": True}, "transcript": []})
+    case_id = client.get("/api/auth/me").json()["case_id"]
+    with session_scope() as s:
+        case = s.get(Case, case_id)
+        assert "lpr_since" not in cs.current_facts(s, case.id)
+        cs.record_fact(s, case, "consent", True)
+        facts = cs.current_facts(s, case.id)
+        assert facts["lpr_since"].value == "2021-03-04" and facts["lpr_since"].hedge
+        assert facts["marital.status"].value == "married"
+
+
+def test_guest_import_redacts(client):
+    from sqlalchemy import select
+    from ellis.db import CallSession, Utterance
+    signup(client, guest={"answers": {}, "transcript": [
+        {"who": "you", "text": STOP_PHRASE}, {"who": "ellis", "text": "ok"},
+        {"who": "you", "text": "my A number is 123456789"}]})
+    case_id = client.get("/api/auth/me").json()["case_id"]
+    with session_scope() as s:
+        texts = [u.text for u in s.scalars(select(Utterance).where(Utterance.case_id == case_id))]
+        assert any("[STOP:" in t for t in texts) and not any("123456789" in t for t in texts)
+        assert s.scalars(select(CallSession).where(CallSession.case_id == case_id)).one().channel == "guest"
+
+
+def test_bad_prefill_values_dropped(client):
+    from ellis.db import Case
+    signup(client, guest={"answers": {"lpr_since": "yesterday", "hack": 1}, "transcript": []})
+    with session_scope() as s:
+        assert s.get(Case, client.get("/api/auth/me").json()["case_id"]).settings.get("prefill") in (None, {})

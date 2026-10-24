@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import re
+
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from ..db import Account, Case, Clinic, StaffUser, now
+from ..db import Account, CallSession, Case, Clinic, StaffUser, Utterance, now
 from . import auth
 from . import case_service as cs
+from . import keywords
 
 INDEPENDENT_ID = "cl_independent"
 MIN_PASSWORD = 8
@@ -101,3 +104,58 @@ def applicant_cookie(acct: Account | None, case: Case) -> str:
 
 def is_independent(case: Case) -> bool:
     return case.clinic_id == INDEPENDENT_ID
+
+
+# ---------------------------------------------------------------- guest work carried into a new account
+
+def save_prefill(s: Session, case: Case, answers: dict) -> None:
+    """Keeps only known guest answers with valid values; they become hedged facts once consent is given."""
+    keep: dict = {}
+    v = (answers or {}).get("lpr_since")
+    if isinstance(v, str) and re.fullmatch(r"\d{4}-\d{2}(-\d{2})?", v):
+        keep["lpr_since"] = v
+    if isinstance((answers or {}).get("married_to_citizen"), bool):
+        keep["married_to_citizen"] = answers["married_to_citizen"]
+    if keep:
+        case.settings = {**(case.settings or {}), "prefill": keep}
+
+
+def apply_prefill(s: Session, case: Case) -> int:
+    settings = dict(case.settings or {})
+    pre = settings.pop("prefill", None) or {}
+    case.settings = settings
+    facts = []
+    if pre.get("lpr_since"):
+        facts.append(("lpr_since", pre["lpr_since"]))
+    if pre.get("married_to_citizen") is True:
+        facts += [("marital.status", "married"), ("spouse.citizenship_status", "us_citizen")]
+    saved = 0
+    for field, value in facts:
+        try:
+            cs.record_fact(s, case, field, value, hedge=True, source="spoken", actor="guest_import",
+                           actor_type="system", provenance={"guest": True})
+            saved += 1
+        except cs.CaseError:
+            pass
+    return saved
+
+
+def import_guest_transcript(s: Session, case: Case, transcript: list[dict]) -> str | None:
+    """The guest chat becomes the first conversation. Stop-list turns stored as [STOP:<cat>], numbers redacted."""
+    if not transcript:
+        return None
+    t = now()
+    sess = CallSession(clinic_id=case.clinic_id, case_id=case.id, started_at=t, ended_at=t, channel="guest")
+    s.add(sess)
+    s.flush()
+    for m in transcript[:200]:
+        text, redacted = (m.get("text") or "")[:2000], False
+        you = m.get("who") == "you"
+        if you and (cat := keywords.stop_hit(text)):
+            text, redacted = f"[STOP:{cat}]", True
+        elif keywords.has_sensitive_number(text):
+            text, redacted = keywords.redact_numbers(text), True
+        s.add(Utterance(clinic_id=case.clinic_id, case_id=case.id, session_id=sess.id,
+                        speaker="applicant" if you else "liaison", text=text, redacted=redacted, ts=t))
+    s.flush()
+    return sess.id
