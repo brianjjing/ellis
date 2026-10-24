@@ -166,6 +166,15 @@ def jorge(verbose=False) -> Ctx:
     })
     x.p("── F2 session: the disclosure ──")
     x.talk(sim)
+    x.p("── F2.08 professional draft (criminal-history block blank) ──")
+    with session_scope() as s:
+        c = s.get(Case, "c_jorge")
+        p = signoff.professional_draft(s, c)
+        x.p(f"     [draft] {p.filename}")
+        x.p("── F2.09 'My professional will file for me' → referred_out / prep_only ──")
+        c.sub_mode = "prep_only"
+        cs.set_state(s, c, "referred_out", "applicant reports representation", "applicant", "applicant")
+    x.reviewer_decides({"arrest": ("resolved_by_professional", "Applicant reports representation.")})
     return x
 
 
@@ -187,12 +196,24 @@ def ana(verbose=False) -> Ctx:
         "name_change.requested": "Sí: Ana Lucía Morales.",
         "spouse.name": "Daniel Morales",
         "spouse.marriage_date": "El quince de abril de 2023",
-    }, readback_overrides={"lpr_since": ["Ah, sí, 2020. Lo de 2019 fue la entrevista."]})
+    }, readback_overrides={"lpr_since": ["No estoy segura.", "Ah, sí, 2020. Lo de 2019 fue la entrevista."]})
     x.p("── F3 session: upload during the call ──")
     x.talk(sim)
     x.upload("ana_marriage_certificate.png")
     x.upload("ana_passport.png")
     x.talk(SimApplicant(answers, secure=x.secure, biographics=x.biographics))
+    x.p("── F3.11 reviewer ──")
+    x.reviewer_decides({
+        "name_mismatch": ("clear", "Current legal name per documents; name change requested on the form."),
+        "other_path": ("clear", "Proceeding on the 5-year path; the applicant can discuss the 3-year path with us."),
+        "date_conflict": ("clear", "Resolved: document date confirmed by the applicant."),
+    })
+    x.talk(SimApplicant(answers, secure=x.secure, biographics=x.biographics))
+    x.p(f"── gate: {x.gate()} ──")
+    if x.state() == "review" and x.gate()["passes"]:
+        x.mark_ready()
+        out = x.sign("Ana Lucía Hernández Ruiz")
+        x.p(f"     [signed] packet: {[p['filename'] for p in out['packet']]}")
     return x
 
 
@@ -211,6 +232,16 @@ def rosa(verbose=False) -> Ctx:
     x.upload("rosa_green_card.png")
     x.upload("rosa_benefit_letter.png")
     x.upload("rosa_irs_2022.png")
+    x.p("── F4.08 reviewer ──")
+    x.reviewer_decides({"taxes": ("clear_with_referral", "Applicant pointed to free tax help (IRS VITA); a "
+                                                         "professional can assess. Fee path: applicant chooses I-912."),
+                        "*": ("clear", "Reviewed.")})
+    x.talk(SimApplicant(answers, secure=x.secure, biographics=x.biographics))
+    x.p(f"── gate: {x.gate()} ──")
+    if x.state() == "review" and x.gate()["passes"]:
+        x.mark_ready()
+        out = x.sign("Rosa Delgado Peña", read_aloud=True, assisted_by="daughter")
+        x.p(f"     [signed] packet: {[p['filename'] for p in out['packet']]}")
     return x
 
 

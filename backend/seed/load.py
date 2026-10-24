@@ -101,7 +101,12 @@ def load(reset: bool = True) -> dict[str, str]:
 
         # Ana Lucía: consent done, no documents, briefing v2
         simulate_answers(s, ana, {"consent": True}, actor="seed")
-        _briefing(s, ana, 2, [{"kind": "ask", "section": "identity", "field": "names.used", "reason": "identity"}])
+        _briefing(s, ana, 2, [
+            {"kind": "ask", "section": "identity", "field": "names.used", "reason": "identity"},
+            {"kind": "ask", "section": "eligibility", "field": "lpr_since", "reason": "eligibility basics"},
+            {"kind": "request_upload", "document_type": "green_card", "reason": "no documents on file",
+             "text_es": "¿Puede tomar una foto de su tarjeta de residente, por los dos lados? Puede seguir hablando "
+                        "conmigo mientras se sube."}])
 
         # Rosa: patient mode, nothing yet
         _briefing(s, rosa, 1, [])

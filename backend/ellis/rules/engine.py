@@ -404,7 +404,9 @@ def evaluate(facts: dict[str, Any], as_of: date, cfg: RuleConfig, fees: FeeConfi
             out["trips"].append({"index": t.index, "days": (as_of - t.departure).days, "open": True})
     if out["trips"]:
         out["trip_days"] = out["trips"][0]["days"]
-    out["flags"].extend(absence_flags(trips, cfg, as_of))
+    # An open trip (no return yet) raises R-TRIP-OPEN only; absence and presence flags wait for the return date.
+    out["flags"].extend(absence_flags(trips, cfg))
+    any_open = any(t.return_ is None for t in trips)
 
     if lpr is not None:
         anniv = anniversary(lpr, cfg.years_lpr)
@@ -422,7 +424,7 @@ def evaluate(facts: dict[str, Any], as_of: date, cfg: RuleConfig, fees: FeeConfi
         pp = physical_presence(window, trips, cfg)
         out["presence"] = pp
         out["presence_days"] = pp["presence_days"]
-        if not pp["meets_presence"] and filing >= early:
+        if not pp["meets_presence"] and filing >= early and not any_open:
             out["flags"].append({"rule_id": "R-PP-913", "category": "presence_short", "days": pp["presence_days"]})
         if any(t.return_ is None for t in trips):
             out["flags"].append({"rule_id": "R-TRIP-OPEN", "category": "trip_open"})

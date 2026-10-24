@@ -260,7 +260,7 @@ class Liaison:
         out: list[Say] = []
         for it in items:
             key = self._item_key(it)
-            if key in self.skip or (it.get("field") and it["field"] in self.skip):
+            if key in self.skip or (it.get("field") and it["field"] in self.skip and it.get("kind") != "read_back"):
                 continue
             if it.get("field") == "consent":
                 continue
@@ -278,23 +278,29 @@ class Liaison:
             if kind == "ask":
                 return out + self._ask(it)
             if kind == "read_back":
+                if self._rb_key(it["field"]) in self.skip:
+                    continue
                 rb = self._start_readback(it)
                 if rb:
                     return out + rb
-                self.skip.add(it["field"])
+                self._skip_rb(it["field"])
                 continue
             if kind == "request_secure_entry":
                 self.skip.add(key)
                 self.c.request_secure_entry(it["field"])
                 self.pending = {"kind": "secure_wait", "field": it["field"]}
-                line = script("secure_entry", label=catalog.label_es(it["field"]).lower())
+                line = script("secure_entry", label=secure_label(it["field"]))
                 self.last_question = [line]
                 return out + [line]
             if kind == "request_upload":
                 self.skip.add(key)
                 self.c.request_upload(it.get("document_type", "other"))
                 from ..extraction.schemas import LABELS_ES
-                out.append(script("upload_request", document_label=LABELS_ES.get(it.get("document_type"), "documento")))
+                if it.get("text_es"):
+                    out.append(Say(it["text_es"], kind="upload_request"))
+                else:
+                    out.append(script("upload_request",
+                                      document_label=LABELS_ES.get(it.get("document_type"), "documento")))
                 continue  # the liaison never waits for an upload
             if kind == "request_biographics":
                 self.skip.add(key)
@@ -418,6 +424,13 @@ class Liaison:
             return self.facts.get(f"trips[{m['i']}].departure")
         return None
 
+    def _rb_key(self, f: str) -> str:
+        return f"rb:{f}:{self.facts.get(f)}"
+
+    def _skip_rb(self, f: str) -> None:
+        """Skip reading back this value again in this session; a different value (e.g. a document's) still gets one."""
+        self.skip.add(self._rb_key(f))
+
     def _remember(self, f: str, v: Any) -> None:
         self.facts[f] = v
 
@@ -489,9 +502,14 @@ class Liaison:
         else:
             value, ok = None, False  # "sí, así es" confirms; it is not a new value
         differs = ok and value is not None and fold(str(value)) != fold(str(read_val))
-        if ftype == "bool" and yn is not None:
-            differs = isinstance(read_val, bool) and yn != read_val
-            value = yn
+        if differs and yn is True and ftype in ("date", "date_or_present") and isinstance(read_val, str) \
+                and len(str(value)) < len(read_val) and read_val.startswith(str(value)):
+            differs = False  # "sí, 2020" agrees with 2020-06-02; it is a confirmation, not a less precise date
+        if ftype == "bool" and yn is not None and isinstance(read_val, bool):
+            # "sí" confirms what was read; "no" means the opposite value
+            differs = yn is False
+            value = (not read_val) if differs else read_val
+            ok = True
         if it["kind"] == "correction":
             if ok and value is not None:
                 res = self.c.record_fact(f, value, hedge=hedge, utterance_id=uid, interrupted_at_word=word,
@@ -499,7 +517,7 @@ class Liaison:
                 return self._after_readback(res, f, corrected=True)
             return [script("not_understood"), Say(f"¿Cuál es {catalog.label_es(f).lower()} correcto?")]
         if spanish.yes_no_unsure(text) == "not_sure" and not differs:
-            self.skip.add(f)
+            self._skip_rb(f)
             self.pending = None
             self.readback = None
             return [Say("Está bien, lo dejamos así por ahora.")] + self.next_question()
@@ -508,7 +526,7 @@ class Liaison:
             return self._after_readback(res, f, corrected=True)
         if yn is True:
             if hedge:
-                self.skip.add(f)
+                self._skip_rb(f)
                 self.pending = None
                 return [Say("Está bien, lo dejamos así por ahora.")] + self.next_question()
             res = self.c.record_fact(f, read_val, utterance_id=uid)
@@ -521,7 +539,7 @@ class Liaison:
         n = self.attempts.get("rb:" + f, 0) + 1
         self.attempts["rb:" + f] = n
         if n >= 2:
-            self.skip.add(f)
+            self._skip_rb(f)
             self.pending = None
             return [script("not_understood")] + self.next_question()
         return [script("not_understood")] + self.last_question
@@ -575,6 +593,13 @@ class Liaison:
         self.ended = True
         self.c.session_end()
         return [line]
+
+
+def secure_label(f: str) -> str:
+    d = catalog.field_def(f) or {}
+    if d.get("list"):
+        return f"{d['label_es'].split(': ')[-1].lower()} ({catalog.list_item_label(d['list'], d['index']).lower()})"
+    return {"a_number": "número A", "ssn": "número de Seguro Social"}.get(f, d.get("label_es", f).lower())
 
 
 def readback_label(f: str) -> str:

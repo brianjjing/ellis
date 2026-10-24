@@ -633,6 +633,13 @@ def raise_flag(s: Session, case: Case, category: str, layer: int, field: str | N
         existing = _open_flags(s, case, category)
     if existing:
         return None
+    summary = facts_summary(s, case, category, field)
+    decided = s.scalars(select(ReviewItem).where(
+        ReviewItem.case_id == case.id, ReviewItem.category == category, ReviewItem.status == "closed",
+        ReviewItem.decision.is_not(None), ReviewItem.decision != "auto_resolved",
+        ReviewItem.field == field if field is not None else ReviewItem.field.is_(None))).all()
+    if any(r.facts_summary == summary for r in decided):
+        return None  # a reviewer already decided this, and nothing behind it changed
     fl = Flag(clinic_id=case.clinic_id, case_id=case.id, category=category, speed=FLAG_CONTINUE, layer=layer,
               field=field, section=catalog.section_of(field) if field else None, rule_id=rule_id,
               detail=detail or {}, applicant_label_es=info.get("label_es"), ts=now())
@@ -643,7 +650,7 @@ def raise_flag(s: Session, case: Case, category: str, layer: int, field: str | N
         3: "Liaison flag (layer 3)", 4: "Keyword (layer 4)"}.get(layer, f"layer {layer}")
     ri = ReviewItem(clinic_id=case.clinic_id, case_id=case.id, flag_id=fl.id, category=category,
                     speed=FLAG_CONTINUE, field=field, blocking=info["blocks"], trigger=trigger,
-                    facts_summary=facts_summary(s, case, category, field), proposed_by=actor, ts=now())
+                    facts_summary=summary, proposed_by=actor, ts=now())
     s.add(ri)
     s.flush()
     case.material_changed_at = now()
@@ -847,7 +854,7 @@ def evaluate_rules(s: Session, case: Case) -> tuple[Derived | None, list[Flag], 
             resolve_flag(s, case, fl, "rule no longer applies after correction")
             resolved.append(fl.id)
     for (catg, fld), fl in desired.items():
-        if catg not in CATEGORIES:
+        if catg not in CATEGORIES or catg == "trip_open":  # an unanswered return date is a queue item, not a flag
             continue
         new = raise_flag(s, case, catg, layer=2, field=fld, rule_id=fl["rule_id"], detail={"days": fl.get("days")})
         if new is not None:

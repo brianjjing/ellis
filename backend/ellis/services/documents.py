@@ -315,7 +315,7 @@ def _apply_doc_fact(s: Session, case: Case, doc: Document, field: str, value: An
             return True
         if quality != "high":
             return False  # a low/medium document never outranks the applicant
-        if cur.status == "confirmed" and catalog.is_material(field):
+        if cur.status == "confirmed" and catalog.is_material(field) and not field.startswith("name"):
             # the applicant already confirmed something else: disputed, blocking review item
             cs.raise_flag(s, case, "document_conflict", layer=2, field=field,
                           detail={"document_id": doc.id, "reason": "confirmed answer differs from document"})
