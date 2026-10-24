@@ -82,15 +82,16 @@ class InProcessClient:
         from ..services import case_service as cs, catalog
 
         def f(s, case):
-            cs.push(s, case, "open_secure_entry", {"field": field, "label": catalog.label_es(field),
+            label = catalog.label_en(field) if cs.case_lang(case) == "en" else catalog.label_es(field)
+            cs.push(s, case, "open_secure_entry", {"field": field, "label": label,
                                                    "type": (catalog.field_def(field) or {}).get("type")})
         self._run(f)
 
     def request_upload(self, document_type: str) -> None:
         from ..services import case_service as cs
-        from ..services.documents import document_label_es
+        from ..services.documents import document_label
         self._run(lambda s, case: cs.push(s, case, "open_upload", {"document_type": document_type,
-                                                                   "label": document_label_es(document_type)}))
+                                                                   "label": document_label(document_type, cs.case_lang(case))}))
 
     def request_biographics(self) -> None:
         from ..services import case_service as cs

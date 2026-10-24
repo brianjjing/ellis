@@ -327,6 +327,8 @@ def _supports(d: dict, fv: dict) -> list[str]:
 # ------------------------------------------------------------------------------------------- docketing clerk
 
 def docketing_clerk(ctx: dict) -> list[dict]:
+    lang = ctx.get("language", "es")
+    title_es = "Reviewed the dates of your case" if lang == "en" else "Revisó las fechas de su caso"
     items: list[dict] = []
     der = ctx.get("derived") or {}
     current = {d["kind"]: d for d in ctx["deadlines"]}
@@ -344,14 +346,14 @@ def docketing_clerk(ctx: dict) -> list[dict]:
         items.append({"type": "task", "payload": {
             "kind": "finding", "title": "Information: file before the proposed fee rule takes effect, if it is "
                                         "finalized (not urging; effective-date treatment NEEDS EXPERT CHECK)",
-            "title_es": "Revisó las fechas de su caso"}})
+            "title_es": title_es}})
     corrected = [e for e in ctx.get("trigger_events", []) if e["kind"] == "fact.corrected"
                  and catalog.is_date_field(e["payload"].get("field", ""))]
     if changed or corrected:
         title = ("Date change moves nothing; window still open" if corrected and not changed
                  else f"Filing window from rules engine: {der.get('earliest_filing')}")
         items.append({"type": "task", "payload": {"kind": "finding", "title": title,
-                                                  "title_es": "Revisó las fechas de su caso"}})
+                                                  "title_es": title_es}})
     return items
 
 
@@ -359,6 +361,7 @@ def docketing_clerk(ctx: dict) -> list[dict]:
 
 def qa_reviewer(ctx: dict, recompute=None) -> list[dict]:
     """Fresh-context audit: recompute from raw facts, challenge weak spots (max 2 rounds), then write the QA memo."""
+    lang = ctx.get("language", "es")
     items: list[dict] = []
     fv = _facts(ctx)
     der = ctx.get("derived") or {}
@@ -377,9 +380,10 @@ def qa_reviewer(ctx: dict, recompute=None) -> list[dict]:
             bits = [f"{k}={der.get(k)}" for k in ("trip_days", "presence_days") if der.get(k) is not None]
             findings.append("Recompute from raw facts matches" + (f" ({', '.join(bits)})" if bits else ""))
             if bits:
+                title_es = "Recalculated the dates of your case" if lang == "en" else "Volvió a calcular las fechas de su caso"
                 items.append({"type": "task", "payload": {"kind": "finding",
                                                           "title": "Recompute matches: " + ", ".join(bits),
-                                                          "title_es": "Volvió a calcular las fechas de su caso"}})
+                                                          "title_es": title_es}})
     # 2. notes on open review items
     for f in _flags(ctx):
         if f["category"] in ("absence_gt_180", "absence_gte_365"):
@@ -396,7 +400,6 @@ def qa_reviewer(ctx: dict, recompute=None) -> list[dict]:
     # 3. challenges (the Case API caps rounds at 2 per material change)
     # question_es here holds pre-resolved text in ctx["language"] (not necessarily Spanish -- see the
     # case_manager loop above, which stores it back under the matching question_{lang} key).
-    lang = ctx.get("language", "es")
     challenges: list[dict] = []
     conflict_fields = {f["field"] for f in _flags(ctx, "date_conflict")}
     for k, v in ctx["facts"].items():
@@ -424,9 +427,10 @@ def qa_reviewer(ctx: dict, recompute=None) -> list[dict]:
     open_titles = {t["title"] for t in ch_rounds}
     new = [c for c in challenges if c["title"] not in open_titles]
     for c in new:
+        title_es = "Checked the consistency of your answers" if lang == "en" else "Revisó la consistencia de sus respuestas"
         items.append({"type": "task", "payload": {"kind": "challenge", "title": c["title"], "field": c.get("field"),
                                                   "question_es": c.get("question_es"),
-                                                  "title_es": "Revisó la consistencia de sus respuestas"}})
+                                                  "title_es": title_es}})
     unanswered = [t for t in ch_rounds if t.get("field") and t.get("question_es") and t["field"] not in fv]
     # 4. provenance + edition checks, then the memo (only when nothing new to challenge)
     no_prov = [k for k, v in ctx["facts"].items() if v["status"] == "confirmed" and not v.get("source")]

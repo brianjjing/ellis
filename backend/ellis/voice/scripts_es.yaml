@@ -63,6 +63,9 @@ tool_failure:
 not_understood:
   locked: false
   text: "Perdón, no le entendí bien."
+already_mentioned:
+  locked: false
+  text: "Mencionó algo de esto antes. Aún necesito preguntárselo de forma oficial."
 take_your_time:
   locked: false
   text: "Tómese su tiempo."

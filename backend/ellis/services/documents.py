@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 
 from ..config import BACKEND_DIR, settings
 from ..db import Case, Document, Extraction, Fact, Flag, VaultValue, now, session_scope
-from ..extraction.schemas import IDENTIFIERS, LABELS_ES, SCHEMAS
+from ..extraction.schemas import IDENTIFIERS, LABELS_EN, LABELS_ES, SCHEMAS
 from . import case_service as cs
 from . import catalog, keywords, vault
 from .values import equal
@@ -391,3 +391,7 @@ def check_names(s: Session, case: Case) -> list[Flag | None]:
 
 def document_label_es(doc_type: str) -> str:
     return LABELS_ES.get(doc_type, "documento")
+
+
+def document_label(doc_type: str, lang: str = "es") -> str:
+    return LABELS_EN.get(doc_type, "document") if lang == "en" else document_label_es(doc_type)

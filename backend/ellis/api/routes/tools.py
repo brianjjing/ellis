@@ -161,7 +161,8 @@ def request_secure_entry(body: FieldReq, request: Request) -> dict[str, Any]:
     with session_scope() as s:
         case = tool_case(request, s)
         d = catalog.field_def(body.field)
-        cs.push(s, case, "open_secure_entry", {"field": body.field, "label": catalog.label_es(body.field),
+        label = catalog.label_en(body.field) if cs.case_lang(case) == "en" else catalog.label_es(body.field)
+        cs.push(s, case, "open_secure_entry", {"field": body.field, "label": label,
                                                "type": (d or {}).get("type")})
         return {"ok": True, "script_key": "secure_entry"}
 
@@ -172,12 +173,12 @@ class UploadReq(BaseModel):
 
 @router.post("/request_upload")
 def request_upload(body: UploadReq, request: Request) -> dict[str, Any]:
-    from ...services.documents import document_label_es
+    from ...services.documents import document_label
     with session_scope() as s:
         case = tool_case(request, s)
-        cs.push(s, case, "open_upload", {"document_type": body.document_type,
-                                         "label": document_label_es(body.document_type)})
-        return {"ok": True, "script_key": "upload_request", "document_label": document_label_es(body.document_type)}
+        label = document_label(body.document_type, cs.case_lang(case))
+        cs.push(s, case, "open_upload", {"document_type": body.document_type, "label": label})
+        return {"ok": True, "script_key": "upload_request", "document_label": label}
 
 
 @router.post("/request_biographics")

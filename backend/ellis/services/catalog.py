@@ -82,7 +82,8 @@ def field_def(key: str) -> dict[str, Any] | None:
                     d = dict(it)
                     d.update({"key": key, "section": lcfg["section"], "list": name, "index": i, "sub": sub})
                     d["label_es"] = f"{list_item_label(name, i)}: {it['label_es']}"
-                    d["label_en"] = f"{name.rstrip('s').title()} {i + 1}: {it['label_en']}"
+                    singular = name[:-2] if name.endswith("ses") else name.rstrip("s")
+                    d["label_en"] = f"{singular.title()} {i + 1}: {it['label_en']}"
                     return d
     for ff in fields_cfg().get("free_fields", []):
         if key.startswith(ff["key_prefix"]):

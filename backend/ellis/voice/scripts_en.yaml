@@ -71,6 +71,9 @@ tool_failure:
 not_understood:
   locked: false
   text: "Sorry, I didn't quite understand that."
+already_mentioned:
+  locked: false
+  text: "You mentioned something about this earlier. I still need to ask it officially."
 take_your_time:
   locked: false
   text: "Take your time."

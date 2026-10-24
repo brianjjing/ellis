@@ -106,7 +106,9 @@ def load(reset: bool = True) -> dict[str, str]:
             {"kind": "ask", "section": "eligibility", "field": "lpr_since", "reason": "eligibility basics"},
             {"kind": "request_upload", "document_type": "green_card", "reason": "no documents on file",
              "text_es": "¿Puede tomar una foto de su tarjeta de residente, por los dos lados? Puede seguir hablando "
-                        "conmigo mientras se sube."}])
+                        "conmigo mientras se sube.",
+             "text_en": "Can you take a photo of your green card, both sides? You can keep talking to me while "
+                        "it uploads."}])
 
         # Rosa: patient mode, nothing yet
         _briefing(s, rosa, 1, [])

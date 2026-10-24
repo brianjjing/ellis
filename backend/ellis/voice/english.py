@@ -318,6 +318,19 @@ def parse_state(text: str) -> str | None:
     return None
 
 
+_STATE_SUFFIX_RE = re.compile(
+    r",?\s*(california|texas|arizona|nevada|oregon|washington|new york|florida|illinois|colorado|"
+    r"new mexico|georgia|north carolina|utah|ca|tx|az|nv|or|wa|ny|fl|il|co|nm|ga|nc|ut)\s*$", re.I)
+
+
+def strip_trailing_state(text: str) -> tuple[str, str | None]:
+    """"Berkeley, California" -> ("Berkeley", "CA"): a city answer often names the state too."""
+    m = _STATE_SUFFIX_RE.search(text)
+    if not m:
+        return text, None
+    return text[:m.start()].rstrip(", ") or text, STATE_WORDS.get(m[1].lower(), m[1].upper())
+
+
 def parse_benefit(text: str) -> str | None | bool:
     f = fold(text)
     for b in ("medi-cal", "medi cal", "medicaid", "calfresh", "snap", "food stamps", "tanf", "calworks", "ssi"):
@@ -441,4 +454,6 @@ def parse_value(key: str, ftype: str, text: str, ref: str | None = None,
         return None, False
     t = clean_free_text(text)
     t = re.sub(r"(?i)^(i live in|i lived in|i work at|i worked at|in|i am|i was|i went to)\s+", "", t)
+    if key.endswith(".city"):
+        t, _ = strip_trailing_state(t)
     return (t[:200], True) if t else (None, False)

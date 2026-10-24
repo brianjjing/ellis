@@ -1103,6 +1103,9 @@ def liaison_briefing(s: Session, case: Case) -> dict[str, Any]:
     body["consent_given"] = consent_given(s, case)
     body["derived"] = derived_summary(latest_derived(s, case.id))
     body["gaps"] = [g.label_es or g.reason for g in open_gaps(s, case.id)]
+    # lets an official question acknowledge something the applicant already brought up (e.g. via the
+    # keyword backstop) instead of asking cold as if it had never come up.
+    body["open_flag_categories"] = sorted({fl.category for fl in all_open_flags(s, case) if fl.speed != STOP_NOW})
     body["facts"] = {k: (catalog.mask_token(k) if catalog.is_masked(k) else v["value"])
                      for k, v in cur_view(s, case.id).items()}
     return body
