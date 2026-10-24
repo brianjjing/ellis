@@ -21,13 +21,20 @@ AGENT_LABELS_ES = {"case_manager": "Coordinador del caso", "doc_paralegal": "Rev
                    "docketing_clerk": "Control de fechas", "qa_reviewer": "Control de calidad"}
 AGENT_LABELS_EN = {"case_manager": "Case coordinator", "doc_paralegal": "Document checker",
                    "docketing_clerk": "Deadline tracker", "qa_reviewer": "Quality check"}
-ROADMAP = [
+ROADMAP_ES = [
     {"key": "inicio", "label": "Inicio"}, {"key": "elegibilidad", "label": "Elegibilidad"},
     {"key": "entrevista", "label": "Entrevista"}, {"key": "documentos", "label": "Documentos"},
     {"key": "revision", "label": "Revisión y firma"},
 ]
-FUTURE = ["Presentar la solicitud", "Huellas (biometría)", "Estudio: cívica e inglés", "Entrevista de práctica",
-          "Entrevista", "Ceremonia de juramento"]
+ROADMAP_EN = [
+    {"key": "inicio", "label": "Start"}, {"key": "elegibilidad", "label": "Eligibility"},
+    {"key": "entrevista", "label": "Interview"}, {"key": "documentos", "label": "Documents"},
+    {"key": "revision", "label": "Review and sign"},
+]
+FUTURE_ES = ["Presentar la solicitud", "Huellas (biometría)", "Estudio: cívica e inglés", "Entrevista de práctica",
+             "Entrevista", "Ceremonia de juramento"]
+FUTURE_EN = ["File the application", "Biometrics (fingerprints)", "Civics and English study", "Mock interview",
+             "Interview", "Oath ceremony"]
 STAGE_NAMES = {"consent_pending": "Consent", "intake": "Intake", "evidence": "Evidence", "review": "Review",
                "ready": "Ready for sign-off", "signed": "Signed", "referred_out": "Referred out", "closed": "Closed"}
 
@@ -43,40 +50,56 @@ def roadmap_index(s: Session, case: Case) -> int:
     return 4
 
 
-def chip(f: dict, open_fields: set[str], corrected: bool) -> dict[str, str]:
+CHIP_LABELS = {
+    "review": {"es": "Para revisión", "en": "For review"},
+    "corrected": {"es": "Corregido", "en": "Corrected"},
+    "deferred": {"es": "Con su profesional", "en": "With your professional"},
+    "confirmed": {"es": "Confirmado ✓", "en": "Confirmed ✓"},
+    "document": {"es": "De su documento", "en": "From your document"},
+    "spoken": {"es": "Usted lo dijo", "en": "You said it"},
+}
+
+
+def chip(f: dict, open_fields: set[str], corrected: bool, lang: str = "es") -> dict[str, str]:
     if f["field"] in open_fields:
-        return {"key": "review", "label": "Para revisión"}
-    if corrected:
-        return {"key": "corrected", "label": "Corregido"}
-    if f["value_raw"] == catalog.DEFERRED:
-        return {"key": "deferred", "label": "Con su profesional"}
-    if f["status"] == "confirmed":
-        return {"key": "confirmed", "label": "Confirmado ✓"}
-    if f["source"] == "document":
-        return {"key": "document", "label": "De su documento"}
-    return {"key": "spoken", "label": "Usted lo dijo"}
+        key = "review"
+    elif corrected:
+        key = "corrected"
+    elif f["value_raw"] == catalog.DEFERRED:
+        key = "deferred"
+    elif f["status"] == "confirmed":
+        key = "confirmed"
+    elif f["source"] == "document":
+        key = "document"
+    else:
+        key = "spoken"
+    return {"key": key, "label": CHIP_LABELS[key][lang]}
 
 
-def applicant_value(s: Session, key: str, f: Fact) -> str:
+def applicant_value(s: Session, key: str, f: Fact, lang: str = "es") -> str:
     from datetime import date as _date
-    from ..rules.engine import MONTHS_ES, short_date_es
+    from ..rules.engine import MONTHS_EN, MONTHS_ES, short_date_en, short_date_es
     if catalog.is_date_field(key) and isinstance(f.value, str) and f.value != catalog.DEFERRED:
         if f.value == "present":
-            return "hasta hoy"
+            return "to present" if lang == "en" else "hasta hoy"
         if re.fullmatch(r"\d{4}-\d{2}-\d{2}", f.value):
-            return short_date_es(_date.fromisoformat(f.value))
+            return short_date_en(_date.fromisoformat(f.value)) if lang == "en" else short_date_es(_date.fromisoformat(f.value))
         if re.fullmatch(r"\d{4}-\d{2}", f.value):
-            return f"{MONTHS_ES[int(f.value[5:7]) - 1]} de {f.value[:4]}"
+            months = MONTHS_EN if lang == "en" else MONTHS_ES
+            return f"{months[int(f.value[5:7]) - 1]} {f.value[:4]}" if lang == "en" \
+                else f"{months[int(f.value[5:7]) - 1]} de {f.value[:4]}"
     if catalog.is_masked(key):
         last4 = cs.vault_last4(s, f.id)
         return f"•••• {last4}" if last4 else "••••"
     if f.value == catalog.DEFERRED:
-        return "Para completar con su profesional"
-    return cs.spoken_value(key, f.value) if catalog.is_date_field(key) or isinstance(f.value, (bool, list)) \
+        return "To complete with your professional" if lang == "en" else "Para completar con su profesional"
+    return cs.spoken_value(key, f.value, lang=lang) if catalog.is_date_field(key) or isinstance(f.value, (bool, list)) \
         or f.value in ("yes", "no", "not_sure") or (catalog.field_def(key) or {}).get("type") == "enum" else str(f.value)
 
 
 def facts_panel(s: Session, case: Case) -> list[dict[str, Any]]:
+    lang = cs.case_lang(case)
+    label_of = catalog.label_en if lang == "en" else catalog.label_es
     cur = cs.current_facts(s, case.id)
     open_fields = {fl.field for fl in cs.all_open_flags(s, case) if fl.field and fl.speed != STOP_NOW}
     all_f = {f.id: f for f in cs.facts_for(s, case.id, include_superseded=True)}
@@ -88,11 +111,11 @@ def facts_panel(s: Session, case: Case) -> list[dict[str, Any]]:
             continue
         prev = all_f.get(f.supersedes) if f.supersedes else None
         corrected = prev is not None and prev.value != f.value and prev.source != "document" and f.source == "spoken"
-        item = {"field": key, "label": catalog.label_es(key), "value": applicant_value(s, key, f), "status": f.status,
+        item = {"field": key, "label": label_of(key), "value": applicant_value(s, key, f, lang), "status": f.status,
                 "source": f.source, "hedge": f.hedge, "value_raw": f.value, "ts": f.ts.isoformat(),
                 "simulated": bool(f.provenance.get("simulated"))}
         if corrected:
-            item["corrected_from"] = applicant_value(s, key, prev)
+            item["corrected_from"] = applicant_value(s, key, prev, lang)
         m = catalog.LIST_RE.match(key)
         if m and m["list"] == "trips" and m["sub"] == "return" and int(m["i"]) in trip_days:
             item["days"] = trip_days[int(m["i"])]
@@ -104,7 +127,7 @@ def facts_panel(s: Session, case: Case) -> list[dict[str, Any]]:
                         item["days_from"] = (date.fromisoformat(prev.value) - date.fromisoformat(dep.value)).days
                     except (TypeError, ValueError):
                         pass
-        item["chip"] = chip(item, open_fields, corrected)
+        item["chip"] = chip(item, open_fields, corrected, lang)
         del item["value_raw"]
         groups.setdefault(catalog.section_of(key), []).append(item)
     out = []
@@ -112,7 +135,8 @@ def facts_panel(s: Session, case: Case) -> list[dict[str, Any]]:
         items = groups.get(sec["key"])
         if items:
             items.sort(key=lambda i: _key_order(i["field"]))
-            out.append({"section": sec["key"], "label": sec["label_es"], "items": items})
+            sec_label = sec.get("label_en") if lang == "en" else sec["label_es"]
+            out.append({"section": sec["key"], "label": sec_label or sec["label_es"], "items": items})
     return out
 
 
@@ -122,6 +146,7 @@ def _key_order(k: str):
 
 
 def section_progress(s: Session, case: Case) -> list[dict[str, Any]]:
+    lang = cs.case_lang(case)
     der = cs.latest_derived(s, case.id)
     view = cs.cur_view(s, case.id)
     req = catalog.required_fields(view, der.data if der else None, cs.today())
@@ -135,15 +160,18 @@ def section_progress(s: Session, case: Case) -> list[dict[str, Any]]:
         deferred = [k for k in keys if view.get(k, {}).get("value") == catalog.DEFERRED]
         state = ("blocked" if deferred else "done" if len(conf) == len(keys)
                  else "partial" if have else "not_started")
-        out.append({"section": sec["key"], "label": sec["label_es"], "state": state,
+        label = sec.get("label_en") if lang == "en" else sec["label_es"]
+        out.append({"section": sec["key"], "label": label or sec["label_es"], "state": state,
                     "done": len(conf), "total": len(keys)})
     return out
 
 
 def team_cards(s: Session, case: Case, limit: int = 8) -> list[dict[str, Any]]:
+    lang = cs.case_lang(case)
+    labels, default = (AGENT_LABELS_EN, "Your team") if lang == "en" else (AGENT_LABELS_ES, "Su equipo")
     tasks = list(s.scalars(select(Task).where(Task.case_id == case.id, Task.title_es.is_not(None))
                            .order_by(Task.ts.desc()).limit(limit)))
-    return [{"id": t.id, "agent": t.agent, "label": AGENT_LABELS_ES.get(t.agent, "Su equipo"), "text": t.title_es,
+    return [{"id": t.id, "agent": t.agent, "label": labels.get(t.agent, default), "text": t.title_es,
              "ts": t.ts.isoformat(), "status": t.status} for t in tasks]
 
 
@@ -185,7 +213,9 @@ def applicant_case(s: Session, case: Case) -> dict[str, Any]:
         "facts": facts_panel(s, case), "progress": section_progress(s, case), "team": team_cards(s, case),
         "referrals": referral_cards(s, case), "open_review_items": open_items, "gaps": gaps, "documents": docs,
         "reviewer_notes": notes, "case_blocked": blocked, "filing_window": filing,
-        "roadmap": {"stages": ROADMAP, "current": roadmap_index(s, case), "future": FUTURE},
+        "roadmap": {"stages": ROADMAP_EN if case.language.split("-")[0] == "en" else ROADMAP_ES,
+                   "current": roadmap_index(s, case),
+                   "future": FUTURE_EN if case.language.split("-")[0] == "en" else FUTURE_ES},
         "briefing_version": b.version if b else 0,
         "packet_ready": s.scalars(select(Packet).where(Packet.case_id == case.id, Packet.status == "current")).first()
         is not None,

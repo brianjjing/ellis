@@ -665,9 +665,10 @@ def raise_flag(s: Session, case: Case, category: str, layer: int, field: str | N
         ReviewItem.field == field if field is not None else ReviewItem.field.is_(None))).all()
     if any(r.facts_summary == summary for r in decided):
         return None  # a reviewer already decided this, and nothing behind it changed
+    label = info.get("label_en") if case_lang(case) == "en" else info.get("label_es")
     fl = Flag(clinic_id=case.clinic_id, case_id=case.id, category=category, speed=FLAG_CONTINUE, layer=layer,
               field=field, section=catalog.section_of(field) if field else None, rule_id=rule_id,
-              detail=detail or {}, applicant_label_es=info.get("label_es"), ts=now())
+              detail=detail or {}, applicant_label_es=label, ts=now())
     s.add(fl)
     s.flush()
     trigger = RULE_TRIGGERS.get(category) or {
@@ -747,7 +748,7 @@ def item_text(s: Session, case: Case, fl: Flag, lang: str | None = None) -> str:
     lang = lang or case_lang(case)
     cat_label = flag_category(fl.category).get(f"label_{lang}")
     default = "Question for your clinic" if lang == "en" else "Pregunta para su clínica"
-    label = (cat_label or (fl.applicant_label_es if lang == "es" else None) or default)
+    label = cat_label or fl.applicant_label_es or default
     vals = fact_values(s, case.id)
     if fl.category == "citation":
         details = [str(v) for k, v in vals.items() if k.startswith("background.detail.citation")]

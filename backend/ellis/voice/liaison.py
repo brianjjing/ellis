@@ -21,6 +21,7 @@ import yaml
 from ..services import catalog
 from ..services.keywords import fold
 from . import english, spanish
+from .humanize import GENERIC_KINDS
 
 log = logging.getLogger("ellis.liaison")
 
@@ -54,12 +55,13 @@ class Say:
 
 
 class Liaison:
-    def __init__(self, client, today: date | None = None, channel: str = "voice", llm=None, rng_seed: int = 7,
-                language: str = "es"):
+    def __init__(self, client, today: date | None = None, channel: str = "voice", llm=None, humanizer=None,
+                rng_seed: int = 7, language: str = "es"):
         self.c = client
         self.today = today or date.today()
         self.channel = channel
         self.llm = llm
+        self.humanizer = humanizer
         self.language = language if language in NLU else "es"
         self.nlu = NLU[self.language]
         self.script = lambda key, **kw: script(key, lang=self.language, **kw)
@@ -81,6 +83,7 @@ class Liaison:
         self.facts: dict[str, Any] = {}
         self.current_section: str | None = None
         self._turn_uncertain = False
+        self._llm_uncertain = False
 
     # ------------------------------------------------------------ lifecycle
 
@@ -103,6 +106,13 @@ class Liaison:
 
     def _said(self, lines: list[Say]) -> list[Say]:
         for ln in lines:
+            # wording only, after the fact: hedge/flags/record_fact already happened before this line
+            # was constructed, so rephrasing here can never change what was asked, recorded, or flagged.
+            if self.humanizer is not None and not ln.locked and ln.kind in GENERIC_KINDS:
+                try:
+                    ln.text = self.humanizer.rephrase(ln.text, self.language)
+                except Exception:  # noqa: BLE001 - never block the conversation on a rephrase failure
+                    log.exception("humanize failed")
             try:
                 self.c.liaison_said(ln.text, ln.locked)
             except Exception:  # noqa: BLE001 - captions are best-effort
@@ -391,12 +401,13 @@ class Liaison:
     # ------------------------------------------------------------ answers
 
     def _parse(self, f: str, text: str, ref: str | None = None) -> tuple[Any, bool]:
+        self._llm_uncertain = False
         d = catalog.field_def(f) or {}
         ftype = d.get("type", "string")
         v, ok = self.nlu.parse_value(f, ftype, text, ref=ref, today=self.today)
         if not ok and self.llm is not None:
             try:
-                v, ok = self.llm.extract(f, d, text)
+                v, ok, self._llm_uncertain = self.llm.extract(f, d, text)
             except Exception:  # noqa: BLE001
                 log.exception("llm extract failed")
         return v, ok
@@ -407,6 +418,7 @@ class Liaison:
         d = catalog.field_def(f) or {}
         hedge = self.nlu.has_hedge(text) or self._turn_uncertain
         value, ok = self._parse(f, text, ref=self._ref_for_text(f))
+        hedge = hedge or self._llm_uncertain
         if value == "__YES__":
             followup_key = "followup_en" if self.language == "en" else "followup_es"
             default_followup = "Which one?" if self.language == "en" else "¿Cuál?"
@@ -527,6 +539,7 @@ class Liaison:
         read_val = rb.get("value")
         yn = self.nlu.yes_no(text)
         hedge = self.nlu.has_hedge(text) or self._turn_uncertain
+        self._llm_uncertain = False  # only set if _parse() runs below; stale True from an earlier turn must not leak in
         ftype = (catalog.field_def(f) or {}).get("type")
         rest = self.nlu.strip_yes_no(text)
         ref = read_val if isinstance(read_val, str) else None
@@ -536,6 +549,7 @@ class Liaison:
             value, ok = self._parse(f, rest, ref=ref) if rest else (None, False)
         else:
             value, ok = None, False  # "sí, así es" confirms; it is not a new value
+        hedge = hedge or self._llm_uncertain
         differs = ok and value is not None and fold(str(value)) != fold(str(read_val))
         if differs and yn is True and ftype in ("date", "date_or_present") and isinstance(read_val, str) \
                 and len(str(value)) < len(read_val) and read_val.startswith(str(value)):

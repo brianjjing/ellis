@@ -81,9 +81,11 @@ class VoiceSession:
         language = start.get("language") if start.get("language") in ("es", "en") else default_lang
         locale = start.get("locale") or (case_locale if language == default_lang else
                                          ("en-US" if language == "en" else "es-MX"))
+        from ...voice.humanize import humanizer
         from ...voice.llm import extractor
         self.liaison = Liaison(InProcessClient(self.case_id), today=today(),
-                               channel="voice" if want_voice else "text", llm=extractor(), language=language)
+                               channel="voice" if want_voice else "text", llm=extractor(),
+                               humanizer=humanizer(), language=language)
         lines = await asyncio.to_thread(self.liaison.start)
         patient = bool(self.liaison.cfg.get("patient_mode"))
         cartesia_ok = False
