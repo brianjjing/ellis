@@ -32,13 +32,14 @@ def create_app(start_workers: bool | None = None) -> FastAPI:
     app = FastAPI(title="Ellis Case API", version="0.1.0")
     logging.getLogger("uvicorn.access").addFilter(NoToolBodies())
 
-    from .routes import applicant, clinic, tools, voice
+    from .routes import applicant, clinic, tools, voice, webhooks
 
     app.include_router(tools.router)
     app.include_router(applicant.router)
     app.include_router(applicant.files_router)
     app.include_router(clinic.router)
     app.include_router(voice.router)
+    app.include_router(webhooks.router)
 
     @app.exception_handler(HTTPException)
     async def http_error(_: Request, exc: HTTPException):

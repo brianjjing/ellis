@@ -56,6 +56,13 @@ def chip(f: dict, open_fields: set[str], corrected: bool) -> dict[str, str]:
 
 
 def applicant_value(s: Session, key: str, f: Fact) -> str:
+    from datetime import date as _date
+    from ..rules.engine import MONTHS_ES, short_date_es
+    if catalog.is_date_field(key) and isinstance(f.value, str) and f.value != catalog.DEFERRED:
+        if len(f.value) == 10:
+            return short_date_es(_date.fromisoformat(f.value))
+        if len(f.value) == 7:
+            return f"{MONTHS_ES[int(f.value[5:7]) - 1]} de {f.value[:4]}"
     if catalog.is_masked(key):
         last4 = cs.vault_last4(s, f.id)
         return f"•••• {last4}" if last4 else "••••"
