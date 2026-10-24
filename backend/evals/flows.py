@@ -105,7 +105,9 @@ class Ctx:
 
     def sign(self, typed_name: str, **kw):
         with session_scope() as s:
-            return signoff.sign(s, s.get(Case, self.case_id), typed_name, signoff.ATTESTATION_VERSION, "eval", **kw)
+            case = s.get(Case, self.case_id)
+            version = signoff.ATTESTATION_VERSION[signoff.case_lang(case)]
+            return signoff.sign(s, case, typed_name, version, "eval", **kw)
 
     def state(self) -> str:
         with session_scope() as s:

@@ -99,14 +99,14 @@ class NewCase(BaseModel):
 def create_case(body: NewCase, request: Request) -> dict[str, Any]:
     with session_scope() as s:
         u = staff_user(request, s, ALL)
-        if body.language != "es-MX":
-            raise err(400, "language", "Spanish only in Phase 1")
+        if body.language.split("-")[0] not in ("es", "en"):
+            raise err(400, "language", "unsupported language")
         if body.assigned_reviewer:
             r = s.get(StaffUser, body.assigned_reviewer)
             if r is None or r.clinic_id != u.clinic_id:
                 raise err(400, "bad_reviewer", "unknown reviewer")
         c = Case(clinic_id=u.clinic_id, first_name=body.first_name.strip(), last_name=body.last_name.strip(),
-                 phone=body.phone, settings={"patient_mode": body.patient_mode},
+                 phone=body.phone, language=body.language, settings={"patient_mode": body.patient_mode},
                  assigned_reviewer=body.assigned_reviewer, created_by=u.id, created_at=now())
         s.add(c)
         s.flush()
@@ -349,9 +349,10 @@ def invite_staff(body: NewStaff, request: Request) -> dict[str, Any]:
         u = staff_user(request, s, ("admin",))
         if body.role not in ("intake", "reviewer", "admin"):
             raise err(400, "bad_role", "role must be intake, reviewer or admin")
-        if s.scalars(select(StaffUser).where(StaffUser.email == body.email.lower())).first():
+        email = body.email.strip().lower()
+        if s.scalars(select(StaffUser).where(StaffUser.email == email)).first():
             raise err(409, "exists", "email already registered")
-        x = StaffUser(clinic_id=u.clinic_id, name=body.name, email=body.email.lower(), role=body.role,
+        x = StaffUser(clinic_id=u.clinic_id, name=body.name, email=email, role=body.role,
                       password_hash=auth.hash_password(body.password))
         s.add(x)
         s.flush()

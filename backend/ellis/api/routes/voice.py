@@ -25,6 +25,7 @@ from typing import Any
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from ...config import settings
+from ...db import Case, session_scope
 from ...services import auth
 from ...services.case_service import today
 from ...voice import cartesia
@@ -68,8 +69,18 @@ class VoiceSession:
     async def run(self) -> None:
         start = await self.ws.receive_json()
         want_voice = start.get("mode", "voice") == "voice"
-        language = start.get("language") if start.get("language") in ("es", "en") else "es"
-        locale = start.get("locale") or ("en-US" if language == "en" else "es-MX")
+        # The case's persisted language is the fallback when the client doesn't specify one (e.g. an older
+        # client, or a returning session whose frontend state hasn't loaded the case yet), so a session never
+        # silently reverts to Spanish for an applicant who chose English.
+        case_locale = "es-MX"
+        with session_scope() as cs_s:
+            case = cs_s.get(Case, self.case_id)
+            if case and case.language:
+                case_locale = case.language
+        default_lang = "en" if case_locale.startswith("en") else "es"
+        language = start.get("language") if start.get("language") in ("es", "en") else default_lang
+        locale = start.get("locale") or (case_locale if language == default_lang else
+                                         ("en-US" if language == "en" else "es-MX"))
         from ...voice.llm import extractor
         self.liaison = Liaison(InProcessClient(self.case_id), today=today(),
                                channel="voice" if want_voice else "text", llm=extractor(), language=language)

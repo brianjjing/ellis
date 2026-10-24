@@ -67,6 +67,12 @@ export default function ApplicantApp({ token }: { token: string }) {
   useEffect(() => {
     exchange().then((d) => {
       if (!d) return
+      // Resume in whatever language the applicant already chose (persisted on the case), so a returning
+      // session doesn't silently fall back to Spanish. The 'language' screen only shows on a brand-new case.
+      if (d.language) {
+        setLocale(d.language)
+        setLang(d.language.startsWith('en') ? 'en' : 'es')
+      }
       if (d.state === 'signed') setScreen('packet')
       else if (d.state === 'ready') setScreen('review')
       else if (d.state !== 'consent_pending') setScreen('progress')
@@ -108,7 +114,10 @@ export default function ApplicantApp({ token }: { token: string }) {
         <span className="wordmark">Ellis</span>
       </header>
 
-      {screen === 'language' && <LanguageSelect onChoose={(l, lc) => { setLang(l); setLocale(lc); setScreen('welcome') }} />}
+      {screen === 'language' && <LanguageSelect onChoose={(l, lc) => {
+        setLang(l); setLocale(lc); setScreen('welcome')
+        api('/api/a/language', { body: { locale: lc } }).catch(() => undefined)
+      }} />}
       {screen === 'welcome' && <Welcome data={data} lang={lang} onStart={() => setScreen('mic')} onExplain={() => setScreen('explain')} />}
       {screen === 'explain' && <Explainer lang={lang} onBack={() => setScreen('welcome')} />}
       {screen === 'mic' && <MicPrompt lang={lang} onGo={(voice) => { setWantVoice(voice); setScreen('session') }} />}

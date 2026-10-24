@@ -12,12 +12,23 @@ from . import case_service as cs
 from . import catalog, keywords
 from .values import display_value
 
-ATTESTATION_VERSION = "es-1"
-ATTESTATION_ES = ("Revisé todas mis respuestas y son verdaderas según mi conocimiento. "
-                  "Entiendo que Ellis no envía mi solicitud.")
+ATTESTATION_VERSION = {"es": "es-1", "en": "en-1"}
+ATTESTATION_TEXT = {
+    "es": ("Revisé todas mis respuestas y son verdaderas según mi conocimiento. "
+          "Entiendo que Ellis no envía mi solicitud."),
+    "en": ("I reviewed all my answers and they are true to my knowledge. "
+          "I understand that Ellis does not submit my application."),
+}
+DEFERRED_TEXT = {"es": "Para completar con su profesional con licencia",
+                 "en": "To complete with your licensed professional"}
+
+
+def case_lang(case: Case) -> str:
+    return "en" if (case.language or "").startswith("en") else "es"
 
 
 def review_view(s: Session, case: Case) -> dict[str, Any]:
+    lang = case_lang(case)
     cur = cs.current_facts(s, case.id)
     sections = []
     for sec in catalog.sections():
@@ -30,16 +41,18 @@ def review_view(s: Session, case: Case) -> dict[str, Any]:
                 last4 = cs.vault_last4(s, f.id)
                 shown = f"•••• {last4}" if last4 else "••••"
             elif v == catalog.DEFERRED:
-                shown = "Para completar con su profesional con licencia"
+                shown = DEFERRED_TEXT[lang]
             else:
-                shown = cs.spoken_value(key, v) if not isinstance(v, str) or catalog.is_date_field(key) else str(v)
-            items.append({"field": key, "label": catalog.label_es(key), "value": shown, "status": f.status,
+                shown = cs.spoken_value(key, v, lang=lang) if not isinstance(v, str) or catalog.is_date_field(key) else str(v)
+            label = catalog.label_en(key) if lang == "en" else catalog.label_es(key)
+            items.append({"field": key, "label": label, "value": shown, "status": f.status,
                           "deferred": v == catalog.DEFERRED})
         if items:
-            sections.append({"key": sec["key"], "label": sec["label_es"],
+            sec_label = sec.get("label_en") if lang == "en" else sec["label_es"]
+            sections.append({"key": sec["key"], "label": sec_label or sec["label_es"],
                              "items": sorted(items, key=lambda i: _order(i["field"]))})
-    return {"sections": sections, "attestation_text": ATTESTATION_ES, "attestation_version": ATTESTATION_VERSION,
-            "state": case.state}
+    return {"sections": sections, "attestation_text": ATTESTATION_TEXT[lang],
+            "attestation_version": ATTESTATION_VERSION[lang], "state": case.state}
 
 
 def _order(key: str) -> tuple:
@@ -63,12 +76,15 @@ def sign(s: Session, case: Case, typed_name: str, attestation_version: str, user
          assisted_by: str | None = None) -> dict[str, Any]:
     if case.state != "ready":
         raise cs.CaseError("not_ready", "the case is not ready for sign-off", status=409)
-    if attestation_version != ATTESTATION_VERSION:
+    lang = case_lang(case)
+    if attestation_version != ATTESTATION_VERSION[lang]:
         raise cs.CaseError("attestation_version", "unknown attestation version")
     vals = cs.fact_values(s, case.id)
     legal = f"{vals.get('name.given', case.first_name)} {vals.get('name.family', case.last_name)}"
     if keywords.fold(typed_name) != keywords.fold(legal):
-        raise cs.CaseError("name_mismatch", "Escriba su nombre como aparece en sus documentos.", "typed_name")
+        msg = ("Type your name as it appears on your documents." if lang == "en"
+              else "Escriba su nombre como aparece en sus documentos.")
+        raise cs.CaseError("name_mismatch", msg, "typed_name")
     gate = cs.gate_status(s, case)
     if not gate["passes"]:
         raise cs.CaseError("gate", "the case no longer passes the gate", status=409)

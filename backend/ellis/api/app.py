@@ -29,9 +29,24 @@ class NoToolBodies(logging.Filter):
         return "/tools/" not in msg or "body" not in msg.lower()
 
 
+def _warn_insecure_defaults() -> None:
+    """The tool/session secrets (and the vault key, which falls back to a hash of the session secret) default
+    to fixed, publicly-known dev values. Fine for local/demo use; silent in a real deployment, it means case
+    data (including the vault-encrypted A-number, SSN, passport number and income) isn't actually protected.
+    """
+    if settings.tool_secret == "dev-tool-secret":
+        log.warning("ELLIS_TOOL_SECRET is unset; using the default dev value. Set a real secret before any "
+                   "non-local use.")
+    if settings.session_secret == "dev-session-secret-change-me":
+        log.warning("ELLIS_SESSION_SECRET is unset; using the default dev value. Session cookies and the "
+                   "vault encryption key fallback both derive from this -- set a real secret before any "
+                   "non-local use.")
+
+
 def create_app(start_workers: bool | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(_: FastAPI):
+        _warn_insecure_defaults()
         if os.environ.get("ELLIS_AUTO_CREATE", "1") == "1":
             create_all()
         run = settings.run_agents_inprocess if start_workers is None else start_workers

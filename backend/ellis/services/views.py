@@ -179,6 +179,7 @@ def applicant_case(s: Session, case: Case) -> dict[str, Any]:
     b = cs.latest_briefing(s, case.id)
     return {
         "case_id": case.id, "first_name": case.first_name, "state": case.state, "sub_mode": case.sub_mode,
+        "language": case.language,
         "clinic": {"name": clinic.name, "phone": (clinic.settings or {}).get("phone"), "is_demo": clinic.is_demo},
         "patient_mode": bool((case.settings or {}).get("patient_mode")),
         "facts": facts_panel(s, case), "progress": section_progress(s, case), "team": team_cards(s, case),

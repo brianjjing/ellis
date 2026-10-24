@@ -21,8 +21,13 @@ _lock = threading.Lock()
 
 @router.post("/webhooks/creao")
 async def creao(request: Request) -> dict[str, Any]:
+    # Fail closed: this endpoint writes case data (facts, flags, memos) through the same path as a trusted
+    # agent proposal. Without CREAO_WEBHOOK_SECRET set, there is no way to tell a real Creao run from anyone
+    # who finds the URL, so refuse rather than silently accept unauthenticated writes.
     secret = os.environ.get("CREAO_WEBHOOK_SECRET")
-    if secret and not hmac.compare_digest(request.headers.get("x-creao-signature", ""), secret):
+    if not secret:
+        raise err(503, "not_configured", "CREAO_WEBHOOK_SECRET is not set")
+    if not hmac.compare_digest(request.headers.get("x-creao-signature", ""), secret):
         raise err(401, "unauthorized", "bad signature")
     delivery = request.headers.get("x-creao-delivery-id", "")
     with _lock:

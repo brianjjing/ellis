@@ -51,6 +51,26 @@ def get_case(request: Request) -> dict[str, Any]:
         return views.applicant_case(s, case)
 
 
+class LanguageReq(BaseModel):
+    locale: str
+
+
+SUPPORTED_LOCALE_PREFIXES = ("es", "en")
+
+
+@router.post("/language")
+def set_language(body: LanguageReq, request: Request) -> dict[str, Any]:
+    """Persists the applicant's chosen conversation language/dialect on the case, so a returning session
+    (or the review/sign-off screens) uses it instead of silently reverting to Spanish."""
+    if not body.locale.split("-")[0] in SUPPORTED_LOCALE_PREFIXES:
+        raise err(400, "unsupported_language", "unsupported language")
+    with session_scope() as s:
+        case = applicant_case(request, s)
+        case.language = body.locale
+        cs.emit(s, case, "case.language_changed", {"language": body.locale}, "applicant", "applicant")
+        return {"language": case.language}
+
+
 class SecureReq(BaseModel):
     field: str
     value: Any

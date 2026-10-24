@@ -3,7 +3,12 @@ import { useEffect, useState } from 'react'
 import { api, ApiError } from '../api'
 import { Roadmap, type CaseView } from './ApplicantApp'
 
+function langOf(data: CaseView): 'es' | 'en' {
+  return (data.language || 'es-MX').startsWith('en') ? 'en' : 'es'
+}
+
 export function ReviewSignoff({ data, reload, onSigned, onBack }: { data: CaseView; reload: () => void; onSigned: () => void; onBack: () => void }) {
+  const lang = langOf(data)
   const [view, setView] = useState<any>(null)
   const [open, setOpen] = useState<string | null>(null)
   const [checked, setChecked] = useState(false)
@@ -12,15 +17,15 @@ export function ReviewSignoff({ data, reload, onSigned, onBack }: { data: CaseVi
   const [busy, setBusy] = useState(false)
   useEffect(() => { api('/api/a/review').then(setView).catch((e) => setErr(e.message)) }, [data.state])
 
-  if (err && !view) return <main className="a-main"><p className="lead">{err}</p><button className="btn lg" onClick={onBack}>Volver</button></main>
-  if (!view) return <main className="a-main"><p className="lead">Cargando…</p></main>
+  if (err && !view) return <main className="a-main"><p className="lead">{err}</p><button className="btn lg" onClick={onBack}>{lang === 'en' ? 'Back' : 'Volver'}</button></main>
+  if (!view) return <main className="a-main"><p className="lead">{lang === 'en' ? 'Loading…' : 'Cargando…'}</p></main>
 
   const listen = (sec: any) => {
     const synth = window.speechSynthesis
     if (!synth) return
     synth.cancel()
     const u = new SpeechSynthesisUtterance(`${sec.label}. ` + sec.items.map((i: any) => `${i.label}: ${i.value}`).join('. '))
-    u.lang = 'es-MX'
+    u.lang = data.language || 'es-MX'
     synth.speak(u)
   }
   const wrong = async (sec: string) => {
@@ -35,18 +40,18 @@ export function ReviewSignoff({ data, reload, onSigned, onBack }: { data: CaseVi
       await api('/api/a/signoff', { body: { typed_name: name, attestation_version: view.attestation_version } })
       onSigned()
     } catch (e) {
-      setErr(e instanceof ApiError ? e.message : 'No se pudo firmar.')
+      setErr(e instanceof ApiError ? e.message : (lang === 'en' ? 'Could not sign.' : 'No se pudo firmar.'))
     } finally {
       setBusy(false)
     }
   }
   return (
     <main className="a-main">
-      <div className="panel ok">Su clínica revisó su caso. Ahora revise usted cada respuesta.</div>
+      <div className="panel ok">{lang === 'en' ? 'Your clinic reviewed your case. Now review each answer yourself.' : 'Su clínica revisó su caso. Ahora revise usted cada respuesta.'}</div>
       {view.sections.map((sec: any) => (
         <section key={sec.key} className="acc">
           <button className="acc-head" aria-expanded={open === sec.key} onClick={() => setOpen(open === sec.key ? null : sec.key)}>
-            <span className="h3">{sec.label}</span><span className="soft">{sec.items.length} respuestas</span>
+            <span className="h3">{sec.label}</span><span className="soft">{sec.items.length} {lang === 'en' ? 'answers' : 'respuestas'}</span>
           </button>
           {open === sec.key && (
             <div className="acc-body">
@@ -57,8 +62,8 @@ export function ReviewSignoff({ data, reload, onSigned, onBack }: { data: CaseVi
                 </div>
               ))}
               <div className="btns">
-                <button className="btn md" onClick={() => listen(sec)}>Escuchar esta sección</button>
-                <button className="btn md danger" onClick={() => wrong(sec.key)}>Algo está mal aquí</button>
+                <button className="btn md" onClick={() => listen(sec)}>{lang === 'en' ? 'Listen to this section' : 'Escuchar esta sección'}</button>
+                <button className="btn md danger" onClick={() => wrong(sec.key)}>{lang === 'en' ? "Something's wrong here" : 'Algo está mal aquí'}</button>
               </div>
             </div>
           )}
@@ -68,11 +73,11 @@ export function ReviewSignoff({ data, reload, onSigned, onBack }: { data: CaseVi
         <input type="checkbox" checked={checked} onChange={(e) => setChecked(e.target.checked)} />
         <span>{view.attestation_text}</span>
       </label>
-      <label htmlFor="nm" className="field">Escriba su nombre completo, como aparece en sus documentos</label>
+      <label htmlFor="nm" className="field">{lang === 'en' ? 'Type your full legal name, as it appears on your documents' : 'Escriba su nombre completo, como aparece en sus documentos'}</label>
       <input id="nm" className="input" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
       {err && <p className="rust">{err}</p>}
-      <button className="btn lg primary a-big" disabled={!checked || !name.trim() || busy} onClick={sign}>{busy ? 'Preparando su paquete…' : 'Firmar'}</button>
-      <p className="small">Ellis no envía nada. Usted presenta la solicitud en su cuenta de USCIS, o su clínica la presenta por usted.</p>
+      <button className="btn lg primary a-big" disabled={!checked || !name.trim() || busy} onClick={sign}>{busy ? (lang === 'en' ? 'Preparing your packet…' : 'Preparando su paquete…') : (lang === 'en' ? 'Sign' : 'Firmar')}</button>
+      <p className="small">{lang === 'en' ? "Ellis doesn't send anything. You file in your USCIS account, or your clinic files for you." : 'Ellis no envía nada. Usted presenta la solicitud en su cuenta de USCIS, o su clínica la presenta por usted.'}</p>
     </main>
   )
 }
@@ -83,7 +88,15 @@ const KIND_ES: Record<string, string> = {
   professional_draft: 'Borrador para su profesional',
 }
 
+const KIND_EN: Record<string, string> = {
+  n400_pdf: 'N-400 form draft', online_copy_sheet: 'Online copy sheet', evidence_index: 'Evidence index',
+  fee_sheet: 'Fee sheet', filing_checklist: 'Filing checklist', i912_pdf: 'I-912 form draft',
+  professional_draft: 'Draft for your professional',
+}
+
 export function PacketReady({ data }: { data: CaseView }) {
+  const lang = langOf(data)
+  const KIND = lang === 'en' ? KIND_EN : KIND_ES
   const [files, setFiles] = useState<any[]>([])
   const [draft, setDraft] = useState<any>(null)
   useEffect(() => { api('/api/a/packet').then((r) => setFiles(r.files)).catch(() => undefined) }, [data.state])
@@ -92,23 +105,25 @@ export function PacketReady({ data }: { data: CaseView }) {
   const proFiles = async () => { await api('/api/a/representation', { body: { professional_files: true } }); location.reload() }
   return (
     <main className="a-main">
-      <h1 className="display">{referred ? 'Su profesional le ayuda con el resto.' : 'Su paquete está listo.'}</h1>
-      {files.length > 0 && <p className="lead">Su clínica también tiene una copia.</p>}
+      <h1 className="display">{referred
+        ? (lang === 'en' ? 'Your professional will help with the rest.' : 'Su profesional le ayuda con el resto.')
+        : (lang === 'en' ? 'Your packet is ready.' : 'Su paquete está listo.')}</h1>
+      {files.length > 0 && <p className="lead">{lang === 'en' ? 'Your clinic also has a copy.' : 'Su clínica también tiene una copia.'}</p>}
       <div className="stack" style={{ gap: 10 }}>
-        {files.map((f) => <a key={f.id} className="btn lg strong" href={f.url} target="_blank" rel="noreferrer">{KIND_ES[f.kind] ?? f.filename}</a>)}
-        {draft && <a className="btn lg strong" href={draft.url} target="_blank" rel="noreferrer">{KIND_ES.professional_draft}</a>}
+        {files.map((f) => <a key={f.id} className="btn lg strong" href={f.url} target="_blank" rel="noreferrer">{KIND[f.kind] ?? f.filename}</a>)}
+        {draft && <a className="btn lg strong" href={draft.url} target="_blank" rel="noreferrer">{KIND.professional_draft}</a>}
       </div>
       {!files.length && !referred && (
         <section className="panel">
-          <p className="lead">¿Ya habló con un profesional con licencia?</p>
+          <p className="lead">{lang === 'en' ? 'Have you already talked to a licensed professional?' : '¿Ya habló con un profesional con licencia?'}</p>
           <div className="btns">
-            <button className="btn md" onClick={proDraft}>Descargar un borrador para mi profesional</button>
-            <button className="btn md" onClick={proFiles}>Mi profesional presentará por mí</button>
+            <button className="btn md" onClick={proDraft}>{lang === 'en' ? 'Download a draft for my professional' : 'Descargar un borrador para mi profesional'}</button>
+            <button className="btn md" onClick={proFiles}>{lang === 'en' ? 'My professional will file for me' : 'Mi profesional presentará por mí'}</button>
           </div>
         </section>
       )}
-      <h2 className="h3 rule">¿Qué sigue?</h2>
-      <p className="lead">La solicitud la presenta usted o su clínica. Ellis nunca la envía.</p>
+      <h2 className="h3 rule">{lang === 'en' ? "What's next?" : '¿Qué sigue?'}</h2>
+      <p className="lead">{lang === 'en' ? 'You or your clinic file the application. Ellis never submits it.' : 'La solicitud la presenta usted o su clínica. Ellis nunca la envía.'}</p>
       <Roadmap data={data} />
     </main>
   )
