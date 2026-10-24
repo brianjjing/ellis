@@ -60,14 +60,16 @@ def session_start(body: SessionStart, request: Request) -> dict[str, Any]:
 def call_config(s, case: Case) -> dict[str, Any]:
     from ...services.clinic_service import clinic_of
     patient = bool((case.settings or {}).get("patient_mode"))
-    locale = case.language or "es-MX"
+    locale = case.language or "en-US"
     lang = "en" if locale.startswith("en") else "es"
     return {"case_state": case.state, "first_name": case.first_name, "clinic_name": clinic_of(s, case).name,
             "consent_given": cs.consent_given(s, case), "patient_mode": patient, "language": lang, "locale": locale,
             "stt": {"language": lang, "turn_profile": "patient" if patient else "default"},
-            "tts": {"language": lang, "locale": locale, "speed": 0.85 if patient else 1.0, "add_timestamps": True},
-            "silence_thresholds_s": [12, 30, 90] if patient else [8, 20, 60],
-            "briefing_version": cs.latest_briefing_version(s, case.id)}
+            "tts": {"language": lang, "locale": locale, "add_timestamps": True,
+                    "speed": 0.85 if patient or cs.applicant_settings(case)["voice_speed"] == "slow" else 1.0},
+            # seconds of silence before a check-in: long enough that they've really drifted off, not just thinking
+            "silence_thresholds_s": [25, 60, 150] if patient else [15, 45, 120],
+            "settings": cs.applicant_settings(case), "briefing_version": cs.latest_briefing_version(s, case.id)}
 
 
 @router.post("/session_end")
@@ -161,7 +163,8 @@ def request_secure_entry(body: FieldReq, request: Request) -> dict[str, Any]:
     with session_scope() as s:
         case = tool_case(request, s)
         d = catalog.field_def(body.field)
-        cs.push(s, case, "open_secure_entry", {"field": body.field, "label": catalog.label_es(body.field),
+        label = catalog.label_en(body.field) if cs.case_lang(case) == "en" else catalog.label_es(body.field)
+        cs.push(s, case, "open_secure_entry", {"field": body.field, "label": label,
                                                "type": (d or {}).get("type")})
         return {"ok": True, "script_key": "secure_entry"}
 
@@ -172,12 +175,12 @@ class UploadReq(BaseModel):
 
 @router.post("/request_upload")
 def request_upload(body: UploadReq, request: Request) -> dict[str, Any]:
-    from ...services.documents import document_label_es
+    from ...services.documents import document_label
     with session_scope() as s:
         case = tool_case(request, s)
-        cs.push(s, case, "open_upload", {"document_type": body.document_type,
-                                         "label": document_label_es(body.document_type)})
-        return {"ok": True, "script_key": "upload_request", "document_label": document_label_es(body.document_type)}
+        label = document_label(body.document_type, cs.case_lang(case))
+        cs.push(s, case, "open_upload", {"document_type": body.document_type, "label": label})
+        return {"ok": True, "script_key": "upload_request", "document_label": label}
 
 
 @router.post("/request_biographics")

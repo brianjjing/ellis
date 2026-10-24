@@ -85,6 +85,15 @@ async def voice_id_for(locale: str = "es-MX") -> str | None:
     return best
 
 
+async def warm_voices() -> None:
+    """Look the voices up once at startup: /voices takes 3-9 s, too slow to pay inside a session's connect."""
+    for loc in ("en-US", "es-MX"):
+        try:
+            await voice_id_for(loc)
+        except Exception as e:  # noqa: BLE001 - a session will retry the lookup itself
+            log.warning("voice lookup for %s failed: %r", loc, e)
+
+
 class TTS:
     """One Sonic WebSocket per call; one context per spoken line."""
 

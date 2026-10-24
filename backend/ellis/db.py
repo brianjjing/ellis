@@ -62,7 +62,7 @@ class Case(Base):
     first_name: Mapped[str] = mapped_column(String(100))
     last_name: Mapped[str] = mapped_column(String(100))
     phone: Mapped[str | None] = mapped_column(String(40), nullable=True)
-    language: Mapped[str] = mapped_column(String(10), default="es-MX")
+    language: Mapped[str] = mapped_column(String(10), default="en-US")
     state: Mapped[str] = mapped_column(String(30), default="consent_pending")
     sub_mode: Mapped[str | None] = mapped_column(String(30), nullable=True)
     settings: Mapped[dict] = mapped_column(JSONType, default=dict)  # patient_mode, ...

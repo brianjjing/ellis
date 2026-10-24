@@ -1,8 +1,24 @@
 // A8 review and sign-off; A9 packet ready. Professional-draft path for stop-now cases (F2.08–F2.09).
 import { useEffect, useState } from 'react'
 import { api, ApiError } from '../api'
-import { Roadmap, type CaseView } from './ApplicantApp'
+import Shell from '../Shell'
+import { navigate } from '../main'
+import { Roadmap, useCase, type CaseView } from './ApplicantApp'
 import { langOf } from './i18n'
+
+// /review: sign-off once the clinic marks the case ready, then the packet.
+export function ReviewPage() {
+  const { data, reload } = useCase()
+  const signed = data.state === 'signed' || data.state === 'referred_out'
+  return (
+    <Shell active="form">
+      <div className="main">
+        <header className="bar"><h1 className="h1">{signed ? 'Your packet' : 'Review and sign'}</h1></header>
+        {signed ? <PacketReady data={data} /> : <ReviewSignoff data={data} reload={reload} onSigned={reload} onBack={() => navigate('/form')} />}
+      </div>
+    </Shell>
+  )
+}
 
 export function ReviewSignoff({ data, reload, onSigned, onBack }: { data: CaseView; reload: () => void; onSigned: () => void; onBack: () => void }) {
   const lang = langOf(data)
@@ -22,7 +38,7 @@ export function ReviewSignoff({ data, reload, onSigned, onBack }: { data: CaseVi
     if (!synth) return
     synth.cancel()
     const u = new SpeechSynthesisUtterance(`${sec.label}. ` + sec.items.map((i: any) => `${i.label}: ${i.value}`).join('. '))
-    u.lang = data.language || 'es-MX'
+    u.lang = data.language || 'en-US'
     synth.speak(u)
   }
   const wrong = async (sec: string) => {
@@ -98,8 +114,16 @@ export function PacketReady({ data }: { data: CaseView }) {
   const [draft, setDraft] = useState<any>(null)
   useEffect(() => { api('/api/a/packet').then((r) => setFiles(r.files)).catch(() => undefined) }, [data.state])
   const referred = data.state === 'referred_out'
-  const proDraft = async () => setDraft(await api('/api/a/professional_draft', { body: {} }))
+  const proDraft = async () => { const d = await api('/api/a/professional_draft', { body: {} }); setDraft(d); window.open(d.url, '_blank') }
   const proFiles = async () => { await api('/api/a/representation', { body: { professional_files: true } }); location.reload() }
+  // the download URL is signed with a short TTL, so re-fetch it right before opening instead of
+  // reusing whatever was fetched when this screen first loaded -- otherwise it goes stale if the
+  // applicant takes a while to read the review before clicking.
+  const openFile = async (id: string) => {
+    const r = await api('/api/a/packet')
+    const f = r.files.find((x: any) => x.id === id)
+    if (f) window.open(f.url, '_blank')
+  }
   return (
     <main className="a-main">
       <h1 className="display">{referred
@@ -107,8 +131,8 @@ export function PacketReady({ data }: { data: CaseView }) {
         : (lang === 'en' ? 'Your packet is ready.' : 'Su paquete está listo.')}</h1>
       {files.length > 0 && <p className="lead">{lang === 'en' ? 'Your clinic also has a copy.' : 'Su clínica también tiene una copia.'}</p>}
       <div className="stack" style={{ gap: 10 }}>
-        {files.map((f) => <a key={f.id} className="btn lg strong" href={f.url} target="_blank" rel="noreferrer">{KIND[f.kind] ?? f.filename}</a>)}
-        {draft && <a className="btn lg strong" href={draft.url} target="_blank" rel="noreferrer">{KIND.professional_draft}</a>}
+        {files.map((f) => <button key={f.id} className="btn lg strong" onClick={() => openFile(f.id)}>{KIND[f.kind] ?? f.filename}</button>)}
+        {draft && <p className="lead">{KIND.professional_draft} {lang === 'en' ? 'downloaded.' : 'descargado.'}</p>}
       </div>
       {!files.length && !referred && (
         <section className="panel">

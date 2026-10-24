@@ -80,7 +80,6 @@ button { font-family: inherit; }
 .card-stack { position: fixed; z-index: 5; left: 0; right: 0; bottom: 0; padding: 12px; display: flex; flex-direction: column; gap: 10px; max-height: 70vh; overflow-y: auto; pointer-events: none; }
 .referral { pointer-events: auto; max-width: 560px; margin: 0 auto; width: 100%; box-sizing: border-box; padding: 16px; background: var(--white); border: 2px solid var(--gold); border-radius: 8px; box-shadow: 0 6px 24px rgba(14, 25, 43, .18); display: flex; flex-direction: column; gap: 8px; }
 .referral.stop { border-color: var(--ink); }
-.referral ul { margin: 0; padding-left: 20px; }
 
 .sheet { margin: auto auto 0; max-width: 560px; border-radius: 10px 10px 0 0; max-height: 90vh; overflow-y: auto; }
 .sheet-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
@@ -137,3 +136,6 @@ button { font-family: inherit; }
 .kv dd { margin: 0; font-size: 14px; }
 @media (max-width: 800px) { .kv { grid-template-columns: 1fr; } .thumb { width: 100px; } }
 .btn:disabled, .btn[disabled] { opacity: .45; cursor: not-allowed; }
+/* The profile link at the foot of the sidebar marks its page like the nav links above it. */
+.account[aria-current='page'] { background: var(--white); box-shadow: inset 3px 0 0 var(--green); }
+@media (min-width: 800px) { .sidebar { min-height: 100vh; } } /* side by side: profile pinned to the bottom */

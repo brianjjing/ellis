@@ -55,15 +55,15 @@ export default function CaseList({ me, tick }: { me: Me; tick: number }) {
 }
 
 const LANGUAGE_OPTIONS = [
+  { value: 'en-US', label: 'English (US)' },
+  { value: 'en-GB', label: 'English (UK)' },
   { value: 'es-MX', label: 'Spanish (Mexico)' },
   { value: 'es-US', label: 'Spanish (US)' },
   { value: 'es-ES', label: 'Spanish (Spain)' },
-  { value: 'en-US', label: 'English (US)' },
-  { value: 'en-GB', label: 'English (UK)' },
 ]
 
 function NewCase({ reviewers, onClose }: { reviewers: any[]; me: Me; onClose: () => void }) {
-  const [v, setV] = useState({ first_name: '', last_name: '', phone: '', language: 'es-MX', patient_mode: false, assigned_reviewer: reviewers[0]?.id ?? '' })
+  const [v, setV] = useState({ first_name: '', last_name: '', phone: '', language: 'en-US', patient_mode: false, assigned_reviewer: reviewers[0]?.id ?? '' })
   const [link, setLink] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const save = async () => {

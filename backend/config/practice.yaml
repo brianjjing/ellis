@@ -1,0 +1,23 @@
+# Interview practice the chat agent may use. Civics answers come only from here, never from the model's
+# memory (the official test changes).
+# ponytail: same bank as frontend/src/Interview.tsx; serve one copy from the API if the two drift.
+officer:
+  - Have you traveled outside the United States since you became a permanent resident?
+  - What is your current home address?
+  - Where do you work, and how long have you worked there?
+  - Are you married? How long have you been married?
+  - Have you ever been arrested, cited or detained by a law enforcement officer?
+civics:
+  - q: What is the supreme law of the land?
+    answer: The Constitution
+    why: It sets up the government, and every other law has to follow it.
+  - q: What do we call the first ten amendments to the Constitution?
+    answer: The Bill of Rights
+    why: It protects rights like free speech and religion.
+  - q: How many U.S. senators are there?
+    answer: One hundred (100)
+    why: Each state has two senators.
+  - q: Who is in charge of the executive branch?
+    answer: The President
+    why: The President also commands the military.
+reading_sentence: Citizens have the right to vote.

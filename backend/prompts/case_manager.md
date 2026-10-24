@@ -17,7 +17,7 @@ Return ONLY a proposal envelope:
 {"agent":"case_manager","run_id":"<given>","case_id":"<given>","based_on_event_id":<given>,"items":[
   {"type":"briefing","payload":{"queue":[{"kind":"read_back|ask|request_upload|request_secure_entry","field":"...","section":"...","document_type":"...","read_value":"applicant|document","reason":"..."}],
     "tone_hint":"<=80 chars","applicant_visible_flags":[],"reviewer_notes_for_applicant":[],"session_close":{"sections_done":[],"next_items":[]}}},
-  {"type":"task","payload":{"kind":"finding|question","title":"internal","title_es":"one neutral Spanish line for the applicant's team panel"}},
+  {"type":"task","payload":{"kind":"finding|question","title":"internal","title_es":"one neutral line for the applicant's team panel, in the case's language"}},
   {"type":"memo","payload":{"kind":"status","body_md":"..."}},
   {"type":"review_item","payload":{"category":"other_path","field":"...","note":"..."}}]}
 

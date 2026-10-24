@@ -30,18 +30,24 @@ class SessionReq(BaseModel):
 def exchange(body: SessionReq, request: Request, response: Response) -> dict[str, Any]:
     ip = request.client.host if request.client else "?"
     if auth.rate_limited(f"link:{ip}"):
-        raise err(429, "rate_limited", "Demasiados intentos. Espere un minuto.")
+        raise err(429, "rate_limited", "Too many tries. Please wait a minute.")
     with session_scope() as s:
         link, problem = auth.resolve_link(s, body.token)
         if problem == "expired":
-            raise err(410, "link_expired", "Este enlace ya venció. Pídale uno nuevo a su clínica.")
+            raise err(410, "link_expired", "This link has expired. Ask your clinic for a new one.")
         if link is None:
-            raise err(404, "link_invalid", "Este enlace no es válido. Pídale uno nuevo a su clínica.")
+            raise err(404, "link_invalid", "This link isn't valid. Ask your clinic for a new one.")
         case = s.get(Case, link.case_id)
         cs.emit(s, case, "link.opened", {"link_id": link.id}, "applicant", "applicant")
         cookie = auth.sign({"kind": "applicant", "case_id": case.id, "link_id": link.id})
         response.set_cookie(APPLICANT_COOKIE, cookie, httponly=True, samesite="lax", max_age=12 * 3600)
         return views.applicant_case(s, case)
+
+
+@router.post("/logout")
+def logout(response: Response) -> dict[str, Any]:
+    response.delete_cookie(APPLICANT_COOKIE)
+    return {"ok": True}
 
 
 @router.get("/case")
@@ -69,6 +75,19 @@ def set_language(body: LanguageReq, request: Request) -> dict[str, Any]:
         case.language = body.locale
         cs.emit(s, case, "case.language_changed", {"language": body.locale}, "applicant", "applicant")
         return {"language": case.language}
+
+
+class ConsentReq(BaseModel):
+    agree: bool
+
+
+@router.post("/consent")
+def set_consent(body: ConsentReq, request: Request) -> dict[str, Any]:
+    """The settings button: consent lasts the whole account until the applicant changes it here."""
+    with session_scope() as s:
+        case = applicant_case(request, s)
+        cs.record_fact(s, case, "consent", body.agree, actor="applicant", actor_type="applicant")
+        return {"consent_given": cs.consent_given(s, case)}
 
 
 class SecureReq(BaseModel):
@@ -154,7 +173,8 @@ def get_review(request: Request) -> dict[str, Any]:
     with session_scope() as s:
         case = applicant_case(request, s)
         if case.state not in ("ready", "signed"):
-            raise err(409, "not_ready", "Su clínica todavía está revisando su caso.")
+            raise err(409, "not_ready", "Your clinic is still reviewing your case." if cs.case_lang(case) == "en"
+                      else "Su clínica todavía está revisando su caso.")
         return signoff.review_view(s, case)
 
 

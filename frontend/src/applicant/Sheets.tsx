@@ -18,13 +18,13 @@ const DOCS_ES: [string, string][] = [
   ['lease', 'Contrato de renta'], ['court_record', 'Recibo o documento de la corte'], ['tax_transcript', 'Comprobante de impuestos'],
   ['benefit_letter', 'Carta de beneficios'], ['other', 'Otro'],
 ]
-const DOCS_EN: [string, string][] = [
+export const DOCS_EN: [string, string][] = [
   ['green_card', 'Green card'], ['passport', 'Passport'], ['marriage_certificate', 'Marriage certificate'],
   ['lease', 'Lease'], ['court_record', 'Court record or receipt'], ['tax_transcript', 'Tax transcript'],
   ['benefit_letter', 'Benefit letter'], ['other', 'Other'],
 ]
 
-export function UploadSheet({ initial, lang = 'es', onClose, onUploaded }: { initial?: string; lang?: Lang; onClose: () => void; onUploaded: (id: string) => void }) {
+export function UploadSheet({ initial, lang = 'en', onClose, onUploaded }: { initial?: string; lang?: Lang; onClose: () => void; onUploaded: (id: string) => void }) {
   const en = lang === 'en'
   const DOCS = en ? DOCS_EN : DOCS_ES
   const [type, setType] = useState<string | null>(initial ?? null)
@@ -86,7 +86,7 @@ const MASKS_EN: Record<string, { label: string; placeholder: string }> = {
   'fee.income': { label: 'Annual household income (dollars)', placeholder: '15000' },
 }
 
-export function SecureEntrySheet({ field, label, lang = 'es', onClose }: { field: string; label: string; lang?: Lang; onClose: () => void }) {
+export function SecureEntrySheet({ field, label, lang = 'en', onClose }: { field: string; label: string; lang?: Lang; onClose: () => void }) {
   const en = lang === 'en'
   const MASKS = en ? MASKS_EN : MASKS_ES
   const [value, setValue] = useState('')
@@ -131,7 +131,7 @@ const PICKS_EN: Record<string, [string, string][]> = {
 }
 const PICK_LABEL_EN: Record<string, string> = { sex: 'Sex', eye_color: 'Eye color', hair_color: 'Hair color', ethnicity: 'Ethnicity', race: 'Race' }
 
-export function BiographicsSheet({ lang = 'es', onClose }: { lang?: Lang; onClose: () => void }) {
+export function BiographicsSheet({ lang = 'en', onClose }: { lang?: Lang; onClose: () => void }) {
   const en = lang === 'en'
   const PICKS = en ? PICKS_EN : PICKS_ES
   const PICK_LABEL = en ? PICK_LABEL_EN : PICK_LABEL_ES
@@ -160,23 +160,19 @@ export function BiographicsSheet({ lang = 'es', onClose }: { lang?: Lang; onClos
   )
 }
 
-export function ReferralCard({ card, lang = 'es', onOk, onNotMe }: { card: any; lang?: Lang; onOk: () => void; onNotMe: () => void }) {
-  const stop = card.variant === 'stop_now'
+// Stop-now only: flag-and-continue items show as a note beside the chat reply that raised them (Chat.tsx).
+export function ReferralCard({ card, lang = 'en', onOk, onNotMe }: { card: any; lang?: Lang; onOk: () => void; onNotMe: () => void }) {
   const en = lang === 'en'
   return (
-    <section className={`referral ${stop ? 'stop' : ''} enter`} role="alert">
-      <div className="label">{stop ? (en ? 'YOUR CLINIC WILL CONTACT YOU' : 'SU CLÍNICA LE VA A CONTACTAR') : (en ? 'FOR REVIEW' : 'PARA REVISIÓN')}</div>
+    <section className="referral stop enter" role="alert">
+      <div className="label">{en ? 'YOUR CLINIC WILL CONTACT YOU' : 'SU CLÍNICA LE VA A CONTACTAR'}</div>
       <h2 className="h3">{card.title}</h2>
-      {stop ? <p>{card.body}</p> : <>
-        {card.item && <p className="lead">{card.item}</p>}
-        {card.prepare?.length > 0 && <><div className="field">{en ? 'What you can prepare:' : 'Qué puede preparar:'}</div><ul>{card.prepare.map((p: string) => <li key={p}>{p}</li>)}</ul></>}
-        <p className="small">{en ? "Ellis can't advise you on this." : 'Ellis no puede aconsejarle sobre esto.'}</p>
-      </>}
+      <p>{card.body}</p>
       {(card.who || card.phone) && <p className="small">{en ? 'Who can help: ' : 'Quién le ayuda: '}{card.who ?? (en ? 'your clinic' : 'su clínica')}{card.phone ? ` · ${card.phone}` : ''}</p>}
       {card.show_emergency && <p className="rust"><strong>{en ? 'If someone is in danger right now: call 911 or 988.' : 'Si alguien corre peligro ahora: llame al 911 o al 988.'}</strong></p>}
       <div className="btns">
         <button className="btn md primary" onClick={onOk}>{en ? 'Understood' : 'Entendido'}</button>
-        {stop && <button className="btn md" onClick={onNotMe}>{en ? "This wasn't about me" : 'Esto no era sobre mí'}</button>}
+        <button className="btn md" onClick={onNotMe}>{en ? "This wasn't about me" : 'Esto no era sobre mí'}</button>
       </div>
     </section>
   )

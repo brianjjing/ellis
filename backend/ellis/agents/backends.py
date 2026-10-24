@@ -64,7 +64,9 @@ class AnthropicBackend:
         prompt = (PROMPTS_DIR / f"{agent}.md").read_text(encoding="utf-8")
         user = ("Context (JSON; identifiers are masked tokens):\n" + json.dumps(ctx, default=str)[:150000] +
                 f"\n\nReturn ONLY the proposal envelope JSON with agent=\"{agent}\", run_id=\"{run_id}\", "
-                f"case_id=\"{ctx['case']['id']}\", based_on_event_id={ctx.get('latest_event_id')}.")
+                f"case_id=\"{ctx['case']['id']}\", based_on_event_id={ctx.get('latest_event_id')}. "
+                f"Write applicant-facing text (fields ending in _es) in "
+                f"{'Spanish' if ctx.get('language') == 'es' else 'English'}; _es is only the field name.")
         if error:
             user += f"\n\nYour previous output was invalid: {error}\nFix it and return valid JSON only."
         client = anthropic.Anthropic(api_key=settings.anthropic_api_key)

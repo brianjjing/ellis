@@ -6,8 +6,12 @@ const shapes = {
   clip: <path d="M21 11.5l-8.6 8.6a5 5 0 0 1-7.1-7.1l8.6-8.6a3.3 3.3 0 0 1 4.7 4.7l-8.6 8.6a1.7 1.7 0 0 1-2.4-2.4l7.9-7.9" />,
   upload: <><path d="M12 15V4" /><path d="M7 9l5-5 5 5" /><path d="M5 20h14" /></>,
   speaker: <><path d="M4 9v6h4l5 4V5L8 9H4z" /><path d="M16.5 8.5a5 5 0 0 1 0 7" /></>,
+  speakerOff: <><path d="M4 9v6h4l5 4V5L8 9H4z" /><path d="M16 9.5l5 5M21 9.5l-5 5" /></>,
   camera: <><path d="M4 8h3l2-3h6l2 3h3v11H4z" /><circle cx="12" cy="13" r="3.5" /></>,
   check: <path d="M5 12l5 5 9-10" />,
+  keyboard: <><rect x="2.5" y="6" width="19" height="12" rx="2" /><path d="M6.5 10h.01M10 10h.01M13.5 10h.01M17 10h.01M7.5 14h9" /></>,
+  // a speaking face: the switch back to talking
+  talk: <><circle cx="9" cy="12" r="6.5" /><path d="M7 10.5h.01M11 10.5h.01M7.5 14.5h3" /><path d="M17.5 9a4 4 0 0 1 0 6" /><path d="M20 6.5a7.5 7.5 0 0 1 0 11" /></>,
 }
 
 export function Icon({ name, size = 16, color = 'currentColor', weight = 1.75 }: { name: keyof typeof shapes; size?: number; color?: string; weight?: number }) {
@@ -16,6 +20,11 @@ export function Icon({ name, size = 16, color = 'currentColor', weight = 1.75 }:
       {shapes[name]}
     </svg>
   )
+}
+
+// The Ellis K1 lockup (mark + wordmark), from frontend/public; alt carries the name.
+export function Logo() {
+  return <img className="logo" src="/ellis-logo-horizontal.svg" alt="Ellis" width={107} height={32} />
 }
 
 // The attorney flag: gold pennant on a pole.

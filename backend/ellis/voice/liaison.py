@@ -21,12 +21,19 @@ import yaml
 from ..services import catalog
 from ..services.keywords import fold
 from . import english, spanish
+from .humanize import GENERIC_KINDS
 
 log = logging.getLogger("ellis.liaison")
 
 ACKS = {"es": ["Gracias.", "Muy bien.", "Gracias.", "Entendido."],
         "en": ["Thanks.", "Got it.", "Thank you.", "Understood."]}
 NLU = {"es": spanish, "en": english}
+# official background question key -> keyword-backstop (flag_list.yaml) categories that already cover it
+_ACK_CATEGORIES = {
+    "background.arrested_cited_detained": {"citation"},
+    "background.tax_not_filed": {"taxes"},
+    "background.overdue_taxes": {"taxes"},
+}
 
 
 @lru_cache
@@ -54,13 +61,15 @@ class Say:
 
 
 class Liaison:
-    def __init__(self, client, today: date | None = None, channel: str = "voice", llm=None, rng_seed: int = 7,
-                language: str = "es"):
+    def __init__(self, client, today: date | None = None, channel: str = "voice", llm=None, humanizer=None,
+                rng_seed: int = 7, language: str | None = None):
         self.c = client
         self.today = today or date.today()
         self.channel = channel
         self.llm = llm
-        self.language = language if language in NLU else "es"
+        self.humanizer = humanizer
+        self.follow_case = language not in NLU  # no explicit language: adopt the case's at start()
+        self.language = language if language in NLU else "en"
         self.nlu = NLU[self.language]
         self.script = lambda key, **kw: script(key, lang=self.language, **kw)
         self.mode = "start"
@@ -81,11 +90,16 @@ class Liaison:
         self.facts: dict[str, Any] = {}
         self.current_section: str | None = None
         self._turn_uncertain = False
+        self._llm_uncertain = False
+        self._open_flag_cats: set[str] = set()
 
     # ------------------------------------------------------------ lifecycle
 
     def start(self) -> list[Say]:
         self.cfg = self.c.session_start(self.channel)
+        if self.follow_case and self.cfg.get("language") in NLU:
+            self.language = self.cfg["language"]
+            self.nlu = NLU[self.language]
         b = self.c.get_briefing()
         self.sections_done_start = {p["section"] for p in b.get("progress", []) if p["state"] == "done"}
         if not self.cfg.get("consent_given"):
@@ -103,6 +117,13 @@ class Liaison:
 
     def _said(self, lines: list[Say]) -> list[Say]:
         for ln in lines:
+            # wording only, after the fact: hedge/flags/record_fact already happened before this line
+            # was constructed, so rephrasing here can never change what was asked, recorded, or flagged.
+            if self.humanizer is not None and not ln.locked and ln.kind in GENERIC_KINDS:
+                try:
+                    ln.text = self.humanizer.rephrase(ln.text, self.language)
+                except Exception:  # noqa: BLE001 - never block the conversation on a rephrase failure
+                    log.exception("humanize failed")
             try:
                 self.c.liaison_said(ln.text, ln.locked)
             except Exception:  # noqa: BLE001 - captions are best-effort
@@ -264,6 +285,7 @@ class Liaison:
         b = self.c.get_briefing()
         self.briefing_version = b.get("version", 0)
         self.facts = dict(b.get("facts") or {})
+        self._open_flag_cats = set(b.get("open_flag_categories") or [])
         fallback = b.get("fallback", [])
         queue = list(b.get("queue", []))
         # Briefing items naming a field come first; then finish the current section; then section-level items.
@@ -316,9 +338,9 @@ class Liaison:
                 text_key = f"text_{self.language}"
                 if it.get(text_key):
                     out.append(Say(it[text_key], kind="upload_request"))
-                elif it.get("text_es"):  # agent only provided Spanish; fall back rather than drop the line
-                    out.append(Say(it["text_es"], kind="upload_request"))
                 else:
+                    # an agent/seed item with text in a different language than this session must never
+                    # leak that language in; fall through to the generic, properly localized line instead.
                     labels = LABELS_EN if self.language == "en" else LABELS_ES
                     default_label = "document" if self.language == "en" else "documento"
                     out.append(self.script("upload_request",
@@ -350,6 +372,11 @@ class Liaison:
         other_lang_text = d.get("question_es") if self.language == "en" else d.get("question_en")
         lines = []
         if d.get("official"):
+            # the official question's own wording is fixed (never paraphrased), but if the applicant
+            # already brought this up earlier (the keyword backstop caught it), say so instead of
+            # asking cold as if it had never come up.
+            if _ACK_CATEGORIES.get(f, set()) & self._open_flag_cats:
+                lines.append(self.script("already_mentioned"))
             lines.append(Say(q, kind="official_question", meta={"text_en": other_lang_text, "field": f}))
         else:
             lines.append(Say(q, kind="question", meta={"field": f}))
@@ -391,12 +418,13 @@ class Liaison:
     # ------------------------------------------------------------ answers
 
     def _parse(self, f: str, text: str, ref: str | None = None) -> tuple[Any, bool]:
+        self._llm_uncertain = False
         d = catalog.field_def(f) or {}
         ftype = d.get("type", "string")
         v, ok = self.nlu.parse_value(f, ftype, text, ref=ref, today=self.today)
         if not ok and self.llm is not None:
             try:
-                v, ok = self.llm.extract(f, d, text)
+                v, ok, self._llm_uncertain = self.llm.extract(f, d, text)
             except Exception:  # noqa: BLE001
                 log.exception("llm extract failed")
         return v, ok
@@ -407,6 +435,16 @@ class Liaison:
         d = catalog.field_def(f) or {}
         hedge = self.nlu.has_hedge(text) or self._turn_uncertain
         value, ok = self._parse(f, text, ref=self._ref_for_text(f))
+        hedge = hedge or self._llm_uncertain
+        if f == "name.given" and ok and isinstance(value, str) and "name.family" not in self.facts:
+            # asked for the given name only, but a two-word answer ("Maria Torres") is often a full name;
+            # split it rather than record it whole and then ask for the surname right after.
+            parts = value.split()
+            if len(parts) == 2:
+                r = self.c.record_fact("name.family", parts[1], utterance_id=uid)
+                if r.get("saved"):
+                    self._remember("name.family", parts[1])
+                    value = parts[0]
         if value == "__YES__":
             followup_key = "followup_en" if self.language == "en" else "followup_es"
             default_followup = "Which one?" if self.language == "en" else "¿Cuál?"
@@ -495,6 +533,17 @@ class Liaison:
     def _opportunistic(self, f: str, value: Any, text: str, uid: str | None) -> list[Say]:
         """Capture extra facts volunteered in the same answer (one utterance, several fields)."""
         m = catalog.LIST_RE.match(f)
+        if m and m["list"] == "addresses" and m["sub"] == "city":
+            # "Berkeley, California" answers both the city question and the state question that's
+            # coming next; catch the state here instead of asking for it again right after.
+            state_field = f"addresses[{m['i']}].state"
+            if state_field not in self.facts:
+                st = self.nlu.parse_state(text)
+                if st:
+                    r = self.c.record_fact(state_field, st, utterance_id=uid)
+                    if r.get("saved"):
+                        self._remember(state_field, st)
+            return []
         idx = None
         if f == "trips.any" and value is True:
             idx = 0
@@ -527,6 +576,7 @@ class Liaison:
         read_val = rb.get("value")
         yn = self.nlu.yes_no(text)
         hedge = self.nlu.has_hedge(text) or self._turn_uncertain
+        self._llm_uncertain = False  # only set if _parse() runs below; stale True from an earlier turn must not leak in
         ftype = (catalog.field_def(f) or {}).get("type")
         rest = self.nlu.strip_yes_no(text)
         ref = read_val if isinstance(read_val, str) else None
@@ -536,6 +586,7 @@ class Liaison:
             value, ok = self._parse(f, rest, ref=ref) if rest else (None, False)
         else:
             value, ok = None, False  # "sí, así es" confirms; it is not a new value
+        hedge = hedge or self._llm_uncertain
         differs = ok and value is not None and fold(str(value)) != fold(str(read_val))
         if differs and yn is True and ftype in ("date", "date_or_present") and isinstance(read_val, str) \
                 and len(str(value)) < len(read_val) and read_val.startswith(str(value)):

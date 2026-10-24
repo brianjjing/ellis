@@ -22,7 +22,9 @@ Then open http://localhost:5173:
 
 - **Clinic workspace:** `/clinic`. Sign in as `dana@valle.demo` (reviewer), `sam@valle.demo` (intake) or
   `admin@valle.demo`. The password is `ellis-demo`.
-- **Applicant links (Spanish):** `/a/demo-maria`, `/a/demo-jorge`, `/a/demo-ana`, `/a/demo-rosa`.
+- **Applicant links (Spanish):** `/a/demo-maria`, `/a/demo-jorge`, `/a/demo-ana`, `/a/demo-rosa`. A link signs the
+  applicant in and lands on the chat (`/`). The sidebar pages are `/form`, `/interview`, `/reminders` and `/advanced`.
+  Sign-off is at `/review`. Without a session, `/` goes to `/signin`, where the link or its code can be pasted.
 
 All data is synthetic, and the UI labels it "Datos de demostración". The flows are written for Friday
 Oct 23, 2026, so `ELLIS_TODAY` pins the date (`scripts/dev.sh` sets it).
@@ -33,7 +35,7 @@ Oct 23, 2026, so `ELLIS_TODAY` pins the date (`scripts/dev.sh` sets it).
 |---|---|
 | `CARTESIA_API_KEY` | Voice: Ink-2 streaming STT with turn detection, and Sonic TTS with word timestamps. |
 | `CARTESIA_VOICE_ID` | Spanish (es-MX) Sonic voice. When empty, one is auto-discovered from `/voices`. |
-| `ANTHROPIC_API_KEY` | Optional. Enables the Claude staff agents (`ELLIS_AGENT_BACKEND=anthropic`), vision extraction for real photos, and Claude-assisted answer parsing. |
+| `ANTHROPIC_API_KEY` | Required for the applicant chat: Claude drives the whole conversation (`ELLIS_CONVERSATION_MODEL`). Also enables the Claude staff agents (`ELLIS_AGENT_BACKEND=anthropic`) and vision extraction for real photos. |
 | `DATABASE_URL` | Postgres is recommended (`postgresql+psycopg://…`; NOTIFY trigger and `SKIP LOCKED`). Defaults to SQLite. |
 | `ELLIS_TOOL_SECRET`, `ELLIS_SESSION_SECRET`, `VAULT_KEY` | Liaison tool auth, cookie signing, and AES-GCM for sensitive values. |
 | `ELLIS_AGENT_BACKEND` | `skeleton` (deterministic, no model), `anthropic`, or `creao`. |

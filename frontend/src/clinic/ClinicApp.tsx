@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, ApiError, debounce, stream } from '../api'
 import { navigate } from '../main'
+import { Logo } from '../icons'
 import CaseDetail from './CaseDetail'
 import CaseList from './CaseList'
 import ReviewQueue from './ReviewQueue'
@@ -33,7 +34,7 @@ export default function ClinicApp({ path }: { path: string }) {
     <div className="page clinic" lang="en">
       <div className="side">
         <nav className="sidebar" aria-label="Clinic">
-          <a href="/clinic" data-nav className="wordmark">Ellis</a>
+          <a href="/clinic" data-nav className="wordmark"><Logo /></a>
           <div className="stack" style={{ padding: '0 12px', gap: 2 }}>
             <strong>{me.clinic.name}</strong>
             {me.clinic.is_demo && <span className="demo-tag">Synthetic demo data</span>}
@@ -72,7 +73,7 @@ function Login({ onIn }: { onIn: (m: Me) => void }) {
   }, [email, pw])
   return (
     <div className="page col" lang="en">
-      <header className="top"><span className="wordmark">Ellis</span><span className="soft">Clinic workspace</span></header>
+      <header className="top"><span className="wordmark"><Logo /></span><span className="soft">Clinic workspace</span></header>
       <main className="signin">
         <form className="card" onSubmit={submit}>
           <h1 className="h1">Sign in</h1>

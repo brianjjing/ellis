@@ -274,7 +274,7 @@ def main():
     ap.add_argument("-v", "--verbose", action="store_true")
     a = ap.parse_args()
     os.environ.setdefault("ELLIS_TODAY", TODAY.isoformat())
-    seed_load.load()
+    seed_load.load(language="es-MX")  # the simulated applicants speak Spanish
     for name in (sorted(FLOWS) if a.flow == "all" else [a.flow]):
         x = FLOWS[name](a.verbose)
         g = x.gate()
