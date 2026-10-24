@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Icon } from './icons'
 import { api, ApiError } from './api'
 import { landing, useAuth, type Me } from './auth'
+import { guestSnapshot } from './GuestChat'
 
 type Kind = 'applicant' | 'clinic'
 
@@ -19,7 +20,7 @@ export default function SignUp() {
     setBusy(true)
     setErr(null)
     try {
-      await api<Me>('/api/auth/signup', { body: { kind, ...f } })
+      await api<Me>('/api/auth/signup', { body: { kind, ...f, guest: kind === 'applicant' ? guestSnapshot() : undefined } })
       landing(await refresh(), next)
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : 'Connection lost. Please try again.')

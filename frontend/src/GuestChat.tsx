@@ -2,6 +2,7 @@ import { useState } from 'react'
 import Shell from './Shell'
 import { Icon } from './icons'
 import { navigate } from './main'
+import { api } from './api'
 import { goSignIn } from './auth'
 
 type Msg = { who: 'you' | 'ellis'; text: string }
@@ -10,19 +11,27 @@ let guest: { msgs: Msg[]; answers: Record<string, unknown> } = { msgs: [], answe
 export const guestSnapshot = () => ({ answers: guest.answers, transcript: guest.msgs })
 
 const greeting = () => { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening' }
-// ponytail: no guest brain yet (plan Task 7); every reply points to sign-up until /api/guest/chat exists.
-const REPLY = "I can help with that once you have a free account. It keeps this conversation and starts your N-400."
 
 // The logged-out home: Chat's markup with Log in and Sign up in the bar.
 export default function GuestChat() {
   const [msgs, setMsgs] = useState(guest.msgs)
   const [typed, setTyped] = useState('')
-  const send = () => {
+  const [busy, setBusy] = useState(false)
+  const send = async () => {
     const text = typed.trim()
-    if (!text) return
-    guest.msgs = [...msgs, { who: 'you', text }, { who: 'ellis', text: REPLY }]
-    setMsgs(guest.msgs)
+    if (!text || busy) return
+    const sent: Msg[] = [...msgs, { who: 'you', text }]
+    setMsgs(sent)
     setTyped('')
+    setBusy(true)
+    try {
+      const r = await api<{ reply: string; answers: Record<string, unknown> }>('/api/guest/chat', { body: { messages: sent, answers: guest.answers } })
+      guest = { msgs: [...sent, { who: 'ellis', text: r.reply }], answers: r.answers }
+    } catch {
+      guest = { ...guest, msgs: [...sent, { who: 'ellis', text: 'Connection lost. Please try again.' }] }
+    }
+    setMsgs(guest.msgs)
+    setBusy(false)
   }
   return (
     <Shell active="chat" guest>
