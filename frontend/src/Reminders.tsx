@@ -14,8 +14,9 @@ export default function Reminders() {
   const f = data.filing_window
   const days = daysToFile(data)
   const date = f && new Date(f.earliest_filing + 'T12:00').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase()
+  // Ranked on the server (views.reminders), the same list Ellis reads from; the filing date has its own card above.
   const coming = [
-    ...data.gaps.map((g: any) => ({ title: g.label, note: 'You need it before you file.', when: 'Before you file', urgent: true })),
+    ...data.reminders.filter((r: any) => r.kind !== 'filing').map((r: any) => ({ title: r.title, note: r.note, when: r.when ? r.when[0].toUpperCase() + r.when.slice(1) : '', urgent: r.pressing || !!r.action })),
     ...data.roadmap.future.map((s: string) => ({ title: s, note: '', when: 'Coming soon', urgent: false })),
   ]
 

@@ -87,13 +87,6 @@ class Settings:
         return env("ELLIS_CONVERSATION_MODEL", "claude-sonnet-5-5")
 
     @property
-    def conversation_engine(self) -> str:
-        # llm (default when a key is present): Claude drives the conversation through tools.
-        # scripted: the deterministic field-by-field liaison. Forced to scripted with no API key.
-        default = "llm" if self.anthropic_api_key else "scripted"
-        return env("ELLIS_CONVERSATION_ENGINE", default)
-
-    @property
     def today_override(self) -> str | None:
         # Pin "today" for demos and tests (flows are written for Fri Oct 23, 2026).
         return env("ELLIS_TODAY")

@@ -1,22 +1,24 @@
 """Applicant voice session: WS /api/a/voice.
 
-Browser → server:  binary PCM16 mono 16 kHz mic frames, or JSON:
-   {"type":"start","mode":"voice"|"text"}  {"type":"text","text":...}  {"type":"interrupt","line_id":..,
-   "position_ms":..|"word":..}  {"type":"spoken","line_id":..}  {"type":"end"}
+Browser → server:  binary PCM16 mono 16 kHz mic frames (silence unless the talk button is held), or JSON:
+   {"type":"start","language":..,"locale":..}  {"type":"text","text":...}  {"type":"talk","down":bool}
+   {"type":"mode","voice":bool}  {"type":"permission","id":..,"allow":bool}  {"type":"end"}
 Server → browser:  JSON {"type":"ready"|"line"|"audio"|"line_end"|"stop_audio"|"user_partial"|"user_final"|
    "state"|"end_call"|"error"}; audio is base64 PCM16 24 kHz.
 
-Turn handling (spec): turn.start during an interruptible line stops TTS and records the interrupted word from
-Sonic word timestamps; during a locked line the applicant's turn is held until the line finishes. Every final
-transcript goes through the in-loop keyword check (inside the liaison) before anything else sees it.
-When Cartesia is unreachable the session runs in text mode: captions, typed or browser-recognized turns, and
-the browser speaks lines with its own es-MX voice.
+Turns: push to talk. Pressing the talk button ("talk" down) cuts Ellis off at any point in any line -- no line
+is protected from interruption -- and starts collecting Ink-2's transcript; releasing it submits what was said
+while held. Typed text is a turn too and cuts Ellis off the same way. Every turn goes through the in-loop keyword
+check (inside the liaison) before anything else sees it.
+Ellis only ever speaks with Cartesia's voice. When Sonic is unreachable, lines are captions only; when Ink-2 is,
+the applicant types.
 """
 
 from __future__ import annotations
 
 import asyncio
 import base64
+import json
 import logging
 import time
 import uuid
@@ -27,38 +29,40 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from ...config import settings
 from ...db import Case, session_scope
 from ...services import auth
-from ...services.case_service import today
 from ...voice import cartesia
 from ...voice.client import InProcessClient
-from ...voice.liaison import Liaison, Say
+from ...voice.liaison import Say
 from ...voice.llm_liaison import LlmLiaison
 from ..deps import APPLICANT_COOKIE
 
 log = logging.getLogger("ellis.voice")
 router = APIRouter(tags=["voice"])
+# After the talk button is let go, send as soon as Ink-2 closes the turn: measured 0.6-1.4 s after the last word,
+# with the full text arriving together with turn.eager_end. ponytail: two knobs, not a model --
+# START_GRACE_S: a short "yes" only opens a turn ~0.5 s after it's said, so wait that long when nothing's heard yet;
+# MAX_WAIT_S: never hold the message longer than this (raise both if endings get clipped).
+PTT_START_GRACE_S = 1.0
+PTT_MAX_WAIT_S = 2.5
 
 
 class VoiceSession:
     def __init__(self, ws: WebSocket, case_id: str):
         self.ws = ws
         self.case_id = case_id
-        self.liaison: Liaison | LlmLiaison | None = None
+        self.liaison: LlmLiaison | None = None
         self.q: asyncio.Queue[Say] = asyncio.Queue()
         self.current: dict[str, Any] | None = None
-        self.held: list[str] = []
         self.last_interrupt: dict[str, Any] | None = None
         self.tts: cartesia.TTS | None = None
         self.stt: cartesia.STT | None = None
-        self.mode = "text"
+        self.want_voice = True  # talking (vs. typing): silence only means "gone" when they talk
+        self.talk: dict[str, Any] | None = None  # transcript so far while the talk button is held (+ tail)
+        self.nudges = 0  # silence check-ins since the applicant last did something
         self.lock = asyncio.Lock()
         self.last_line_end = time.time()
         self.user_active = False
-        self.silence_said: set[int] = set()
         self.closed = False
         self.tasks: list[asyncio.Task] = []
-        self.resume_count = 0  # turn.resume events this turn: the model thought the applicant was done, then
-                               # detected they kept talking -- a real (if indirect) uncertainty signal, since
-                               # Cartesia's turn events carry no confidence/probability field to read directly
 
     async def send(self, msg: dict) -> None:
         if not self.closed:
@@ -69,45 +73,38 @@ class VoiceSession:
 
     async def run(self) -> None:
         start = await self.ws.receive_json()
-        want_voice = start.get("mode", "voice") == "voice"
-        # The case's persisted language is the fallback when the client doesn't specify one (e.g. an older
-        # client, or a returning session whose frontend state hasn't loaded the case yet), so a session never
+        self.want_voice = start.get("voice") is not False
+        # The case's persisted language is the fallback when the client doesn't specify one, so a session never
         # silently switches language on an applicant.
-        case_locale = "en-US"
+        case_locale, patient = "en-US", False
         with session_scope() as cs_s:
             case = cs_s.get(Case, self.case_id)
             if case and case.language:
                 case_locale = case.language
+            patient = bool(case and (case.settings or {}).get("patient_mode"))
         default_lang = "en" if case_locale.startswith("en") else "es"
         language = start.get("language") if start.get("language") in ("es", "en") else default_lang
         locale = start.get("locale") or (case_locale if language == default_lang else
                                          ("en-US" if language == "en" else "es-MX"))
-        channel = "voice" if want_voice else "text"
-        if settings.conversation_engine == "llm" and settings.anthropic_api_key:
-            self.liaison = LlmLiaison(InProcessClient(self.case_id), language=language, channel=channel)
-        else:
-            from ...voice.humanize import humanizer
-            from ...voice.llm import extractor
-            self.liaison = Liaison(InProcessClient(self.case_id), today=today(), channel=channel,
-                                   llm=extractor(), humanizer=humanizer(), language=language)
+        if not settings.anthropic_api_key:
+            await self.send({"type": "error", "message": "Ellis can't talk right now: this server has no "
+                             "ANTHROPIC_API_KEY."})
+            return
+        self.liaison = LlmLiaison(InProcessClient(self.case_id), language=language, channel="voice")
+        # Cartesia connects while Ellis's first line is prepared, each on its own: no Ink-2 only means typing,
+        # and Ellis keeps Sonic's voice.
+        connecting = asyncio.gather(self._connect("tts", cartesia.TTS(locale=locale)),
+                                    self._connect("stt", cartesia.STT(patient=patient))) \
+            if settings.cartesia_api_key else None
         lines = await asyncio.to_thread(self.liaison.start)
-        patient = bool(self.liaison.cfg.get("patient_mode"))
-        cartesia_ok = False
-        if want_voice and settings.cartesia_api_key:
-            try:
-                self.tts = cartesia.TTS(speed=0.85 if patient else 1.0, locale=locale)
-                await asyncio.wait_for(self.tts.connect(), 8)
-                self.stt = cartesia.STT(patient=patient)
-                await asyncio.wait_for(self.stt.connect(), 8)
-                cartesia_ok = True
-            except Exception as e:  # noqa: BLE001
-                log.warning("Cartesia unavailable, falling back to text mode: %s", e)
-                self.tts = self.stt = None
-        self.mode = "voice" if cartesia_ok else "text"
-        await self.send({"type": "ready", "mode": self.mode, "cartesia": cartesia_ok,
+        if connecting:
+            await connecting
+        if self.tts:
+            self.tts.speed = self.liaison.cfg["tts"]["speed"]
+        await self.send({"type": "ready", "mode": "voice" if self.stt else "text", "cartesia": bool(self.tts),
                          "sample_rate_in": cartesia.STT_RATE, "sample_rate_out": cartesia.TTS_RATE,
-                         "patient_mode": patient, "client_tts": not cartesia_ok,
-                         "voice_unavailable": want_voice and not cartesia_ok})
+                         "patient_mode": patient, "voice_unavailable": self.tts is None,
+                         "talk_unavailable": self.stt is None})
         self.tasks.append(asyncio.create_task(self.speaker()))
         self.tasks.append(asyncio.create_task(self.watchdog()))
         if self.stt:
@@ -124,7 +121,6 @@ class VoiceSession:
                         await self.stt.send_audio(msg["bytes"])
                     continue
                 if msg.get("text"):
-                    import json
                     data = json.loads(msg["text"])
                     await self.on_client(data)
                     if data.get("type") == "end":
@@ -134,25 +130,34 @@ class VoiceSession:
         finally:
             await self.shutdown()
 
+    async def _connect(self, kind: str, client) -> None:
+        # ponytail: measured 6-14 s for a cold voice lookup plus handshake; past 20 s, captions/typing instead
+        try:
+            await asyncio.wait_for(client.connect(), 20)
+            setattr(self, kind, client)
+        except Exception as e:  # noqa: BLE001
+            log.warning("Cartesia %s unavailable: %r", kind, e)  # repr: a TimeoutError's str() is empty
+
     async def on_client(self, data: dict) -> None:
         t = data.get("type")
         if t == "text":
             await self.turn(str(data.get("text", "")))
-        elif t == "interrupt":
-            line = self.current if self.current and self.current["id"] == data.get("line_id") else None
-            if line is not None and not line["locked"]:
-                word = data.get("word")
-                if word is None and data.get("position_ms") is not None and line.get("timestamps"):
-                    word, _ = cartesia.word_at(line["timestamps"], float(data["position_ms"]))
-                line["interrupted"] = True
-                self.last_interrupt = {"field": line.get("field"), "word": word, "at": time.time()}
-                if self.tts:
-                    await self.tts.cancel()
-        elif t == "speech_start":
-            await self.user_started()
-        elif t == "spoken":
-            if self.current and self.current["id"] == data.get("line_id"):
-                self.current["spoken_ack"].set()
+        elif t == "talk":
+            if data.get("down"):
+                self.talk = {"done": [], "partial": "", "uncertain": False, "open": False}
+                self.nudges = 0
+                await self.user_started()
+            elif self.talk is not None:
+                self.tasks.append(asyncio.create_task(self.talk_up(self.talk)))  # don't block the mic frames
+        elif t == "mode":
+            self.want_voice = bool(data.get("voice"))
+        elif t == "permission" and self.liaison:
+            async with self.lock:
+                lines = await asyncio.to_thread(self.liaison.permission, str(data.get("id")), bool(data.get("allow")))
+            await self.retune()
+            self.nudges = 0
+            for ln in lines:
+                await self.q.put(ln)
         elif t == "end":
             if self.liaison and not self.liaison.ended:
                 lines = await asyncio.to_thread(self.liaison.close)
@@ -161,58 +166,100 @@ class VoiceSession:
                 await asyncio.sleep(0.2)
 
     async def user_started(self) -> None:
-        """turn.start: barge-in on an interruptible line; ignored (held) on a locked one."""
+        """The applicant started talking: Ellis stops, wherever it is in whatever line."""
         self.user_active = True
-        self.resume_count = 0
         cur = self.current
-        if cur and not cur["locked"] and not cur.get("interrupted"):
-            cur["interrupted"] = True
+        if cur and not cur["interrupted"]:
             elapsed_ms = (time.time() - cur.get("audio_t0", time.time())) * 1000
-            word = None
-            if cur.get("timestamps"):
-                word, _ = cartesia.word_at(cur["timestamps"], elapsed_ms)
+            word = cartesia.word_at(cur["timestamps"], elapsed_ms)[0] if cur.get("timestamps") else None
             self.last_interrupt = {"field": cur.get("field"), "word": word, "at": time.time()}
-            if self.tts:
-                await self.tts.cancel()
-            await self.send({"type": "stop_audio", "line_id": cur["id"]})
+            await self.cut(cur)
         await self.send({"type": "state", "state": "listening"})
 
+    async def cut(self, cur: dict) -> None:
+        """Stop the line being spoken now, and drop the rest of that reply."""
+        cur["interrupted"] = True
+        while not self.q.empty():
+            self.q.get_nowait()
+        if self.tts:
+            await self.tts.cancel()
+        await self.send({"type": "stop_audio", "line_id": cur["id"]})
+
+    async def talk_up(self, talk: dict) -> None:
+        """Talk button let go: send everything said while held as soon as Ink-2 has closed the turn."""
+        t_up = time.time()
+        while time.time() - t_up < PTT_MAX_WAIT_S:
+            heard = talk["done"] or talk["partial"]
+            if not talk["open"] and (heard or time.time() - t_up > PTT_START_GRACE_S):
+                break
+            await asyncio.sleep(0.02)
+        if self.talk is talk:
+            self.talk = None
+        self.user_active = False
+        text = " ".join(talk["done"] + [talk["partial"]]).strip()
+        if text:
+            await self.turn(text, uncertain=talk["uncertain"], spoken=True)
+        else:
+            await self.send({"type": "user_partial", "text": ""})
+            await self.send({"type": "state", "state": "listening"})
+
+    async def retune(self) -> None:
+        """A setting the applicant just allowed (language, voice speed) applies from the next line spoken."""
+        cfg = self.liaison.cfg if self.liaison else {}
+        if not self.tts or "tts" not in cfg:
+            return
+        self.tts.speed = cfg["tts"]["speed"]
+        if cfg["locale"] != self.tts.locale:
+            try:
+                self.tts.voice_id = await cartesia.voice_id_for(cfg["locale"]) or self.tts.voice_id
+                self.tts.locale = cfg["locale"]
+            except Exception as e:  # noqa: BLE001 - keep the old voice rather than go silent
+                log.warning("voice for %s unavailable: %s", cfg["locale"], e)
+
     async def stt_loop(self) -> None:
+        """Ink-2 is only the transcriber: what counts is what was said while the talk button was held."""
         try:
             async for ev in self.stt.events():
-                t = ev.get("type")
-                if t == "turn.start":
-                    await self.user_started()
-                elif t in ("turn.update", "turn.eager_end"):
-                    await self.send({"type": "user_partial", "text": ev.get("transcript", "")})
-                elif t == "turn.resume":
-                    self.user_active = True
-                    self.resume_count += 1
-                elif t == "turn.end":
-                    self.user_active = False
-                    uncertain = self.resume_count > 0
-                    self.resume_count = 0
-                    await self.turn(ev.get("transcript", ""), uncertain=uncertain)
-                elif t == "error":
+                t, talk = ev.get("type"), self.talk
+                if t == "error":
                     await self.send({"type": "error", "message": "voice service error"})
+                if talk is None:
+                    continue
+                # "open": Ink-2 may still be adding words. eager_end carries the full text and, once the button
+                # is let go, nothing can follow it; an update or resume reopens the turn while they still talk.
+                if t == "turn.start":
+                    talk["partial"], talk["open"] = "", True
+                elif t == "turn.update":
+                    talk["partial"], talk["open"] = ev.get("transcript", ""), True
+                elif t == "turn.eager_end":
+                    talk["partial"], talk["open"] = ev.get("transcript", ""), False
+                elif t == "turn.resume":
+                    # Ink-2 thought they were done, then heard more: an indirect hesitation signal (its events
+                    # carry no confidence score)
+                    talk["uncertain"], talk["open"] = True, True
+                elif t == "turn.end":
+                    talk["done"].append(ev.get("transcript", ""))
+                    talk["partial"], talk["open"] = "", False
+                else:
+                    continue
+                await self.send({"type": "user_partial", "text": " ".join(talk["done"] + [talk["partial"]]).strip()})
         except Exception as e:  # noqa: BLE001
             log.warning("stt loop ended: %s", e)
 
-    async def turn(self, text: str, uncertain: bool = False) -> None:
+    async def turn(self, text: str, uncertain: bool = False, spoken: bool = False) -> None:
         text = (text or "").strip()
         if not text or self.liaison is None or self.liaison.ended:
             return
-        if self.current and self.current["locked"] and not self.current["done"].is_set():
-            self.held.append(text)  # locked line: keep speaking, handle the turn afterwards
-            return
-        await self.send({"type": "user_final", "text": text})
+        if self.current and not self.current["interrupted"]:
+            await self.cut(self.current)  # a typed message cuts Ellis off too
+        await self.send({"type": "user_final", "text": text, "spoken": spoken})
         await self.send({"type": "state", "state": "thinking"})
         field = word = None
         li = self.last_interrupt
         if li and time.time() - li["at"] < 30:
             field, word = li["field"], li["word"]
         self.last_interrupt = None
-        self.silence_said.clear()
+        self.nudges = 0
         async with self.lock:
             lines = await asyncio.to_thread(self.liaison.handle, text, field, word, uncertain)
         for ln in lines:
@@ -222,13 +269,12 @@ class VoiceSession:
         while True:
             line = await self.q.get()
             lid = uuid.uuid4().hex[:10]
-            cur = {"id": lid, "locked": line.locked, "field": line.field, "timestamps": {}, "interrupted": False,
-                   "done": asyncio.Event(), "spoken_ack": asyncio.Event()}
+            cur = {"id": lid, "field": line.field, "timestamps": {}, "interrupted": False}
             self.current = cur
             await self.send({"type": "state", "state": "speaking"})
             await self.send({"type": "line", "id": lid, **line.as_dict()})
-            try:
-                if self.tts:
+            if self.tts:  # no Sonic: the line is a caption, nothing to wait for
+                try:
                     cur["audio_t0"] = time.time()
                     async for part in self.tts.speak(line.text):
                         if cur["interrupted"]:
@@ -242,19 +288,11 @@ class VoiceSession:
                                 cur["timestamps"].setdefault(k, []).extend(ts.get(k, []))
                     # wait roughly for playback to finish before the next line (audio is real-time)
                     dur = (cur["timestamps"].get("end") or [0])[-1] if cur["timestamps"] else 0
-                    remaining = dur - (time.time() - cur["audio_t0"])
-                    if remaining > 0 and not cur["interrupted"]:
-                        await self._sleep_unless_interrupted(cur, remaining)
-                else:
-                    # client speaks with its own voice; wait for its ack (bounded by an estimate)
-                    est = min(2 + len(line.text) * 0.07, 30)
-                    try:
-                        await asyncio.wait_for(cur["spoken_ack"].wait(), timeout=est)
-                    except asyncio.TimeoutError:
-                        pass
-            except Exception as e:  # noqa: BLE001
-                log.warning("tts failed: %s", e)
-            cur["done"].set()
+                    end = cur["audio_t0"] + dur
+                    while time.time() < end and not cur["interrupted"]:
+                        await asyncio.sleep(0.05)
+                except Exception as e:  # noqa: BLE001
+                    log.warning("tts failed: %s", e)
             await self.send({"type": "line_end", "line_id": lid, "interrupted": cur["interrupted"]})
             self.last_line_end = time.time()
             if line.end_call:
@@ -262,31 +300,23 @@ class VoiceSession:
             if self.q.empty():
                 self.current = None
                 await self.send({"type": "state", "state": "listening"})
-                if self.held:
-                    held, self.held = self.held, []
-                    for t in held:
-                        await self.turn(t)
-
-    async def _sleep_unless_interrupted(self, cur: dict, seconds: float) -> None:
-        end = time.time() + seconds
-        while time.time() < end and not cur["interrupted"]:
-            await asyncio.sleep(0.05)
 
     async def watchdog(self) -> None:
-        """Silence after a question: 'Tómese su tiempo' / repeat once / '¿Seguimos otro día?'."""
+        """Quiet after Ellis speaks: check in a few times, each wait (call_config) counted from Ellis's last line
+        and longer than the one before, the last one offering another day; then quiet until the applicant does
+        something. Only when they talk: someone typing isn't gone, just typing."""
         while not self.closed:
             await asyncio.sleep(1)
-            if self.liaison is None or self.liaison.ended or self.current is not None or self.user_active:
+            if (not self.want_voice or self.liaison is None or self.liaison.ended or self.current is not None
+                    or self.user_active):
                 continue
-            silent = time.time() - self.last_line_end
-            a, b, c = self.liaison.cfg.get("silence_thresholds_s", [8, 20, 60])
-            for th in (a, b, c):
-                if silent >= th and th not in self.silence_said:
-                    self.silence_said.add(th)
-                    lines = await asyncio.to_thread(self.liaison.silence, th)
-                    for ln in lines:
-                        await self.q.put(ln)
-                    break
+            waits = self.liaison.cfg.get("silence_thresholds_s", [15, 45, 120])
+            if self.nudges >= len(waits) or time.time() - self.last_line_end < waits[self.nudges]:
+                continue
+            self.nudges += 1
+            lines = await asyncio.to_thread(self.liaison.silence, waits[self.nudges - 1], self.nudges == len(waits))
+            for ln in lines:
+                await self.q.put(ln)
 
     async def shutdown(self) -> None:
         self.closed = True

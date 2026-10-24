@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Icon } from './icons'
+import { Icon, Logo } from './icons'
 import { api, ApiError } from './api'
 import { navigate } from './main'
 
@@ -30,7 +30,7 @@ export default function SignIn({ token }: { token?: string }) {
   return (
     <div className="page col">
       <header className="top">
-        <span className="wordmark">Ellis</span>
+        <span className="wordmark"><Logo /></span>
         <button type="button" className="btn" onClick={() => setLang(lang === 'es' ? 'en' : 'es')}><Icon name="globe" />{lang === 'es' ? 'Español' : 'English'}</button>
       </header>
 

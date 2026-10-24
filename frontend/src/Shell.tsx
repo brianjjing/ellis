@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { daysToFile, fact, useCase } from './applicant/ApplicantApp'
+import { Logo } from './icons'
 
 type Section = 'chat' | 'form' | 'interview' | 'reminders' | 'profile'
 const href: Record<Section, string> = { chat: '/', form: '/form', interview: '/interview', reminders: '/reminders', profile: '/profile' }
@@ -15,7 +16,7 @@ export default function Shell({ active, children }: { active: Section; children:
     <div className="page">
       <div className="side">
         <nav aria-label="Ellis" className="sidebar">
-          <a href="/" data-nav className="wordmark">Ellis</a>
+          <a href="/" data-nav className="wordmark"><Logo /></a>
           {data.clinic.is_demo && <span className="demo-tag" style={{ alignSelf: 'flex-start', margin: '-20px 12px 0' }}>DEMO DATA</span>}
           <div className="nav-list">
             <a {...link('chat')}>Chat with Ellis</a>

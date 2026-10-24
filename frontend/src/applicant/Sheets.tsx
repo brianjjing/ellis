@@ -160,23 +160,19 @@ export function BiographicsSheet({ lang = 'en', onClose }: { lang?: Lang; onClos
   )
 }
 
+// Stop-now only: flag-and-continue items show as a note beside the chat reply that raised them (Chat.tsx).
 export function ReferralCard({ card, lang = 'en', onOk, onNotMe }: { card: any; lang?: Lang; onOk: () => void; onNotMe: () => void }) {
-  const stop = card.variant === 'stop_now'
   const en = lang === 'en'
   return (
-    <section className={`referral ${stop ? 'stop' : ''} enter`} role="alert">
-      <div className="label">{stop ? (en ? 'YOUR CLINIC WILL CONTACT YOU' : 'SU CLÍNICA LE VA A CONTACTAR') : (en ? 'FOR REVIEW' : 'PARA REVISIÓN')}</div>
+    <section className="referral stop enter" role="alert">
+      <div className="label">{en ? 'YOUR CLINIC WILL CONTACT YOU' : 'SU CLÍNICA LE VA A CONTACTAR'}</div>
       <h2 className="h3">{card.title}</h2>
-      {stop ? <p>{card.body}</p> : <>
-        {card.item && <p className="lead">{card.item}</p>}
-        {card.prepare?.length > 0 && <><div className="field">{en ? 'What you can prepare:' : 'Qué puede preparar:'}</div><ul>{card.prepare.map((p: string) => <li key={p}>{p}</li>)}</ul></>}
-        <p className="small">{en ? "Ellis can't advise you on this." : 'Ellis no puede aconsejarle sobre esto.'}</p>
-      </>}
+      <p>{card.body}</p>
       {(card.who || card.phone) && <p className="small">{en ? 'Who can help: ' : 'Quién le ayuda: '}{card.who ?? (en ? 'your clinic' : 'su clínica')}{card.phone ? ` · ${card.phone}` : ''}</p>}
       {card.show_emergency && <p className="rust"><strong>{en ? 'If someone is in danger right now: call 911 or 988.' : 'Si alguien corre peligro ahora: llame al 911 o al 988.'}</strong></p>}
       <div className="btns">
         <button className="btn md primary" onClick={onOk}>{en ? 'Understood' : 'Entendido'}</button>
-        {stop && <button className="btn md" onClick={onNotMe}>{en ? "This wasn't about me" : 'Esto no era sobre mí'}</button>}
+        <button className="btn md" onClick={onNotMe}>{en ? "This wasn't about me" : 'Esto no era sobre mí'}</button>
       </div>
     </section>
   )

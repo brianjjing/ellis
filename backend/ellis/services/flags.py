@@ -41,6 +41,8 @@ CATEGORIES: dict[str, dict] = {
     "qa_recompute_mismatch": {"speed": FLAG_CONTINUE, "blocks": True, "label_es": None, "label_en": None},
     "liaison_note": {"speed": FLAG_CONTINUE, "blocks": True, "label_es": "Pregunta para su clínica",
                      "label_en": "Question for your clinic"},
+    "applicant_question": {"speed": FLAG_CONTINUE, "blocks": False, "label_es": "Pregunta para su clínica",
+                           "label_en": "Question for your clinic"},
 }
 
 RULE_TRIGGERS = {

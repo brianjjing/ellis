@@ -98,6 +98,8 @@ export default function Profile() {
                 ))}
               </div>
             )}
+            <Setting name="Ellis's replies" note={`${{ short: 'Short', normal: 'Normal', detailed: 'Detailed' }[data.settings.reply_length as string] ?? data.settings.reply_length}. To change it, ask Ellis in the chat.`} />
+            <Setting name="Ellis's voice speed" note={`${data.settings.voice_speed === 'slow' ? 'Slower' : 'Normal'}. To change it, ask Ellis in the chat.`} />
             <div className="btns" style={{ paddingTop: 20 }}>
               {data.packet_ready && <a href="/review" data-nav className="btn md">Download my packet</a>}
               <button type="button" className="btn md strong" onClick={signOut}>Sign out</button>

@@ -65,9 +65,11 @@ def call_config(s, case: Case) -> dict[str, Any]:
     return {"case_state": case.state, "first_name": case.first_name, "clinic_name": clinic_of(s, case).name,
             "consent_given": cs.consent_given(s, case), "patient_mode": patient, "language": lang, "locale": locale,
             "stt": {"language": lang, "turn_profile": "patient" if patient else "default"},
-            "tts": {"language": lang, "locale": locale, "speed": 0.85 if patient else 1.0, "add_timestamps": True},
-            "silence_thresholds_s": [12, 30, 90] if patient else [8, 20, 60],
-            "briefing_version": cs.latest_briefing_version(s, case.id)}
+            "tts": {"language": lang, "locale": locale, "add_timestamps": True,
+                    "speed": 0.85 if patient or cs.applicant_settings(case)["voice_speed"] == "slow" else 1.0},
+            # seconds of silence before a check-in: long enough that they've really drifted off, not just thinking
+            "silence_thresholds_s": [25, 60, 150] if patient else [15, 45, 120],
+            "settings": cs.applicant_settings(case), "briefing_version": cs.latest_briefing_version(s, case.id)}
 
 
 @router.post("/session_end")

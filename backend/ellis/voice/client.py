@@ -45,6 +45,22 @@ class InProcessClient:
         from ..services import case_service as cs
         return self._run(lambda s, case: cs.liaison_briefing(s, case))
 
+    def agent_context(self, focus: dict[str, Any]) -> dict[str, Any]:
+        from ..services import views
+        return self._run(lambda s, case: views.agent_context(s, case, focus))
+
+    def call_config(self) -> dict[str, Any]:
+        from ..api.routes.tools import call_config
+        return self._run(call_config)
+
+    def set_setting(self, setting: str, value: str) -> dict[str, Any]:
+        from ..services import case_service as cs
+        return self._run(lambda s, case: cs.set_setting(s, case, setting, value))
+
+    def ask_clinic(self, question: str) -> dict[str, Any]:
+        from ..services import case_service as cs
+        return self._run(lambda s, case: cs.ask_clinic(s, case, question))
+
     def recent_transcript(self, limit: int = 24) -> list[tuple[str, str]]:
         """Last turns (speaker, text) for this case, oldest first -- context for a resumed conversation."""
         from sqlalchemy import select

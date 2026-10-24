@@ -5,33 +5,26 @@ import { daysToFile, useCase, type CaseView } from './applicant/ApplicantApp'
 import { langOf } from './applicant/i18n'
 import { VoiceClient, type VoiceState } from './applicant/voice'
 
-type Msg = { who: 'ellis' | 'you'; text: string; kind?: string; field?: string | null; locked?: boolean; en?: string; spoken?: boolean; approved?: boolean }
+// A permission card: Ellis asked to do something only the applicant can approve (a setting, a question to the clinic).
+type Perm = { id: string; kind: 'setting' | 'ask_clinic'; title: string; detail?: string | null; allowed?: boolean }
+type Msg = { who: 'ellis' | 'you'; text: string; kind?: string; field?: string | null; en?: string; spoken?: boolean; approved?: boolean; perms?: Perm[]; flags?: { id: string; label: string }[] }
 type Thread = { msgs: Msg[]; when: Date; voice: boolean }
+// What Ellis says the applicant is doing now; the next-step bar shows it. Set by the agent, never computed here.
+type Focus = { task: string; next_step?: string; link?: string; upload?: string }
 
 // ponytail: chats live in memory only (they survive page changes, not a reload). Transcripts are never put in
 // browser storage: a stop-now disclosure's words must not be written anywhere.
 let live: Msg[] = []
+let liveFocus: Focus | null = null
+let soundOn = true // Ellis's voice on/off; survives page changes, starts on
 const past: Thread[] = []
 
 const titleOf = (t: Thread) => t.msgs.find((m) => m.who === 'you')?.text ?? 'Chat with Ellis'
 const sectionOf = (data: CaseView, field?: string | null) =>
   field ? data.facts.find((g: any) => g.items.some((i: any) => i.field === field))?.label : undefined
 
-const voiceLabel: Record<VoiceState, string> = {
-  listening: 'LISTENING · ANY LANGUAGE', idle: 'LISTENING · ANY LANGUAGE', speaking: 'ELLIS IS SPEAKING',
-  thinking: 'ONE MOMENT', connecting: 'CONNECTING', ended: 'CONVERSATION ENDED',
-}
-
-// The one thing to do next, from the case: sign, upload what's missing, or keep answering.
-function nextStep(data: CaseView) {
-  if (data.case_blocked) return { title: 'Your clinic will contact you', note: 'A person at your clinic needs to look at your case first.' }
-  if (data.state === 'signed' || data.state === 'referred_out') return { title: 'Your packet is ready', note: 'Download it, then you or your clinic file the application.', go: '/review', label: 'Open my packet' }
-  if (data.state === 'ready') return { title: 'Review and sign your answers', note: 'Your clinic reviewed your case. Now check each answer yourself.', go: '/review', label: 'Review and sign' }
-  if (data.gaps.length) return { title: `Upload: ${data.gaps[0].label}`, note: 'Take a photo of it. You can keep talking while I read it.', upload: data.gaps[0].document_type }
-  const sec = data.progress.find((p: any) => p.state !== 'done')
-  if (!sec) return { title: 'Your clinic is reviewing your answers', note: "You've answered everything. When it's your turn to sign, this card changes." }
-  // ponytail: ~30 s per unanswered field is a guess; replace with measured pace if anyone needs it exact.
-  return { title: `Answer the questions about ${sec.label.toLowerCase()}`, note: `${sec.done} of ${sec.total} confirmed so far. We can do it right here, or in the form.`, minutes: Math.max(1, Math.ceil((sec.total - sec.done) / 2)) }
+const pageLabel: Record<string, string> = {
+  '/form': 'Open the form', '/interview': 'Interview prep', '/reminders': 'Reminders', '/profile': 'My profile', '/review': 'Review and sign',
 }
 
 function greeting() {
@@ -43,6 +36,8 @@ export default function Chat() {
   const { data, upload } = useCase()
   const lang = langOf(data)
   const [msgs, setMsgs] = useState(live)
+  const [focus, setFocus] = useState(liveFocus)
+  const [since, setSince] = useState(0) // permission cards before this index belong to an ended session
   const [partial, setPartial] = useState('')
   const [voice, setVoice] = useState(true)
   const [state, setState] = useState<VoiceState>('connecting')
@@ -52,32 +47,55 @@ export default function Chat() {
   const [search, setSearch] = useState('')
   const [viewing, setViewing] = useState<Thread | null>(null)
   const [typed, setTyped] = useState('')
+  const [holding, setHolding] = useState(false)
+  const [sound, setSound] = useState(soundOn)
   const vc = useRef<VoiceClient | null>(null)
-  const end = useRef<HTMLDivElement>(null)
   const add = (m: Msg) => setMsgs((ms) => (live = [...ms, m]))
   const toggleHistory = () => setHistory(!history)
 
-  // One liaison session per mount; switching voice on/off or "New chat" starts a fresh one.
+  // One liaison session per mount; only "New chat" starts a fresh one. Typing vs. talking shares it.
   useEffect(() => {
     setNotice(null)
+    setSince(live.length)
     const c: VoiceClient = new VoiceClient({
       // A stopped client still reports 'ended' when its socket finally closes; only the current one counts.
       onState: (s) => { if (vc.current === c) setState(s) },
-      onCaption: (cap) => { if (cap.who === 'usted') add({ who: 'you', text: cap.text, spoken: voice }) },
+      onCaption: (cap) => { if (cap.who === 'usted') add({ who: 'you', text: cap.text, spoken: cap.spoken }) },
       onPartial: setPartial,
       onReady: (info) => {
-        if (info.voice_unavailable) setNotice("Ellis's voice isn't available right now. You can type, or talk if your browser allows it.")
+        if (info.talk_unavailable) setMode(false)
+        if (info.voice_unavailable) setNotice("Ellis's voice isn't available right now; replies show here as text.")
+        else if (info.talk_unavailable) setNotice("Talking isn't available right now. You can type.")
       },
-      onLine: (l) => add({ who: 'ellis', text: l.text, kind: l.kind, field: l.meta?.field ?? l.field, locked: l.locked, en: l.meta?.text_en }),
+      onLine: (l) => {
+        if (l.meta?.focus) setFocus((liveFocus = l.meta.focus))
+        add({ who: 'ellis', text: l.text, kind: l.kind, field: l.meta?.field ?? l.field, en: l.meta?.text_en, perms: l.meta?.permissions, flags: l.meta?.flags })
+      },
       onEnd: () => undefined,
-      onError: (m) => setNotice(m === 'offline' ? 'Connection lost. What you said is saved.' : m === 'mic_denied' ? 'No microphone: you can type your answers.' : m),
+      onError: (m) => {
+        if (m === 'mic_denied') setMode(false)
+        setNotice(m === 'offline' ? 'Connection lost. What you said is saved.' : m === 'mic_denied' ? 'No microphone: you can type your answers.' : m)
+      },
     })
     vc.current = c
-    c.start(voice, lang, data.language ?? 'en-US')
+    c.soundOn = soundOn
+    c.start(lang, data.language ?? 'en-US')
     return () => c.stop(false)
-  }, [voice, session])
+  }, [session])
 
-  useEffect(() => { if (msgs.length) end.current?.scrollIntoView({ block: 'end', behavior: 'smooth' }) }, [msgs.length, partial])
+  // Newest message in view, like a coding agent's transcript. The page scrolls (the composer is sticky over
+  // its bottom), so go to the page's end: scrolling an element at the thread's end into view tucks it behind
+  // the composer, which read as jumping up.
+  useEffect(() => { if (msgs.length) scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' }) }, [msgs.length])
+
+  const setMode = (v: boolean) => {
+    setVoice(v)
+    setHolding(false)
+    vc.current?.setVoice(v)
+  }
+  const hold = () => { if (vc.current?.hold()) setHolding(true); else setNotice('No microphone: you can type your answers.') }
+  const release = () => { vc.current?.release(); setHolding(false) }
+  const toggleSound = () => { setSound((soundOn = !sound)); vc.current?.setSound(soundOn) }
 
   const send = (text = typed.trim()) => {
     if (!text) return
@@ -90,20 +108,26 @@ export default function Chat() {
     if (yes) setMsgs((ms) => (live = ms.map((m, j) => (j === i ? { ...m, approved: true } : m))))
     send(yes ? (lang === 'en' ? 'Yes' : 'Sí') : 'No')
   }
+  const decide = (i: number, id: string, allowed: boolean) => {
+    setMsgs((ms) => (live = ms.map((m, j) => (j === i ? { ...m, perms: m.perms?.map((p) => (p.id === id ? { ...p, allowed } : p)) } : m))))
+    vc.current?.permission(id, allowed)
+  }
   const newChat = () => {
     if (live.length) past.unshift({ msgs: live, when: new Date(), voice })
     live = []
+    liveFocus = null
+    setFocus(null)
     setMsgs([])
     setViewing(null)
     setSession((s) => s + 1)
   }
 
   const shown = viewing?.msgs ?? msgs
-  const step = nextStep(data)
+  // Same speaker twice in a row: one label over the run.
+  const cont = (i: number) => i > 0 && shown[i - 1].who === shown[i].who
   const days = daysToFile(data)
   const canFile = data.filing_window ? (days ? ` You can file in ${days} days.` : ' You can file now.') : ''
   const title = viewing ? titleOf(viewing) : sectionOf(data, [...msgs].reverse().find((m) => m.field)?.field) ?? 'Chat with Ellis'
-  const flags = data.referrals.length
 
   return (
     <Shell active="chat">
@@ -111,6 +135,9 @@ export default function Chat() {
         <header className="bar">
           <h1 className="h1">{title}</h1>
           <div className="btns">
+            <button type="button" className="btn round" aria-pressed={!sound} aria-label={sound ? "Mute Ellis's voice" : "Turn Ellis's voice on"} title={sound ? "Mute Ellis's voice" : "Turn Ellis's voice on"} onClick={toggleSound}>
+              <Icon name={sound ? 'speaker' : 'speakerOff'} size={18} />
+            </button>
             <button type="button" className="btn" aria-pressed={history} onClick={toggleHistory}>Past chats</button>
             <button type="button" className="btn" onClick={newChat}>New chat</button>
           </div>
@@ -119,44 +146,17 @@ export default function Chat() {
         <div className="chat-body">
           <section aria-label="Conversation" className="convo">
             <div className="thread" aria-live="polite">
-              {!viewing && (
-                <div className="msg" style={{ gap: 14 }}>
-                  <div className="label green">ELLIS</div>
-                  <p className="lead" style={{ fontFamily: 'var(--serif)', fontSize: 32, lineHeight: '40px' }}>{greeting()}, {data.first_name}.{canFile}</p>
-                  {step && (
-                    <div id="next" className="card" style={{ padding: 24, gap: 12 }}>
-                      <div className="label rust" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span aria-hidden="true" className="diamond" />
-                        YOUR NEXT STEP{step.minutes ? ` · ABOUT ${step.minutes} MINUTE${step.minutes > 1 ? 'S' : ''}` : ''}
-                      </div>
-                      <div style={{ fontSize: 20, lineHeight: '28px', fontWeight: 700 }}>{step.title}</div>
-                      <p className="lead soft">{step.note}</p>
-                      {step.go ? (
-                        <div className="btns"><a href={step.go} data-nav className="btn lg primary">{step.label}</a></div>
-                      ) : step.upload ? (
-                        <div className="btns">
-                          <button type="button" className="btn lg primary" onClick={() => upload(step.upload)}><Icon name="camera" />Upload it</button>
-                          <a href="/form" data-nav className="btn lg strong">Open the form</a>
-                        </div>
-                      ) : step.minutes ? (
-                        <div className="btns">
-                          <button type="button" className="btn lg primary" onClick={() => document.getElementById('msg')?.focus()}>Do it here</button>
-                          <a href="/form" data-nav className="btn lg strong">Open the form</a>
-                        </div>
-                      ) : null}
-                    </div>
-                  )}
-                </div>
-              )}
+              {/* the page's greeting, not something Ellis said */}
+              {!viewing && <p className="lead" style={{ fontFamily: 'var(--serif)', fontSize: 32, lineHeight: '40px' }}>{greeting()}, {data.first_name}.{canFile}</p>}
 
               {shown.map((m, i) => m.who === 'you' ? (
-                <div key={i} className="you">
-                  <div className="label">{m.spoken ? 'YOU · SPOKEN' : 'YOU'}</div>
+                <div key={i} className={`you${cont(i) ? ' cont' : ''}`}>
+                  {!cont(i) && <div className="label">{m.spoken ? 'YOU · SPOKEN' : 'YOU'}</div>}
                   <div className="bubble">{m.text}</div>
                 </div>
               ) : m.kind?.startsWith('readback') ? (
-                <div key={i} className="msg">
-                  <div className="label green">ELLIS</div>
+                <div key={i} className={`msg${cont(i) ? ' cont' : ''}`}>
+                  {!cont(i) && <div className="label green">ELLIS</div>}
                   <div className="draft">
                     <div className="mono" style={{ fontSize: 12, fontWeight: 700 }}>ADD TO N-400{sectionOf(data, m.field) ? ` · ${sectionOf(data, m.field).toUpperCase()}` : ''}</div>
                     <div style={{ fontSize: 20, lineHeight: '28px' }}>{m.text}</div>
@@ -174,62 +174,95 @@ export default function Chat() {
                   </div>
                 </div>
               ) : (
-                <div key={i} className="msg">
-                  <div className="label green">{m.kind === 'official_question' ? 'ELLIS · OFFICIAL N-400 QUESTION' : 'ELLIS'}</div>
-                  <p className="lead">{m.locked && <Icon name="lock" />} {m.text}</p>
+                <div key={i} className={`msg${cont(i) && m.kind !== 'official_question' ? ' cont' : ''}`}>
+                  {(!cont(i) || m.kind === 'official_question') && <div className="label green">{m.kind === 'official_question' ? 'ELLIS · OFFICIAL N-400 QUESTION' : 'ELLIS'}</div>}
+                  <p className="lead">{m.text}</p>
                   {m.en && <div className="small" lang={lang === 'en' ? 'es' : 'en'}>{m.en}</div>}
-                  {m.kind?.startsWith('flag') && flags > 0 && (
-                    <a href="/profile?tab=flags" data-nav className="flag-link">
-                      <Flag size={15} pole="#0e192b" />
-                      <span className="mono">F-{String(flags).padStart(2, '0')}</span> With your clinic
-                    </a>
-                  )}
+                  {m.perms?.map((p) => (
+                    <div key={p.id} className="perm" role="group" aria-label="Ellis needs your OK">
+                      <div className="perm-head label">
+                        <Icon name={p.kind === 'ask_clinic' ? 'send' : 'lock'} />
+                        {p.kind === 'ask_clinic' ? 'SEND TO YOUR CLINIC' : 'CHANGE A SETTING'} · NEEDS YOUR OK
+                      </div>
+                      <div className="perm-body">
+                        <div style={{ fontWeight: 700 }}>{p.title}</div>
+                        {p.detail && <blockquote className="perm-quote">{p.detail}</blockquote>}
+                        {p.kind === 'ask_clinic' && <span className="small">A person at {data.clinic.name} answers it. Ellis can't give legal advice.</span>}
+                      </div>
+                      <div className="perm-foot">
+                        {p.allowed !== undefined ? (
+                          <span className={`status ${p.allowed ? 'green' : 'soft'}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                            {p.allowed && <Icon name="check" weight={2} />}{p.allowed ? (p.kind === 'ask_clinic' ? 'Sent' : 'Allowed') : 'Not allowed'}
+                          </span>
+                        ) : viewing || i < since ? (
+                          <span className="small">This request ended with the chat. Ask Ellis again.</span>
+                        ) : <>
+                          <button type="button" className="btn md" onClick={() => decide(i, p.id, false)}>Don't allow</button>
+                          <button type="button" className="btn md primary" onClick={() => decide(i, p.id, true)}>{p.kind === 'ask_clinic' ? 'Send it' : 'Allow'}</button>
+                        </>}
+                      </div>
+                    </div>
+                  ))}
+                  {/* in the margin beside this reply: what it sent to the clinic (inline when there's no margin) */}
+                  {m.flags?.length ? (
+                    <div className="margin-notes">
+                      {m.flags.map((f) => (
+                        <a key={f.id} href="/profile?tab=flags" data-nav className="margin-note">
+                          <span className="label" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Flag size={13} pole="#0e192b" />CLINIC WILL CHECK</span>
+                          <strong>{f.label}</strong>
+                          <span className="soft">Nothing is decided yet.</span>
+                        </a>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               ))}
-              {partial && !viewing && (
-                <div className="you" style={{ opacity: 0.7 }}>
-                  <div className="label">YOU · SPOKEN</div>
-                  <div className="bubble">{partial}…</div>
-                </div>
-              )}
-              <div ref={end} />
             </div>
 
             <div className="composer">
               <div>
                 {notice && <p className="small rust" role="status">{notice}</p>}
-                {voice ? (
-                  <div className="voice enter">
-                    <button type="button" aria-label="Stop listening" className="icon-btn" style={{ flex: '0 0 80px', height: 80, background: 'var(--green)', color: 'var(--white)' }} onClick={() => setVoice(false)}>
-                      <Icon name="mic" size={34} />
-                    </button>
-                    <div className="stack" style={{ flex: '1 1 260px', gap: 6 }}>
-                      <span className="label rust" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                        <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: 9999, background: 'var(--rust)' }} />
-                        {voiceLabel[state]}
-                      </span>
-                      <span className="lead">Speak whenever you're ready. Tap the mic to stop.</span>
-                    </div>
-                    <button type="button" className="btn md" onClick={() => setVoice(false)}>Type instead</button>
+                {focus?.next_step && !viewing && (
+                  <div id="next" className="next-bar enter">
+                    <span className="label rust" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                      <span aria-hidden="true" className="diamond" />NEXT STEP
+                    </span>
+                    <span className="next-title">{focus.next_step}</span>
+                    {(focus.upload || focus.link) && (
+                      <div className="btns">
+                        {focus.upload && <button type="button" className="btn primary" onClick={() => upload(focus.upload)}><Icon name="camera" />Upload it</button>}
+                        {focus.link && <a href={focus.link} data-nav className="btn strong">{pageLabel[focus.link] ?? 'Open'}</a>}
+                      </div>
+                    )}
                   </div>
-                ) : <>
-                  <div className="btns enter">
-                    <button type="button" className="btn" onClick={() => { setViewing(null); setTimeout(() => document.getElementById('next')?.scrollIntoView({ behavior: 'smooth', block: 'center' })) }}>What's my next step?</button>
-                    <a href="/interview" data-nav className="btn">Practice my interview</a>
-                    <button type="button" className="btn" onClick={() => upload()}>Read a document for me</button>
-                  </div>
-                  <form className="ask enter" onSubmit={(e) => { e.preventDefault(); send() }}>
+                )}
+                <form className="ask" onSubmit={(e) => { e.preventDefault(); send() }}>
+                  <span className="tools">
                     <button type="button" aria-label="Upload a document" className="icon-btn" onClick={() => upload()}><Icon name="clip" size={20} /></button>
-                    <label htmlFor="msg" className="sr-only">Message Ellis</label>
-                    <input id="msg" type="text" autoComplete="off" placeholder="Ask anything, in any language" value={typed} onChange={(e) => setTyped(e.target.value)} />
-                    <button type="button" aria-label="Talk instead" className="icon-btn" style={{ background: 'var(--green)', color: 'var(--white)' }} onClick={() => setVoice(true)}>
-                      <Icon name="mic" size={20} />
+                    {voice
+                      ? <button type="button" aria-label="Type instead" className="icon-btn" onClick={() => setMode(false)}><Icon name="keyboard" size={22} /></button>
+                      : <button type="button" aria-label="Talk instead" className="icon-btn" onClick={() => setMode(true)}><Icon name="talk" size={22} /></button>}
+                  </span>
+                  <label htmlFor="msg" className="sr-only">{voice ? 'What you are saying' : 'Message Ellis'}</label>
+                  {/* talking: the words appear here as they're recognized, and go when the button is let go */}
+                  <input id="msg" type="text" autoComplete="off" readOnly={voice} value={voice ? partial : typed} onChange={(e) => setTyped(e.target.value)}
+                    placeholder={!voice ? 'Ask anything, in any language' : holding ? "Listening… let go to send." : 'Hold on the green microphone button to the right and talk!'} />
+                  {voice ? (
+                    <button type="button" aria-label="Hold to talk" aria-pressed={holding} className="icon-btn talk"
+                      onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); hold() }} onPointerUp={release} onPointerCancel={release}
+                      onKeyDown={(e) => { if ((e.key === ' ' || e.key === 'Enter') && !e.repeat) { e.preventDefault(); hold() } }}
+                      onKeyUp={(e) => { if (e.key === ' ' || e.key === 'Enter') release() }} onContextMenu={(e) => e.preventDefault()}>
+                      <Icon name="mic" size={22} />
                     </button>
-                    <button type="submit" aria-label="Send" className="icon-btn" style={{ background: 'var(--ink)', color: 'var(--white)' }}>
-                      <Icon name="send" size={20} />
-                    </button>
-                  </form>
-                </>}
+                  ) : (
+                    <button type="submit" aria-label="Send" className="icon-btn" style={{ background: 'var(--ink)', color: 'var(--white)' }}><Icon name="send" size={20} /></button>
+                  )}
+                </form>
+                <div className="btns suggest">
+                  <button type="button" className="btn" onClick={() => send("What's my next step?")}>What's my next step?</button>
+                  <button type="button" className="btn" onClick={() => send('I want to practice my interview')}>Practice my interview</button>
+                  <button type="button" className="btn" onClick={() => upload()}>Read a document for me</button>
+                </div>
               </div>
             </div>
           </section>
