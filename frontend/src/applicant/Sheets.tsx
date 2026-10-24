@@ -18,13 +18,13 @@ const DOCS_ES: [string, string][] = [
   ['lease', 'Contrato de renta'], ['court_record', 'Recibo o documento de la corte'], ['tax_transcript', 'Comprobante de impuestos'],
   ['benefit_letter', 'Carta de beneficios'], ['other', 'Otro'],
 ]
-const DOCS_EN: [string, string][] = [
+export const DOCS_EN: [string, string][] = [
   ['green_card', 'Green card'], ['passport', 'Passport'], ['marriage_certificate', 'Marriage certificate'],
   ['lease', 'Lease'], ['court_record', 'Court record or receipt'], ['tax_transcript', 'Tax transcript'],
   ['benefit_letter', 'Benefit letter'], ['other', 'Other'],
 ]
 
-export function UploadSheet({ initial, lang = 'es', onClose, onUploaded }: { initial?: string; lang?: Lang; onClose: () => void; onUploaded: (id: string) => void }) {
+export function UploadSheet({ initial, lang = 'en', onClose, onUploaded }: { initial?: string; lang?: Lang; onClose: () => void; onUploaded: (id: string) => void }) {
   const en = lang === 'en'
   const DOCS = en ? DOCS_EN : DOCS_ES
   const [type, setType] = useState<string | null>(initial ?? null)
@@ -86,7 +86,7 @@ const MASKS_EN: Record<string, { label: string; placeholder: string }> = {
   'fee.income': { label: 'Annual household income (dollars)', placeholder: '15000' },
 }
 
-export function SecureEntrySheet({ field, label, lang = 'es', onClose }: { field: string; label: string; lang?: Lang; onClose: () => void }) {
+export function SecureEntrySheet({ field, label, lang = 'en', onClose }: { field: string; label: string; lang?: Lang; onClose: () => void }) {
   const en = lang === 'en'
   const MASKS = en ? MASKS_EN : MASKS_ES
   const [value, setValue] = useState('')
@@ -131,7 +131,7 @@ const PICKS_EN: Record<string, [string, string][]> = {
 }
 const PICK_LABEL_EN: Record<string, string> = { sex: 'Sex', eye_color: 'Eye color', hair_color: 'Hair color', ethnicity: 'Ethnicity', race: 'Race' }
 
-export function BiographicsSheet({ lang = 'es', onClose }: { lang?: Lang; onClose: () => void }) {
+export function BiographicsSheet({ lang = 'en', onClose }: { lang?: Lang; onClose: () => void }) {
   const en = lang === 'en'
   const PICKS = en ? PICKS_EN : PICKS_ES
   const PICK_LABEL = en ? PICK_LABEL_EN : PICK_LABEL_ES
@@ -160,7 +160,7 @@ export function BiographicsSheet({ lang = 'es', onClose }: { lang?: Lang; onClos
   )
 }
 
-export function ReferralCard({ card, lang = 'es', onOk, onNotMe }: { card: any; lang?: Lang; onOk: () => void; onNotMe: () => void }) {
+export function ReferralCard({ card, lang = 'en', onOk, onNotMe }: { card: any; lang?: Lang; onOk: () => void; onNotMe: () => void }) {
   const stop = card.variant === 'stop_now'
   const en = lang === 'en'
   return (

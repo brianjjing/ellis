@@ -36,7 +36,7 @@ def _briefing(s, case: Case, versions: int, queue: list[dict], **extra) -> None:
         cs.publish_briefing(s, case, body, proposed_by="case_manager@seed")
 
 
-def load(reset: bool = True) -> dict[str, str]:
+def load(reset: bool = True, language: str = "en-US") -> dict[str, str]:
     if reset:
         drop_all()
     create_all()
@@ -66,7 +66,7 @@ def load(reset: bool = True) -> dict[str, str]:
         s.flush()
 
         def mk(cid, first, last, phone, patient=False):
-            c = Case(id=cid, clinic_id=clinic.id, first_name=first, last_name=last, phone=phone,
+            c = Case(id=cid, clinic_id=clinic.id, first_name=first, last_name=last, phone=phone, language=language,
                      assigned_reviewer=reviewer.id, settings={"patient_mode": patient}, created_by=intake.id,
                      created_at=now())
             s.add(c)

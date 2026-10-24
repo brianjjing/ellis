@@ -1,6 +1,6 @@
 // Voice session client for WS /api/a/voice.
 // Voice mode (Cartesia): mic → 16 kHz PCM16 frames → server (Ink-2); server streams Sonic PCM16 24 kHz back.
-// Text mode (Cartesia unreachable): the browser speaks lines (es-MX speechSynthesis) and recognizes speech
+// Text mode (Cartesia unreachable): the browser speaks lines (speechSynthesis in the case's locale) and recognizes speech
 // (Web Speech API) or the applicant types. Barge-in: the applicant talking over an interruptible line stops it
 // and the server is told which word was playing; locked lines are never cut.
 import { wsUrl } from '../api'
@@ -41,14 +41,14 @@ export class VoiceClient {
   pcmBuf: number[] = []
   ended = false
   patient = false
-  locale = 'es-MX'
+  locale = 'en-US'
   h: Handlers
 
   constructor(h: Handlers) {
     this.h = h
   }
 
-  async start(wantVoice: boolean, lang: string = 'es', locale: string = 'es-MX') {
+  async start(wantVoice: boolean, lang: string = 'en', locale: string = 'en-US') {
     this.locale = locale
     this.h.onState('connecting')
     // ponytail: request the context at STT's native 16 kHz so the browser's own (band-limited) resampler

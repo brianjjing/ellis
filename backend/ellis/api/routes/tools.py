@@ -60,7 +60,7 @@ def session_start(body: SessionStart, request: Request) -> dict[str, Any]:
 def call_config(s, case: Case) -> dict[str, Any]:
     from ...services.clinic_service import clinic_of
     patient = bool((case.settings or {}).get("patient_mode"))
-    locale = case.language or "es-MX"
+    locale = case.language or "en-US"
     lang = "en" if locale.startswith("en") else "es"
     return {"case_state": case.state, "first_name": case.first_name, "clinic_name": clinic_of(s, case).name,
             "consent_given": cs.consent_given(s, case), "patient_mode": patient, "language": lang, "locale": locale,

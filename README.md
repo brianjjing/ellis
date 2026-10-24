@@ -22,7 +22,9 @@ Then open http://localhost:5173:
 
 - **Clinic workspace:** `/clinic`. Sign in as `dana@valle.demo` (reviewer), `sam@valle.demo` (intake) or
   `admin@valle.demo`. The password is `ellis-demo`.
-- **Applicant links (Spanish):** `/a/demo-maria`, `/a/demo-jorge`, `/a/demo-ana`, `/a/demo-rosa`.
+- **Applicant links (Spanish):** `/a/demo-maria`, `/a/demo-jorge`, `/a/demo-ana`, `/a/demo-rosa`. A link signs the
+  applicant in and lands on the chat (`/`). The sidebar pages are `/form`, `/interview`, `/reminders` and `/advanced`.
+  Sign-off is at `/review`. Without a session, `/` goes to `/signin`, where the link or its code can be pasted.
 
 All data is synthetic, and the UI labels it "Datos de demostración". The flows are written for Friday
 Oct 23, 2026, so `ELLIS_TODAY` pins the date (`scripts/dev.sh` sets it).

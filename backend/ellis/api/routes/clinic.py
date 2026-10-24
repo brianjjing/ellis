@@ -90,7 +90,7 @@ class NewCase(BaseModel):
     first_name: str
     last_name: str
     phone: str | None = None
-    language: str = "es-MX"
+    language: str = "en-US"
     patient_mode: bool = False
     assigned_reviewer: str | None = None
 

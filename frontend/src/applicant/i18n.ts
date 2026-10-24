@@ -3,21 +3,21 @@
 // screen text so the surrounding UI isn't stuck in Spanish when English is selected.
 export type Lang = 'es' | 'en'
 
-// Derive the UI language from a case's persisted locale (e.g. "en-US" -> 'en'). Defaults to Spanish for an
+// Derive the UI language from a case's persisted locale (e.g. "es-MX" -> 'es'). Defaults to English for an
 // unset/unrecognized locale, matching Case.language's own DB default.
 export function langOf(data: { language?: string | null }): Lang {
-  return (data.language || 'es-MX').startsWith('en') ? 'en' : 'es'
+  return (data.language || 'en-US').startsWith('es') ? 'es' : 'en'
 }
 
 export const LANGUAGES: { code: Lang; label: string; dialects: { code: string; label: string }[] }[] = [
+  { code: 'en', label: 'English', dialects: [
+    { code: 'en-US', label: 'United States' },
+    { code: 'en-GB', label: 'United Kingdom' },
+  ] },
   { code: 'es', label: 'Español', dialects: [
     { code: 'es-MX', label: 'México' },
     { code: 'es-US', label: 'Estados Unidos' },
     { code: 'es-ES', label: 'España' },
-  ] },
-  { code: 'en', label: 'English', dialects: [
-    { code: 'en-US', label: 'United States' },
-    { code: 'en-GB', label: 'United Kingdom' },
   ] },
 ]
 

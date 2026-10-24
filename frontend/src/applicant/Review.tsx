@@ -1,8 +1,24 @@
 // A8 review and sign-off; A9 packet ready. Professional-draft path for stop-now cases (F2.08–F2.09).
 import { useEffect, useState } from 'react'
 import { api, ApiError } from '../api'
-import { Roadmap, type CaseView } from './ApplicantApp'
+import Shell from '../Shell'
+import { navigate } from '../main'
+import { Roadmap, useCase, type CaseView } from './ApplicantApp'
 import { langOf } from './i18n'
+
+// /review: sign-off once the clinic marks the case ready, then the packet.
+export function ReviewPage() {
+  const { data, reload } = useCase()
+  const signed = data.state === 'signed' || data.state === 'referred_out'
+  return (
+    <Shell active="form">
+      <div className="main">
+        <header className="bar"><h1 className="h1">{signed ? 'Your packet' : 'Review and sign'}</h1></header>
+        {signed ? <PacketReady data={data} /> : <ReviewSignoff data={data} reload={reload} onSigned={reload} onBack={() => navigate('/form')} />}
+      </div>
+    </Shell>
+  )
+}
 
 export function ReviewSignoff({ data, reload, onSigned, onBack }: { data: CaseView; reload: () => void; onSigned: () => void; onBack: () => void }) {
   const lang = langOf(data)
@@ -22,7 +38,7 @@ export function ReviewSignoff({ data, reload, onSigned, onBack }: { data: CaseVi
     if (!synth) return
     synth.cancel()
     const u = new SpeechSynthesisUtterance(`${sec.label}. ` + sec.items.map((i: any) => `${i.label}: ${i.value}`).join('. '))
-    u.lang = data.language || 'es-MX'
+    u.lang = data.language || 'en-US'
     synth.speak(u)
   }
   const wrong = async (sec: string) => {

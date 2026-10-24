@@ -1,5 +1,5 @@
 """Optional Claude assist for the liaison: turns one utterance into one field value when the rule-based
-Spanish parser cannot. It never decides what to say, never computes dates, and only sees the utterance (already
+parser cannot. It never decides what to say, never computes dates, and only sees the utterance (already
 past the keyword check and number redaction) plus the field's type. Enabled when ANTHROPIC_API_KEY is set."""
 
 from __future__ import annotations
@@ -9,7 +9,7 @@ from typing import Any
 
 from ..config import settings
 
-PROMPT = """Extract the applicant's answer for ONE form field from a Spanish utterance.
+PROMPT = """Extract the applicant's answer for ONE form field from an utterance (English or Spanish).
 Field: {key} ({label}); type: {type}; allowed options: {options}.
 Return ONLY JSON: {{"value": <value or null>, "understood": true|false, "hedged": true|false}}.
 Dates: ISO YYYY-MM-DD, or YYYY-MM if only month and year were said. Never compute or infer a date that was not said.

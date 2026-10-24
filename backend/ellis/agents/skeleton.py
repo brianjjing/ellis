@@ -44,7 +44,7 @@ def case_manager(ctx: dict) -> list[dict]:
     reasons: list[str] = []
     # title_es/question_es fields below hold pre-resolved text in this case's language (not necessarily
     # Spanish); team_cards() and the case_manager task-reading loop just display/relay it as-is.
-    lang = ctx.get("language", "es")
+    lang = ctx.get("language", "en")
     # 1. read back hedged / conflicting / disputed / third-party values first
     conflict_fields = {f["field"] for f in _flags(ctx, "date_conflict") if f.get("field")}
     for k, v in facts.items():
@@ -210,7 +210,7 @@ GAP_RULES = {
 
 
 def doc_paralegal(ctx: dict) -> list[dict]:
-    lang = ctx.get("language", "es")
+    lang = ctx.get("language", "en")
     items: list[dict] = []
     fv = _facts(ctx)
     today = date.fromisoformat(ctx["today"])
@@ -327,7 +327,7 @@ def _supports(d: dict, fv: dict) -> list[str]:
 # ------------------------------------------------------------------------------------------- docketing clerk
 
 def docketing_clerk(ctx: dict) -> list[dict]:
-    lang = ctx.get("language", "es")
+    lang = ctx.get("language", "en")
     title_es = "Reviewed the dates of your case" if lang == "en" else "Revisó las fechas de su caso"
     items: list[dict] = []
     der = ctx.get("derived") or {}
@@ -361,7 +361,7 @@ def docketing_clerk(ctx: dict) -> list[dict]:
 
 def qa_reviewer(ctx: dict, recompute=None) -> list[dict]:
     """Fresh-context audit: recompute from raw facts, challenge weak spots (max 2 rounds), then write the QA memo."""
-    lang = ctx.get("language", "es")
+    lang = ctx.get("language", "en")
     items: list[dict] = []
     fv = _facts(ctx)
     der = ctx.get("derived") or {}

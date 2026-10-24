@@ -24,7 +24,7 @@ from ellis.db import reset_engine  # noqa: E402
 def seeded():
     reset_engine()
     from seed import load
-    load.load(reset=True)
+    load.load(reset=True, language="es-MX")  # the acceptance flows are scripted in Spanish
     yield
     reset_engine()
 

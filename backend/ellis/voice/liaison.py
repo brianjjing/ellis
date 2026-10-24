@@ -62,13 +62,14 @@ class Say:
 
 class Liaison:
     def __init__(self, client, today: date | None = None, channel: str = "voice", llm=None, humanizer=None,
-                rng_seed: int = 7, language: str = "es"):
+                rng_seed: int = 7, language: str | None = None):
         self.c = client
         self.today = today or date.today()
         self.channel = channel
         self.llm = llm
         self.humanizer = humanizer
-        self.language = language if language in NLU else "es"
+        self.follow_case = language not in NLU  # no explicit language: adopt the case's at start()
+        self.language = language if language in NLU else "en"
         self.nlu = NLU[self.language]
         self.script = lambda key, **kw: script(key, lang=self.language, **kw)
         self.mode = "start"
@@ -96,6 +97,9 @@ class Liaison:
 
     def start(self) -> list[Say]:
         self.cfg = self.c.session_start(self.channel)
+        if self.follow_case and self.cfg.get("language") in NLU:
+            self.language = self.cfg["language"]
+            self.nlu = NLU[self.language]
         b = self.c.get_briefing()
         self.sections_done_start = {p["section"] for p in b.get("progress", []) if p["state"] == "done"}
         if not self.cfg.get("consent_given"):

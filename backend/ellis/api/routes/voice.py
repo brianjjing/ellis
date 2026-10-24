@@ -71,8 +71,8 @@ class VoiceSession:
         want_voice = start.get("mode", "voice") == "voice"
         # The case's persisted language is the fallback when the client doesn't specify one (e.g. an older
         # client, or a returning session whose frontend state hasn't loaded the case yet), so a session never
-        # silently reverts to Spanish for an applicant who chose English.
-        case_locale = "es-MX"
+        # silently switches language on an applicant.
+        case_locale = "en-US"
         with session_scope() as cs_s:
             case = cs_s.get(Case, self.case_id)
             if case and case.language:
