@@ -95,7 +95,7 @@ class KeywordGuard:
             yield out
 
 
-def _llm_agent(case_id: str, clinic_name: str):
+def _llm_agent(case_id: str, clinic_name: str, lang: str = "en"):
     from line.llm_agent import LlmAgent, LlmConfig, end_call, http_server_tool
 
     auth = {"Authorization": f"Bearer {SECRET}", "X-Ellis-Case": case_id}
@@ -125,8 +125,9 @@ def _llm_agent(case_id: str, clinic_name: str):
              {"document_type": {"type": "string"}}, ["document_type"]),
         end_call,
     ]
-    prompt = PROMPT.read_text(encoding="utf-8").replace("{clinic_name}", clinic_name)
-    disclosure = script("disclosure", clinic_name=clinic_name).text
+    prompt = (PROMPT.read_text(encoding="utf-8").replace("{clinic_name}", clinic_name)
+              .replace("{language}", "Spanish" if lang == "es" else "English"))
+    disclosure = script("disclosure", lang=lang, clinic_name=clinic_name).text
     return LlmAgent(model=os.environ.get("ELLIS_LINE_MODEL", "anthropic/claude-haiku-5-5"),
                     api_key=os.environ.get("ANTHROPIC_API_KEY"), tools=tools,
                     config=LlmConfig(system_prompt=prompt, introduction=disclosure))
@@ -139,7 +140,7 @@ async def get_agent(env: AgentEnv, call_request: CallRequest):
     client = HttpClient(API, SECRET, case_id)
     if os.environ.get("ELLIS_LINE_BRAIN", "scripted") == "llm" and os.environ.get("ANTHROPIC_API_KEY"):
         cfg = await asyncio.to_thread(client.session_start, "line")
-        return KeywordGuard(_llm_agent(case_id, cfg.get("clinic_name", "su clínica")), client)
+        return KeywordGuard(_llm_agent(case_id, cfg.get("clinic_name", "your clinic"), cfg.get("language", "en")), client)
     return ScriptedLineAgent(case_id)
 
 

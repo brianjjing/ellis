@@ -47,14 +47,18 @@ const { chromium } = require('playwright');
   if (ready && await ready.isEnabled()) { await ready.click(); await p.waitForTimeout(1500); console.log('MARKED READY', await p.textContent('[role=status]')); }
   // applicant signs
   const a = await (await b.newContext({ viewport: { width: 420, height: 900 } })).newPage();
+  // The link signs in and lands on the chat; its next-step card leads to /review once the case is ready.
   await a.goto('' + (process.env.ELLIS_WEB ?? 'http://localhost:5173') + '/a/demo-maria');
-  await a.waitForTimeout(2500);
+  await a.waitForSelector('#next');
+  const sign = await a.$('#next a:text-is("Review and sign")');
+  if (sign) { await sign.click(); await a.waitForSelector('.attest'); }
+  await a.waitForTimeout(1000);
   await a.screenshot({ path: './e2e-shots/a8-review.png', fullPage: true });
-  if (await a.$('text=Revisé todas mis respuestas')) {
+  if (await a.$('.attest')) {
     await a.click('.attest input');
     await a.fill('#nm', 'Maria Torres');
-    await a.click('button:text-is("Firmar")');
-    await a.waitForSelector('text=Su paquete está listo', { timeout: 20000 });
+    await a.click('button:text-is("Sign"), button:text-is("Firmar")');
+    await a.waitForSelector('text=/Your packet is ready|Su paquete está listo/', { timeout: 20000 });
     await a.waitForTimeout(1500);
     await a.screenshot({ path: './e2e-shots/a9-packet.png', fullPage: true });
     console.log('PACKET', JSON.stringify(await a.$$eval('a.btn', els => els.map(e => e.textContent))));

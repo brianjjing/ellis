@@ -81,6 +81,12 @@ class Settings:
         return env("ELLIS_AGENT_MODEL", "claude-sonnet-5-5")
 
     @property
+    def conversation_model(self) -> str:
+        # drives the live conversation (LlmLiaison): tool-call reliability matters more here than
+        # in the narrow field-extractor, so default to a stronger model than ELLIS_LIAISON_MODEL.
+        return env("ELLIS_CONVERSATION_MODEL", "claude-sonnet-5-5")
+
+    @property
     def today_override(self) -> str | None:
         # Pin "today" for demos and tests (flows are written for Fri Oct 23, 2026).
         return env("ELLIS_TODAY")

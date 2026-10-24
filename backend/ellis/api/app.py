@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 from contextlib import asynccontextmanager
@@ -53,6 +54,9 @@ def create_app(start_workers: bool | None = None) -> FastAPI:
         if run:
             from ..agents.runner import start_background_runner
             start_background_runner()
+        if settings.cartesia_api_key:
+            from ..voice.cartesia import warm_voices
+            warm = asyncio.create_task(warm_voices())  # noqa: F841 - held by this frame so it isn't collected
         yield
 
     app = FastAPI(title="Ellis Case API", version="0.1.0", lifespan=lifespan)

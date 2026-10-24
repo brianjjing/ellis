@@ -1,4 +1,5 @@
-# Liaison scripts (draft Spanish, needs native review — handoff §16). locked = interruptible=False.
+# Liaison scripts (draft Spanish, needs native review — handoff §16). locked = fixed legal wording
+# (interruptible=False on the Line agent; the web chat lets any line be interrupted).
 version: es-1
 disclosure:
   locked: true
@@ -63,6 +64,9 @@ tool_failure:
 not_understood:
   locked: false
   text: "Perdón, no le entendí bien."
+already_mentioned:
+  locked: false
+  text: "Mencionó algo de esto antes. Aún necesito preguntárselo de forma oficial."
 take_your_time:
   locked: false
   text: "Tómese su tiempo."

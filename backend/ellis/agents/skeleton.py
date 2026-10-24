@@ -15,6 +15,7 @@ from ..rules import engine as rules
 from ..services import catalog
 
 MONTHS_ES = rules.MONTHS_ES
+MONTHS_EN = rules.MONTHS_EN
 
 
 def _facts(ctx) -> dict[str, Any]:
@@ -41,6 +42,9 @@ def case_manager(ctx: dict) -> list[dict]:
     facts = ctx["facts"]
     queue: list[dict] = []
     reasons: list[str] = []
+    # title_es/question_es fields below hold pre-resolved text in this case's language (not necessarily
+    # Spanish); team_cards() and the case_manager task-reading loop just display/relay it as-is.
+    lang = ctx.get("language", "en")
     # 1. read back hedged / conflicting / disputed / third-party values first
     conflict_fields = {f["field"] for f in _flags(ctx, "date_conflict") if f.get("field")}
     for k, v in facts.items():
@@ -89,9 +93,12 @@ def case_manager(ctx: dict) -> list[dict]:
                                  "reason": "retake needed"})
                 reasons.append(f"ask for a retake of {d['document_type']}")
     # 3. reviewer "needs more info" and QA challenges that carry a question
+    # Task.question_es holds pre-resolved text in whatever language it was proposed in (qa_reviewer writes
+    # it in ctx["language"]); store it under the matching dynamic key so _ask() picks it up regardless of
+    # language instead of silently falling back to a generic templated question.
     for t in ctx["tasks"]:
         if t["status"] == "open" and t.get("question_es") and t.get("field") and t["field"] not in facts:
-            queue.append({"kind": "ask", "field": t["field"], "question_es": t["question_es"],
+            queue.append({"kind": "ask", "field": t["field"], f"question_{lang}": t["question_es"],
                           "reason": f"{t['agent']} {t['kind']}"})
             reasons.append(f"ask {t['field']} for {t['agent']}")
     # 4. documents still needed
@@ -139,7 +146,8 @@ def case_manager(ctx: dict) -> list[dict]:
                                                   "reviewer_notes_for_applicant": notes, "session_close": close}})
     if reasons:
         items.append({"type": "task", "payload": {"kind": "finding", "title": "Briefing: " + "; ".join(reasons[:3]),
-                                                  "title_es": "Ordenó las siguientes preguntas"}})
+                                                  "title_es": "Ordered the following questions" if lang == "en"
+                                                              else "Ordenó las siguientes preguntas"}})
     # other paths are flagged for the reviewer, never computed (Phase 1 = 5-year path)
     if fv.get("spouse.citizenship_status") == "us_citizen" and fv.get("spouse.marriage_date") and \
             fv.get("marital.status") == "married":
@@ -190,17 +198,19 @@ def _status_memo(ctx) -> str:
 
 # ------------------------------------------------------------------------------------------- doc paralegal
 
+# (document_type, reason [clinic-facing, always English], label_es, label_en [applicant-facing gap text])
 GAP_RULES = {
     "citation": ("court_record", "Court disposition or proof of payment for the citation",
-                 "Recibo o documento de la corte de su multa"),
+                 "Recibo o documento de la corte de su multa", "Court record or proof of payment for your citation"),
     "taxes": ("tax_transcript", "IRS account transcript for the year in question (shows whether a return is on file)",
-              "Comprobante de impuestos del IRS"),
+              "Comprobante de impuestos del IRS", "IRS tax transcript"),
     "name_mismatch": ("marriage_certificate", "Marriage certificate (marital and name history)",
-                      "Acta de matrimonio"),
+                      "Acta de matrimonio", "Marriage certificate"),
 }
 
 
 def doc_paralegal(ctx: dict) -> list[dict]:
+    lang = ctx.get("language", "en")
     items: list[dict] = []
     fv = _facts(ctx)
     today = date.fromisoformat(ctx["today"])
@@ -230,18 +240,24 @@ def doc_paralegal(ctx: dict) -> list[dict]:
             ex = chr(ord("A") + exhibit - 1)
         items.append({"type": "doc_checks", "payload": {"document_id": d["id"], "checks": checks, "exhibit": ex}})
         if d["quality"] == "low":
-            label = LABELS_ES.get(d["document_type"], "documento")
+            label = LABELS_EN.get(d["document_type"], "document") if lang == "en" else LABELS_ES.get(d["document_type"], "documento")
+            title_es = f"Asked for another photo of your {label}" if lang == "en" else f"Pidió otra foto de su {label}"
             items.append({"type": "task", "payload": {
                 "kind": "finding", "title": f"{d['document_type']} — retake needed ({', '.join(d.get('quality_reasons') or ['low quality'])})",
-                "title_es": f"Pidió otra foto de su {label}"}})
+                "title_es": title_es}})
         elif d["document_type"] != "other":
+            label = LABELS_EN.get(d["document_type"], "document") if lang == "en" else LABELS_ES.get(d["document_type"], "documento")
+            title_es = f"Checked your {label}" if lang == "en" else f"Revisó su {label}"
             items.append({"type": "task", "payload": {
                 "kind": "finding", "title": f"Checked {d['document_type']} ({d['quality']}): {', '.join(supports) or 'on file'}",
-                "title_es": f"Revisó su {LABELS_ES.get(d['document_type'], 'documento')}"}})
-    # gaps from open flags (never for stop-now sections)
-    wanted: dict[str, tuple[str, str, str]] = {}
+                "title_es": title_es}})
+    # gaps from open flags (never for stop-now sections). wanted[key] = (document_type, reason [clinic,
+    # English], label_es, label_en); the loop below picks the label matching this case's language.
+    wanted: dict[str, tuple[str, str, str, str]] = {}
     if not _docs(ctx, "green_card", ("high",)):
-        wanted["base:green_card"] = ("green_card", "Green card, front and back", "Foto de su tarjeta de residente (los dos lados)")
+        wanted["base:green_card"] = ("green_card", "Green card, front and back",
+                                     "Foto de su tarjeta de residente (los dos lados)",
+                                     "Photo of your green card (both sides)")
     for f in _flags(ctx):
         cat = f["category"]
         if cat in GAP_RULES:
@@ -255,18 +271,21 @@ def doc_paralegal(ctx: dict) -> list[dict]:
             note = "lease already on file covers it; " if lease else ""
             wanted[f"flag:{cat}:{f.get('field')}"] = (
                 "tax_transcript", f"Proof home was kept during trip {int(i) + 1}: {note}consider the {year} tax return",
-                f"Comprobante de impuestos de {year}" if year else "Comprobante de impuestos")
+                f"Comprobante de impuestos de {year}" if year else "Comprobante de impuestos",
+                f"{year} tax transcript" if year else "Tax transcript")
     if fv.get("fee.method") == "paper" and fv.get("fee.benefit_type"):
         wanted["fee:benefit_letter"] = ("benefit_letter", "Current benefit letter for the fee waiver",
-                                        "Carta de beneficios de este año")
+                                        "Carta de beneficios de este año", "This year's benefit letter")
     have = {(g["document_type"], g.get("label_es")) for g in gaps.values()}
-    for key, (dt, reason, label) in wanted.items():
+    for key, (dt, reason, label_es, label_en) in wanted.items():
+        label = label_en if lang == "en" else label_es
         if key not in gaps and (dt, label) not in have:
             have.add((dt, label))
             items.append({"type": "gap", "payload": {"document_type": dt, "reason": reason, "label_es": label,
                                                      "key": key}})
+            title_es = f"Added to the list: {label}" if lang == "en" else f"Agregó a la lista: {label}"
             items.append({"type": "task", "payload": {"kind": "finding", "title": f"Gap: {reason}",
-                                                      "title_es": f"Agregó a la lista: {label}"}})
+                                                      "title_es": title_es}})
     # close gaps when a usable document of that type arrives
     for key, g in gaps.items():
         if g["status"] != "open":
@@ -308,6 +327,8 @@ def _supports(d: dict, fv: dict) -> list[str]:
 # ------------------------------------------------------------------------------------------- docketing clerk
 
 def docketing_clerk(ctx: dict) -> list[dict]:
+    lang = ctx.get("language", "en")
+    title_es = "Reviewed the dates of your case" if lang == "en" else "Revisó las fechas de su caso"
     items: list[dict] = []
     der = ctx.get("derived") or {}
     current = {d["kind"]: d for d in ctx["deadlines"]}
@@ -325,14 +346,14 @@ def docketing_clerk(ctx: dict) -> list[dict]:
         items.append({"type": "task", "payload": {
             "kind": "finding", "title": "Information: file before the proposed fee rule takes effect, if it is "
                                         "finalized (not urging; effective-date treatment NEEDS EXPERT CHECK)",
-            "title_es": "Revisó las fechas de su caso"}})
+            "title_es": title_es}})
     corrected = [e for e in ctx.get("trigger_events", []) if e["kind"] == "fact.corrected"
                  and catalog.is_date_field(e["payload"].get("field", ""))]
     if changed or corrected:
         title = ("Date change moves nothing; window still open" if corrected and not changed
                  else f"Filing window from rules engine: {der.get('earliest_filing')}")
         items.append({"type": "task", "payload": {"kind": "finding", "title": title,
-                                                  "title_es": "Revisó las fechas de su caso"}})
+                                                  "title_es": title_es}})
     return items
 
 
@@ -340,6 +361,7 @@ def docketing_clerk(ctx: dict) -> list[dict]:
 
 def qa_reviewer(ctx: dict, recompute=None) -> list[dict]:
     """Fresh-context audit: recompute from raw facts, challenge weak spots (max 2 rounds), then write the QA memo."""
+    lang = ctx.get("language", "en")
     items: list[dict] = []
     fv = _facts(ctx)
     der = ctx.get("derived") or {}
@@ -358,9 +380,10 @@ def qa_reviewer(ctx: dict, recompute=None) -> list[dict]:
             bits = [f"{k}={der.get(k)}" for k in ("trip_days", "presence_days") if der.get(k) is not None]
             findings.append("Recompute from raw facts matches" + (f" ({', '.join(bits)})" if bits else ""))
             if bits:
+                title_es = "Recalculated the dates of your case" if lang == "en" else "Volvió a calcular las fechas de su caso"
                 items.append({"type": "task", "payload": {"kind": "finding",
                                                           "title": "Recompute matches: " + ", ".join(bits),
-                                                          "title_es": "Volvió a calcular las fechas de su caso"}})
+                                                          "title_es": title_es}})
     # 2. notes on open review items
     for f in _flags(ctx):
         if f["category"] in ("absence_gt_180", "absence_gte_365"):
@@ -375,6 +398,8 @@ def qa_reviewer(ctx: dict, recompute=None) -> list[dict]:
                 "note": "No fact may use the married name as current legal name without review; every section uses "
                         "the document name. Recommend the reviewer confirm."}})
     # 3. challenges (the Case API caps rounds at 2 per material change)
+    # question_es here holds pre-resolved text in ctx["language"] (not necessarily Spanish -- see the
+    # case_manager loop above, which stores it back under the matching question_{lang} key).
     challenges: list[dict] = []
     conflict_fields = {f["field"] for f in _flags(ctx, "date_conflict")}
     for k, v in ctx["facts"].items():
@@ -382,24 +407,30 @@ def qa_reviewer(ctx: dict, recompute=None) -> list[dict]:
             challenges.append({"kind": "challenge", "field": k,
                                "title": f"{k}: hedged and contradicts a document; do not confirm without read-back"})
     if _flags(ctx, "citation") and "background.detail.other_citations" not in fv:
+        q = ("Have you received any other fine or citation, anywhere, at any time?" if lang == "en" else
+             "¿Ha recibido alguna otra multa o citación, en cualquier lugar y en cualquier momento?")
         challenges.append({"kind": "challenge", "field": "background.detail.other_citations",
-                           "title": "Confirm no other citations anywhere, ever",
-                           "question_es": "¿Ha recibido alguna otra multa o citación, en cualquier lugar y en cualquier momento?"})
+                           "title": "Confirm no other citations anywhere, ever", "question_es": q})
     for gap in _employment_gaps(fv):
         key = f"employment.gap.{gap['from']}"
         if key not in fv:
-            m1, m2 = MONTHS_ES[gap["from_month"] - 1], MONTHS_ES[gap["to_month"] - 1]
+            if lang == "en":
+                m1, m2 = MONTHS_EN[gap["from_month"] - 1], MONTHS_EN[gap["to_month"] - 1]
+                q = f"Between {m1} and {m2} {gap['year']}, were you out of work or working somewhere else?"
+            else:
+                m1, m2 = MONTHS_ES[gap["from_month"] - 1], MONTHS_ES[gap["to_month"] - 1]
+                q = f"Entre {m1} y {m2} de {gap['year']}, ¿estuvo sin trabajo o trabajó en otro lugar?"
             challenges.append({"kind": "challenge", "field": key,
                                "title": f"Employment gap {gap['from'][:7]}–{gap['to'][:7]} unexplained",
-                               "question_es": f"Entre {m1} y {m2} de {gap['year']}, ¿estuvo sin trabajo o trabajó en "
-                                              f"otro lugar?"})
+                               "question_es": q})
     ch_rounds = [t for t in ctx["tasks"] if t["agent"] == "qa_reviewer" and t["kind"] == "challenge"]
     open_titles = {t["title"] for t in ch_rounds}
     new = [c for c in challenges if c["title"] not in open_titles]
     for c in new:
+        title_es = "Checked the consistency of your answers" if lang == "en" else "Revisó la consistencia de sus respuestas"
         items.append({"type": "task", "payload": {"kind": "challenge", "title": c["title"], "field": c.get("field"),
                                                   "question_es": c.get("question_es"),
-                                                  "title_es": "Revisó la consistencia de sus respuestas"}})
+                                                  "title_es": title_es}})
     unanswered = [t for t in ch_rounds if t.get("field") and t.get("question_es") and t["field"] not in fv]
     # 4. provenance + edition checks, then the memo (only when nothing new to challenge)
     no_prov = [k for k, v in ctx["facts"].items() if v["status"] == "confirmed" and not v.get("source")]
