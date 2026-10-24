@@ -19,7 +19,8 @@
   --mono: 'Courier Prime', monospace;
 }
 
-/* Paper behind the page and no rubber-band, so overscroll never shows a seam. */
+/* Paper behind the page and no rubber-band, so overscroll never shows a seam (theme-color in index.html keeps
+   the browser's own top bar / bounce area paper too). */
 html { background: var(--paper); overscroll-behavior-y: none; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; }
 body { margin: 0; }
 :where(a) { color: var(--green); }
@@ -74,7 +75,7 @@ main, .enter, .dialog::backdrop { animation: enter .18s ease-out; }
 .tab[aria-selected='true'] { background: var(--white); color: var(--ink); }
 
 /* Page frame */
-.page { min-height: 100vh; box-sizing: border-box; border-top: 3px solid var(--ink); background: var(--paper); color: var(--ink); font-family: var(--sans); display: flex; flex-wrap: wrap; }
+.page { min-height: 100vh; box-sizing: border-box; background: var(--paper); color: var(--ink); font-family: var(--sans); display: flex; flex-wrap: wrap; }
 .page.col { flex-direction: column; flex-wrap: nowrap; }
 .wordmark { display: inline-flex; align-self: flex-start; text-decoration: none; }
 .logo { display: block; height: 32px; width: auto; }
