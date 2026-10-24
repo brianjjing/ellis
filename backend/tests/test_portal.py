@@ -104,3 +104,8 @@ def test_login_replaces_other_role(client):
 def test_wrong_password_401(client):
     r = login(client, "dana@valle.demo", "nope-nope")
     assert r.status_code == 401 and r.json()["error"]["code"] == "bad_credentials"
+
+
+def test_demo_applicant_login(client):
+    r = login(client, "maria@valle.demo")
+    assert r.status_code == 200 and r.json()["case_id"] == "c_maria"
