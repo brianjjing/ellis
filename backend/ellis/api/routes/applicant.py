@@ -9,13 +9,12 @@ import time
 from typing import Any
 
 from fastapi import APIRouter, File, Form, Request, Response, UploadFile, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy import select
 
 from ...config import settings
 from ...db import Case, Gap, Packet, session_scope
-from ...services import auth, bus, case_service as cs, documents as docsvc, review, signoff, views
+from ...services import auth, bus, case_service as cs, documents as docsvc, review, signoff, storage, views
 from ...services.flags import STOP_NOW
 from ..deps import APPLICANT_COOKIE, applicant_case, err
 
@@ -273,7 +272,9 @@ def packet_file(packet_id: str, exp: int, sig: str):
         p = s.get(Packet, packet_id)
         if p is None:
             raise err(404, "not_found", "not found")
-        return FileResponse(p.storage_path, media_type="application/pdf", filename=p.filename)
+        key, filename = p.storage_path, p.filename
+    return Response(storage.get(key), media_type="application/pdf",
+                    headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 
 
 # ---------------------------------------------------------------- live stream

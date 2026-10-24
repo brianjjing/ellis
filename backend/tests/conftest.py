@@ -7,6 +7,7 @@ import tempfile
 _tmp = tempfile.mkdtemp(prefix="ellis-test-")
 os.environ["DATABASE_URL"] = os.environ.get("TEST_DATABASE_URL", f"sqlite:///{_tmp}/test.db")
 os.environ["ELLIS_FILES_DIR"] = f"{_tmp}/files"
+os.environ["ELLIS_STORAGE"] = "local"  # never touch a real bucket configured in backend/.env
 os.environ["ELLIS_TODAY"] = "2026-10-23"
 os.environ["ELLIS_EXTRACTION_SYNC"] = "1"
 os.environ["ELLIS_RUN_AGENTS_INPROCESS"] = "0"

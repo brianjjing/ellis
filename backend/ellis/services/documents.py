@@ -16,11 +16,11 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..config import BACKEND_DIR, settings
+from ..config import BACKEND_DIR
 from ..db import Case, Document, Extraction, Fact, Flag, VaultValue, now, session_scope
 from ..extraction.schemas import IDENTIFIERS, LABELS_EN, LABELS_ES, SCHEMAS
 from . import case_service as cs
-from . import catalog, keywords, vault
+from . import catalog, keywords, storage, vault
 from .values import equal
 
 MAX_BYTES = 10 * 1024 * 1024
@@ -93,11 +93,8 @@ def store_upload(s: Session, case: Case, document_type: str, filename: str, data
                    sha256=orig_sha, size=len(clean), status="extracting", uploaded_by=uploaded_by, ts=now())
     s.add(doc)
     s.flush()
-    folder = settings.files_dir / case.id
-    folder.mkdir(parents=True, exist_ok=True)
-    path = folder / f"{doc.id}.{ext}"
-    path.write_bytes(clean)
-    doc.storage_path = str(path)
+    doc.storage_path = f"{case.id}/{doc.id}.{ext}"
+    storage.put(doc.storage_path, clean, mime)
     cs.emit(s, case, "doc.uploaded", {"document_id": doc.id, "document_type": document_type}, actor_type, uploaded_by)
     cs.push(s, case, "document.status", {"document_id": doc.id, "status": "extracting",
                                          "document_type": document_type})
@@ -105,17 +102,21 @@ def store_upload(s: Session, case: Case, document_type: str, filename: str, data
 
 
 def run_extraction_subprocess(doc: Document) -> dict[str, Any]:
-    """Sandbox: separate process, no DB credentials, 60 s timeout. (Container hardening is deploy config.)"""
+    """Sandbox: separate process, no DB or storage credentials, 60 s timeout. (Container hardening is deploy config.)
+
+    The parent fetches the file and hands the worker a local path.
+    """
     env = {k: v for k, v in os.environ.items() if k in ("PATH", "HOME", "LANG", "ANTHROPIC_API_KEY",
                                                          "ELLIS_EXTRACTION_MODEL", "SSL_CERT_FILE",
                                                          "HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY",
                                                          "REQUESTS_CA_BUNDLE")}
     env["PYTHONPATH"] = str(BACKEND_DIR)
     try:
-        proc = subprocess.run(
-            [sys.executable, "-I", "-m", "ellis.extraction.worker", doc.document_type, doc.storage_path, doc.mime,
-             doc.sha256],
-            capture_output=True, text=True, timeout=60, env=env, cwd=str(BACKEND_DIR))
+        with storage.local_file(doc.storage_path) as path:
+            proc = subprocess.run(
+                [sys.executable, "-I", "-m", "ellis.extraction.worker", doc.document_type, path, doc.mime,
+                 doc.sha256],
+                capture_output=True, text=True, timeout=60, env=env, cwd=str(BACKEND_DIR))
         out = proc.stdout.strip().splitlines()
         return json.loads(out[-1]) if out else {"ok": False, "error": proc.stderr[-500:] or "no output"}
     except subprocess.TimeoutExpired:

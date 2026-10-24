@@ -9,13 +9,13 @@ from datetime import timedelta
 from typing import Any
 
 from fastapi import APIRouter, File, Form, Request, Response, UploadFile, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse, PlainTextResponse
+from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 from sqlalchemy import select
 
 from ...config import settings
 from ...db import Case, Clinic, Document, Event, Memo, ReviewItem, StaffUser, now, session_scope
-from ...services import auth, bus, case_service as cs, catalog, documents as docsvc, review, views
+from ...services import auth, bus, case_service as cs, catalog, documents as docsvc, review, storage, views
 from ...services.demo import simulate_answers
 from ...services.flags import STOP_NOW
 from ..deps import APPLICANT_COOKIE, STAFF_COOKIE, clinic_case, err, staff_user
@@ -293,7 +293,8 @@ def document_file(doc_id: str, request: Request):
         if d is None:
             raise err(404, "not_found", "not found")
         clinic_case(s, u, d.case_id)
-        return FileResponse(d.storage_path, media_type=d.mime)
+        key, mime = d.storage_path, d.mime
+    return Response(storage.get(key), media_type=mime)
 
 
 @router.get("/cases/{case_id}/packet/{packet_id}")

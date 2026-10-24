@@ -1,6 +1,6 @@
 """Ellis liaison as a Cartesia Line agent (deploy with the Line CLI; Ink 2 STT + Sonic TTS run on Cartesia).
 
-    cd backend && uv run --extra line python -m ellis.voice.line_app          # local; `cartesia chat 8000`
+    cd backend && python -m ellis.voice.line_app   # local (pip install -e ".[line]"); `cartesia chat 8000`
 
 Start calls with metadata {"case_id": "<case>"}: it is baked into every tool (constant_value), so the model can
 never name another case. Tools call the Case API (/tools/*) with Authorization: Bearer $ELLIS_TOOL_SECRET.

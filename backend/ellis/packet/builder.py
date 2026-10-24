@@ -7,6 +7,7 @@ Footer on every page: "Prepared with Ellis; review before signing."
 from __future__ import annotations
 
 import hashlib
+import tempfile
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -17,11 +18,11 @@ from reportlab.pdfgen import canvas
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..config import fee_config, settings, yaml_config
+from ..config import fee_config, yaml_config
 from ..db import Case, Clinic, Document, Memo, Packet, ReviewItem, Signoff, now
 from ..rules import engine as rules
 from ..services import case_service as cs
-from ..services import catalog
+from ..services import catalog, storage
 from ..services.values import display_value
 
 FOOTER = "Prepared with Ellis; review before signing. Ellis never files: the applicant or the clinic submits to USCIS."
@@ -147,8 +148,8 @@ def _value(s: Session, case: Case, key: str, cur: dict, real: bool) -> str:
 
 def build_packet(s: Session, case: Case, signoff: Signoff | None, kinds: list[str] | None = None) -> list[Packet]:
     clinic = s.get(Clinic, case.clinic_id)
-    folder = settings.files_dir / case.id / "packet"
-    folder.mkdir(parents=True, exist_ok=True)
+    tmp = tempfile.TemporaryDirectory(prefix="ellis-packet-")  # reportlab writes files; bytes go to storage
+    folder = Path(tmp.name)
     cur = cs.current_facts(s, case.id)
     fact_versions = sorted(f.id for f in cur.values())
     der = cs.latest_derived(s, case.id)
@@ -288,11 +289,14 @@ def build_packet(s: Session, case: Case, signoff: Signoff | None, kinds: list[st
                         p.row(k, str(der.data[k]))
             p.save()
         data = path.read_bytes()
-        pk = Packet(clinic_id=case.clinic_id, case_id=case.id, kind=kind, filename=fn, storage_path=str(path),
+        key = f"{case.id}/packet/{fn}"
+        storage.put(key, data, "application/pdf")
+        pk = Packet(clinic_id=case.clinic_id, case_id=case.id, kind=kind, filename=fn, storage_path=key,
                     sha256=hashlib.sha256(data).hexdigest(), built_from_fact_versions=fact_versions,
                     signoff_id=signoff.id if signoff else None, ts=now())
         s.add(pk)
         out.append(pk)
+    tmp.cleanup()
     s.flush()
     cs.emit(s, case, "packet.built", {"kinds": kinds, "signoff_id": signoff.id if signoff else None})
     return out
