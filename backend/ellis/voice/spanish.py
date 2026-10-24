@@ -26,9 +26,15 @@ UNITS = {
 }
 TENS = {"treinta": 30, "cuarenta": 40, "cincuenta": 50, "sesenta": 60, "setenta": 70, "ochenta": 80,
         "noventa": 90}
+# ponytail: a fixed keyword list can't cover every way a person expresses uncertainty in free-form speech;
+# this is a heuristic floor, not complete coverage. Raise it by adding phrases seen missed in real sessions,
+# or swap in a model-based hedge classifier if false negatives keep showing up in review.
 HEDGES = ["creo", "mas o menos", "no me acuerdo bien", "no recuerdo bien", "como en", "como el", "aproximadamente",
           "tal vez", "quizas", "a lo mejor", "por ahi", "mas bien", "no estoy segur", "eh", "este", "i think",
-          "maybe", "como por", "como a", "algo asi", "como que"]
+          "maybe", "como por", "como a", "algo asi", "como que", "no se bien", "no se muy bien", "no se exactamente",
+          "supongo", "me parece", "me parece que", "capaz", "capaz que", "o algo asi", "por ahi de", "creo que si",
+          "creo que no", "no estoy muy segur", "no me acuerdo exactamente", "no recuerdo exactamente", "pienso que",
+          "si no me equivoco", "si mal no recuerdo"]
 YES = ["si", "sip", "claro", "correcto", "asi es", "de acuerdo", "esta bien", "afirmativo", "yes", "eso es", "exacto",
        "ok", "okay", "vale", "por supuesto", "cierto", "andale", "sale", "simon", "bueno si", "dale"]
 NO = ["no", "nunca", "negativo", "ninguno", "ninguna", "jamas", "nope", "nada"]

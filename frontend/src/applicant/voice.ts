@@ -49,7 +49,11 @@ export class VoiceClient {
 
   async start(wantVoice: boolean) {
     this.h.onState('connecting')
-    this.ctx = new AudioContext()
+    // ponytail: request the context at STT's native 16 kHz so the browser's own (band-limited) resampler
+    // does the downsampling. The old code ran the context at the device rate (44.1/48 kHz) and then
+    // decimated by picking every Nth sample with no anti-aliasing filter, which injected noise into every
+    // frame sent to Ink-2 and degraded both transcription accuracy and turn-detection confidence.
+    this.ctx = new AudioContext({ sampleRate: 16000 })
     if (wantVoice) {
       // ponytail: getUserMedia can hang forever instead of rejecting (e.g. OS never shows the
       // permission prompt); without a timeout the session would be stuck on "connecting" with no WS.
