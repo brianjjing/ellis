@@ -67,6 +67,7 @@ class SignupReq(BaseModel):
     email: str
     password: str
     clinic_name: str | None = None
+    link_token: str | None = None
     guest: Guest | None = None
 
 
@@ -80,8 +81,8 @@ def signup(body: SignupReq, request: Request, response: Response) -> dict[str, A
                     raise accounts.AccountError(400, "clinic_name", "Enter your clinic's name.")
                 return _signup_clinic(s, body, response)
             acct = accounts.create_account(s, body.name, body.email, body.password)
-            # ponytail: link_token attach (Task 3) not built yet.
-            case = accounts.create_independent_case(s, acct)
+            case = (accounts.attach_link(s, acct, body.link_token) if body.link_token
+                    else accounts.create_independent_case(s, acct))
             if body.guest:
                 accounts.save_prefill(s, case, body.guest.answers)
                 accounts.import_guest_transcript(s, case, [t.model_dump() for t in body.guest.transcript])
@@ -140,3 +141,14 @@ def logout(response: Response) -> dict[str, Any]:
 def me(request: Request) -> dict[str, Any]:
     with session_scope() as s:
         return me_of(request, s)
+
+
+@router.get("/link/{token}")
+def link_preview(token: str, request: Request) -> dict[str, Any]:
+    """Prefills sign-up from a clinic link without using it up."""
+    _limit(request)
+    with session_scope() as s:
+        try:
+            return accounts.link_preview(s, token)
+        except accounts.AccountError as e:
+            raise err(e.status, e.code, e.message) from None

@@ -159,3 +159,37 @@ def import_guest_transcript(s: Session, case: Case, transcript: list[dict]) -> s
                         speaker="applicant" if you else "liaison", text=text, redacted=redacted, ts=t))
     s.flush()
     return sess.id
+
+
+# ---------------------------------------------------------------- clinic links claimed into accounts
+
+LINK_TAKEN = "This link belongs to another account. Ask your clinic for help."
+
+
+def _link_case(s: Session, token: str) -> Case:
+    link, problem = auth.resolve_link(s, token)
+    if problem == "expired":
+        raise AccountError(410, "link_expired", "This link has expired. Ask your clinic for a new one.")
+    if link is None:
+        raise AccountError(404, "link_invalid", "This link isn't valid. Ask your clinic for a new one.")
+    return s.get(Case, link.case_id)
+
+
+def link_preview(s: Session, token: str) -> dict:
+    case = _link_case(s, token)
+    clinic = s.get(Clinic, case.clinic_id)
+    out = {"first_name": case.first_name, "last_name": case.last_name, "clinic_name": clinic.name,
+           "taken": case.account_id is not None}
+    s.rollback()  # resolve_link marks the link used; a preview mustn't
+    return out
+
+
+def attach_link(s: Session, acct: Account, token: str) -> Case:
+    case = _link_case(s, token)
+    if case.account_id and case.account_id != acct.id:
+        raise AccountError(409, "link_taken", LINK_TAKEN)
+    case.account_id = acct.id
+    acct.active_case_id = case.id
+    cs.emit(s, case, "link.opened", {}, "applicant", acct.id)
+    cs.emit(s, case, "account.attached", {"account_id": acct.id}, "applicant", acct.id)
+    return case

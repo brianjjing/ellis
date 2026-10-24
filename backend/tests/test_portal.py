@@ -178,3 +178,35 @@ def test_bad_prefill_values_dropped(client):
     signup(client, guest={"answers": {"lpr_since": "yesterday", "hack": 1}, "transcript": []})
     with session_scope() as s:
         assert s.get(Case, client.get("/api/auth/me").json()["case_id"]).settings.get("prefill") in (None, {})
+
+
+# ---------------------------------------------------------------- Task 3: clinic links into accounts
+
+def new_clinic_case(client) -> tuple[str, str]:
+    login(client, "dana@valle.demo")
+    r = client.post("/api/clinic/cases", json={"first_name": "Lia", "last_name": "Mora"}).json()
+    client.post("/api/auth/logout")
+    return r["case"]["id"], r["link"].rsplit("/a/", 1)[1]
+
+
+def test_signup_with_link_attaches_without_independent_case(client):
+    case_id, token = new_clinic_case(client)
+    assert client.get(f"/api/auth/link/{token}").json()["first_name"] == "Lia"
+    r = signup(client, link_token=token)
+    assert r.json()["case_id"] == case_id
+    with session_scope() as s:
+        acct = s.query(Account).filter_by(email="ana@x.test").one()
+        assert [c.id for c in accounts.cases_for(s, acct)] == [case_id]
+
+
+def test_logged_in_link_attach_and_taken(client):
+    case_id, token = new_clinic_case(client)
+    signup(client)
+    assert client.post("/api/a/link", json={"token": token}).status_code == 200
+    assert client.get("/api/auth/me").json()["case_id"] == case_id
+    with session_scope() as s:
+        assert len(accounts.cases_for(s, s.query(Account).filter_by(email="ana@x.test").one())) == 2
+    client.post("/api/auth/logout")
+    signup(client, email="bo@x.test")
+    r = client.post("/api/a/link", json={"token": token})
+    assert r.status_code == 409 and r.json()["error"]["message"] == accounts.LINK_TAKEN

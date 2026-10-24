@@ -303,3 +303,22 @@ async def stream(ws: WebSocket):
         pass
     finally:
         bus.unsubscribe(q)
+
+
+@router.post("/link")
+def claim_link(body: SessionReq, request: Request, response: Response) -> dict[str, Any]:
+    """A logged-in applicant opens a clinic link: that case joins their account and becomes active."""
+    from ...db import Account
+    from ...services import accounts
+    with session_scope() as s:
+        payload = auth.unsign(request.cookies.get(APPLICANT_COOKIE)) or {}
+        acct = s.get(Account, payload["account_id"]) if payload.get("account_id") else None
+        if acct is None:
+            raise err(401, "unauthorized", "Log in first.")
+        try:
+            case = accounts.attach_link(s, acct, body.token)
+        except accounts.AccountError as e:
+            raise err(e.status, e.code, e.message) from None
+        response.set_cookie(APPLICANT_COOKIE, accounts.applicant_cookie(acct, case), httponly=True, samesite="lax",
+                            max_age=12 * 3600)
+        return views.applicant_case(s, case)

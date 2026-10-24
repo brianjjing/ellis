@@ -9,7 +9,7 @@ const headings: Record<string, string> = { '/form': 'Log in to start your N-400'
 // One sign-in for everyone: email and password (the account decides where you land), plus the clinic's
 // private link or code (/a/:token opens a link-only session, as before).
 export default function SignIn({ token }: { token?: string }) {
-  const { refresh } = useAuth()
+  const { me, refresh } = useAuth()
   const next = new URLSearchParams(location.search).get('next')
   const [email, setEmail] = useState('')
   const [pw, setPw] = useState('')
@@ -35,7 +35,9 @@ export default function SignIn({ token }: { token?: string }) {
     setBusy(true)
     setErr(null)
     try {
-      await api('/api/a/session', { body: { token: decodeURIComponent(t) } })
+      // A logged-in applicant claims the clinic's case into their account; otherwise a link-only session.
+      const claim = me?.kind === 'applicant' && me.account
+      await api(claim ? '/api/a/link' : '/api/a/session', { body: { token: decodeURIComponent(t) } })
       await refresh()
       navigate('/', true)
     } catch (e) { fail(e) }

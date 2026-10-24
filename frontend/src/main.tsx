@@ -64,7 +64,7 @@ function App() {
     else if (kind === 'guest' && path in pages && path !== '/') goSignIn(path)
   }, [kind, path])
 
-  if (m) return <SignIn token={decodeURIComponent(m[1])} />
+  if (m) return !me ? <div className="page" /> : me.kind === 'guest' ? <SignUp token={decodeURIComponent(m[1])} /> : <SignIn token={decodeURIComponent(m[1])} />
   if (path === '/signin') return <SignIn />
   if (path === '/signup') return <SignUp />
   if (!me) return <div className="page" />

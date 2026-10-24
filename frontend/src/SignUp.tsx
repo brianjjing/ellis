@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Icon } from './icons'
 import { api, ApiError } from './api'
 import { landing, useAuth, type Me } from './auth'
@@ -7,20 +7,27 @@ import { guestSnapshot } from './GuestChat'
 type Kind = 'applicant' | 'clinic'
 
 // One sign-up: an applicant gets an account and their own case; a clinic gets created with this person as admin.
-export default function SignUp() {
+// With a clinic's link (/a/:token, logged out): applicant only, name prefilled, and the case joins the account.
+export default function SignUp({ token }: { token?: string }) {
   const { refresh } = useAuth()
   const next = new URLSearchParams(location.search).get('next')
   const [kind, setKind] = useState<Kind>('applicant')
   const [f, setF] = useState({ name: '', email: '', password: '', clinic_name: '' })
   const [err, setErr] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [link, setLink] = useState<{ clinic_name: string } | null>(null)
+  useEffect(() => {
+    if (token) api(`/api/auth/link/${encodeURIComponent(token)}`)
+      .then((p) => { setLink(p); setF((f) => ({ ...f, name: `${p.first_name} ${p.last_name}`.trim() })) })
+      .catch((e) => setErr(e instanceof ApiError ? e.message : 'Connection lost. Please try again.'))
+  }, [token])
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value })
 
   const submit = async () => {
     setBusy(true)
     setErr(null)
     try {
-      await api<Me>('/api/auth/signup', { body: { kind, ...f, guest: kind === 'applicant' ? guestSnapshot() : undefined } })
+      await api<Me>('/api/auth/signup', { body: { kind, ...f, link_token: token, guest: kind === 'applicant' ? guestSnapshot() : undefined } })
       landing(await refresh(), next)
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : 'Connection lost. Please try again.')
@@ -41,13 +48,13 @@ export default function SignUp() {
 
       <main className="signin">
         <div className="enter"><form style={{ display: 'contents' }} onSubmit={(e) => { e.preventDefault(); submit() }}>
-          <h1 className="display">Create your Ellis account</h1>
+          <h1 className="display">{link ? `Join ${link.clinic_name} on Ellis` : 'Create your Ellis account'}</h1>
           <p className="lead soft pull">Your forms and documents are private. Only you and your clinic can open them.</p>
           <div className="card">
-            <div role="radiogroup" aria-label="I am" className="stack" style={{ gap: 8 }}>
+            {!token && <div role="radiogroup" aria-label="I am" className="stack" style={{ gap: 8 }}>
               {opt('applicant', 'Applying for U.S. citizenship')}
               {opt('clinic', 'Part of a legal clinic')}
-            </div>
+            </div>}
             {kind === 'clinic' && <>
               <label htmlFor="cn" className="field">Clinic name</label>
               <input id="cn" className="input" type="text" autoComplete="organization" value={f.clinic_name} onChange={set('clinic_name')} />
@@ -63,7 +70,7 @@ export default function SignUp() {
             <button type="submit" className="btn lg primary" disabled={busy}><Icon name="lock" />{busy ? 'Creating…' : 'Create account'}</button>
             <p className="small">Ellis is not a law firm and is not part of USCIS.</p>
           </div>
-          <p className="switch">Already have an account? <a href={`/signin${next ? `?next=${encodeURIComponent(next)}` : ''}`} data-nav className="link-btn">Log in</a></p>
+          <p className="switch">Already have an account? <a href={token ? `/signin?next=${encodeURIComponent(`/a/${token}`)}` : `/signin${next ? `?next=${encodeURIComponent(next)}` : ''}`} data-nav className="link-btn">Log in</a></p>
         </form></div>
       </main>
     </div>
