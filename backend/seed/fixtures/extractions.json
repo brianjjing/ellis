@@ -1,5 +1,5 @@
 {
- "452b7812a36950449a5132bf4db1bb6e12a1b255591c58e5ad86172e4ef0dcda": {
+ "31d03c2b81353201ec33a7338ae1d5e4318b2e2cab27c3974cbbff4cace7b3f7": {
   "file": "maria_green_card.png",
   "document_type": "green_card",
   "extraction": {
@@ -16,7 +16,7 @@
    "side": "both"
   }
  },
- "8feafdbc428390d9b7ca3a98a08373189a0fd4d6c4a77399669cd83448fb6c8b": {
+ "447781baef95e23830c11a7bd77c671edeca8f3eeaef2b385ef77b02338afce2": {
   "file": "maria_passport.png",
   "document_type": "passport",
   "extraction": {
@@ -37,7 +37,7 @@
    ]
   }
  },
- "db774d7a30c1caacd21d94ec1865b33869fb4e6e1ad466df98847b8c46c945c4": {
+ "f09f47c2bedb8a765770f57f10514531f40be210eea1169356c084c90466215c": {
   "file": "maria_lease.png",
   "document_type": "lease",
   "extraction": {
@@ -53,7 +53,7 @@
    "end": null
   }
  },
- "5f932925f56dc9d42350bed6c53f332ce5aeb1e776d201ea802f83ec38690bca": {
+ "8dc7a4d05eeb8e2bac04560b18c22dde9d6fa9a92e8309169bfa721096b58c8a": {
   "file": "maria_court_receipt.png",
   "document_type": "court_record",
   "extraction": {
@@ -67,7 +67,7 @@
    "violation": "speeding"
   }
  },
- "6a6cab7f0e7773da1218e0c20004391f717af054ccf853b1901aee64710a66a0": {
+ "fc99a2df95227155eb969f2ffac05ac44f7394c8f5a110682b6f8f153273ded4": {
   "file": "maria_tax_2023.png",
   "document_type": "tax_transcript",
   "extraction": {
@@ -79,7 +79,7 @@
    "taxpayer_name": "Maria Torres"
   }
  },
- "dc786d528482073d5543681a77554c93a9592f87adac0a4ef51d11a8c78ae12d": {
+ "eedcb2be0cf08d9cb6f5f3b05d5a788189e06db9b9d162230f3c6ea25e6e41bd": {
   "file": "ana_green_card_glare.png",
   "document_type": "green_card",
   "extraction": {
@@ -95,7 +95,7 @@
    "resident_since": null
   }
  },
- "740ec538500e44f124ee2c63016d2ef30d9d34c8663843a2496ee24b1477075d": {
+ "9f62a1ce006ee7bd42a04c15c8346979e5ccd264131f66785b5d6f19094da6a2": {
   "file": "ana_green_card_clear.png",
   "document_type": "green_card",
   "extraction": {
@@ -112,7 +112,7 @@
    "side": "both"
   }
  },
- "682f4225a0d9c4e5036436dd30032f40456c65cc5c88793e152667dc72e88836": {
+ "4c25e88069ee00e14119865bbc125fce0ded7a2d96135806aba179c978f90097": {
   "file": "ana_marriage_certificate.png",
   "document_type": "marriage_certificate",
   "extraction": {
@@ -124,7 +124,7 @@
    "place": "Watsonville, CA"
   }
  },
- "e17bd8e26cf1882d2f7fea555cb14d1dfbbb45cf29a38b9aae0fc8021df6c58c": {
+ "f42578d4545e3b8b9526f2fd95c12d7b2f4968d21d2c1c899d1e2eb824b41143": {
   "file": "ana_passport.png",
   "document_type": "passport",
   "extraction": {
@@ -138,7 +138,7 @@
    "stamps": []
   }
  },
- "441359850e92987c548bb4cf545ff8e415327b70acb1a390b2a667a7626fe46f": {
+ "50ad6a6e57fb61267e4816ceaa832142f78016f01e9a1c12a6d4f73a0f55cc73": {
   "file": "rosa_benefit_letter.png",
   "document_type": "benefit_letter",
   "extraction": {
@@ -149,7 +149,7 @@
    "date": "2026-01-10"
   }
  },
- "90c46ef3ede72a0639ee16da0c20d8033b04e8bb05c05103a9d3333bfeb78dcb": {
+ "5e2ce26d5c0c11dad8ba0030f8151cdb88adbe76e1cc626a1d7173973fbb347a": {
   "file": "rosa_irs_2022.png",
   "document_type": "tax_transcript",
   "extraction": {
@@ -160,7 +160,7 @@
    "taxpayer_name": "Rosa Delgado Peña"
   }
  },
- "cb2668313ca437f7f18d30598ecd8f0c330c78195da64636bb986d9eb94d23cb": {
+ "15d967bc40738c476b4dcaa5214d9aa4d3d6aca7e69d94afaa518824db251a36": {
   "file": "rosa_green_card.png",
   "document_type": "green_card",
   "extraction": {
@@ -175,7 +175,7 @@
    "side": "both"
   }
  },
- "39f894b54738234c3c506fe087ad8f472418b400f213329ecfe26defba06b215": {
+ "0b15386df8fec6a5c1a54fbf8a390c1d6301e5dc31d26fa054589bc113f6d6fe": {
   "file": "jorge_green_card.png",
   "document_type": "green_card",
   "extraction": {
