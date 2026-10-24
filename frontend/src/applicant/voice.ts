@@ -1,9 +1,15 @@
 // Voice session client for WS /api/a/voice. One session per chat, whatever the input mode: typing and talking
 // share it, so switching never restarts the conversation. Ellis always speaks with Cartesia's voice (Sonic PCM16
 // 24 kHz from the server); with Cartesia unreachable, lines are captions only, never the browser's own voice.
-// Push to talk: the mic streams silence until hold() and real audio until release(); the server keeps only what
-// was said while held and submits it on release. Holding also cuts Ellis off at any point in any line.
+// Push to talk: the mic streams silence until hold() and real audio until just after release(), through a level gate
+// (gate.ts) that silences what isn't clearly the applicant's voice; the server keeps only what was said while held and
+// submits it on release. Holding also cuts Ellis off at any point in any line.
 import { wsUrl } from '../api'
+import { Gate } from './gate'
+
+// ponytail: people let go a beat before their last word ends, so the mic stays open this much longer (the gate still
+// silences the room). Raise it if last words get clipped.
+const RELEASE_TAIL_MS = 300
 
 export type Line = { id: string; text: string; locked: boolean; kind: string; field: string | null; end_call?: boolean; meta?: any }
 export type Caption = { who: 'ellis' | 'usted'; text: string; spoken?: boolean }
@@ -36,9 +42,12 @@ export class VoiceClient {
   muted: string | null = null // a line the applicant talked over: its late audio chunks are dropped
   mode: 'voice' | 'text' = 'text'
   talking = false
+  releasing: ReturnType<typeof setTimeout> | null = null
   soundOn = true // Ellis's voice on/off (the mute button); muted lines still arrive as text
   voice = true // talking vs. typing, sent with start and on every switch
   pcmBuf: number[] = []
+  energy = 0 // sum of squares of this frame's real samples, button up or down: the gate's level
+  gate = new Gate()
   ended = false
   h: Handlers
 
@@ -56,7 +65,8 @@ export class VoiceClient {
     const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('mic_timeout')), 8000))
     try {
       this.stream = await Promise.race([
-        navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1 } }),
+        // no autoGainControl: it turns the room up whenever you pause, shrinking the level gap the gate relies on
+        navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: false, channelCount: 1 } }),
         timeout,
       ])
     } catch {
@@ -83,7 +93,11 @@ export class VoiceClient {
     this.node.port.onmessage = (ev) => {
       const f32 = ev.data as Float32Array
       // silence unless the button is held: the STT socket stays fed, but nothing said off-button leaves the browser
-      for (let i = 0; i < f32.length; i += ratio) this.pcmBuf.push(this.talking ? f32[Math.floor(i)] : 0)
+      for (let i = 0; i < f32.length; i += ratio) {
+        const x = f32[Math.floor(i)]
+        this.energy += x * x
+        this.pcmBuf.push(this.talking ? x : 0)
+      }
       if (this.pcmBuf.length >= 1600) this.flush()
     }
     src.connect(this.node)
@@ -92,9 +106,14 @@ export class VoiceClient {
   private flush() {
     const n = this.pcmBuf.length
     if (!n) return
-    const out = new Int16Array(n)
-    for (let i = 0; i < n; i++) out[i] = Math.max(-1, Math.min(1, this.pcmBuf[i])) * 0x7fff
+    const db = 10 * Math.log10(this.energy / n + 1e-12)
+    let pcm = this.pcmBuf
     this.pcmBuf = []
+    this.energy = 0
+    if (this.talking) pcm = this.gate.pass(pcm, db)
+    else this.gate.heard(db, this.sources.length > 0)
+    const out = new Int16Array(pcm.length)
+    for (let i = 0; i < pcm.length; i++) out[i] = Math.max(-1, Math.min(1, pcm[i])) * 0x7fff
     if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(out.buffer)
   }
 
@@ -168,6 +187,11 @@ export class VoiceClient {
   // Push to talk. Holding cuts Ellis off right away, wherever it is in a line.
   hold(): boolean {
     if (!this.stream || !this.ctx) return false
+    if (this.releasing) { // pressed again within the tail: the same turn goes on
+      clearTimeout(this.releasing)
+      this.releasing = null
+      return true
+    }
     this.ctx.resume()
     this.muted = this.current?.id ?? null
     this.stopAudio()
@@ -177,10 +201,13 @@ export class VoiceClient {
   }
 
   release() {
-    if (!this.talking) return
-    this.talking = false
-    this.flush()
-    this.send({ type: 'talk', down: false })
+    if (!this.talking || this.releasing) return
+    this.releasing = setTimeout(() => {
+      this.releasing = null
+      this.flush() // while still held, so the last frame goes through the gate too
+      this.talking = false
+      this.send({ type: 'talk', down: false })
+    }, RELEASE_TAIL_MS)
   }
 
   setSound(on: boolean) {

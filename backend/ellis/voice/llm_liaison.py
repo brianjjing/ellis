@@ -134,13 +134,17 @@ class LlmLiaison:
             return self._said([disclosure])
         # resuming: seed real conversational memory from what was actually said, so the model picks the
         # thread back up instead of feeling like a fresh form.
-        for speaker, text in self.c.recent_transcript():
+        past = self.c.recent_transcript()
+        for speaker, text, _ in past:
             self._append("assistant" if speaker == "liaison" else "user", text)
         if self.history and self.history[0]["role"] == "assistant":
             self.history.insert(0, {"role": "user", "content": "[session started]"})
         meta = self._suggest()
+        asked = last_question(past)
+        where = "" if asked is None else (f' Before the break you asked: "{asked[0]}" -- ' + (
+            "they answered it." if asked[1] else "they never answered it."))
         lines = self._turn_model(f"[system] {self.cfg.get('first_name') or 'The applicant'} just opened the chat "
-                                 "(returning; consent was given before). Give the opening.", None, False)
+                                 f"(returning; consent was given before).{where} Give the opening.", None, False)
         lines[0].meta = {**meta, **lines[0].meta}
         return self._said(lines)
 
@@ -164,7 +168,7 @@ class LlmLiaison:
     def _said(self, lines: list[Say]) -> list[Say]:
         for ln in lines:
             try:
-                self.c.liaison_said(ln.text, ln.locked)
+                self.c.liaison_said(ln.text, ln.locked, {"kind": ln.kind})  # kind: so a resume can skip check-ins
             except Exception:  # noqa: BLE001 - captions are best-effort
                 log.exception("liaison_said failed")
         return lines
@@ -380,7 +384,20 @@ class LlmLiaison:
             "This is the last check-in: say in one short sentence that everything is saved and they can pick this "
             "up any time." if last else "Gently check in, in a few words; don't repeat your last question word "
             "for word, and don't say \"take your time\" if you said it already."))
-        return self._said(self._turn_model(nudge, None, False))
+        lines = self._turn_model(nudge, None, False)
+        for ln in lines:
+            ln.kind = "checkin"
+        return self._said(lines)
+
+
+def last_question(past: list[tuple[str, str, str | None]]) -> tuple[str, bool] | None:
+    """The last thing Ellis asked before the break (check-ins and the disclosure aside), and whether the
+    applicant replied after it. ponytail: "a question" = the line has a "?"; good enough for one-question turns."""
+    for i in range(len(past) - 1, -1, -1):
+        speaker, text, kind = past[i]
+        if speaker == "liaison" and "?" in text and kind not in ("checkin", "disclosure"):
+            return text, any(s != "liaison" for s, _, _ in past[i + 1:])
+    return None
 
 
 def _jsonable(v: Any) -> Any:

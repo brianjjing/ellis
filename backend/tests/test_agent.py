@@ -144,3 +144,12 @@ def test_flag_notes_skip_stop_items_conflicts_and_repeats():
                {"id": "f4", "category": "taxes"}, {"id": None, "category": "taxes"}]
     assert a._flag_notes() == [{"id": "f1", "label": "Fine or citation"}, {"id": "f4", "label": "Taxes"}]
     assert a.flags == []
+
+
+def test_resume_remembers_the_last_question_not_the_check_in():
+    from ellis.voice.llm_liaison import last_question
+    past = [("liaison", "Do you agree to continue?", "disclosure"), ("applicant", "Yes", None),
+            ("liaison", "Where do you work?", "llm"), ("liaison", "Are you still there?", "checkin")]
+    assert last_question(past) == ("Where do you work?", False)
+    assert last_question(past + [("applicant", "At a packing plant", None)]) == ("Where do you work?", True)
+    assert last_question(past[:1]) is None
