@@ -54,13 +54,21 @@ export default function CaseList({ me, tick }: { me: Me; tick: number }) {
   )
 }
 
+const LANGUAGE_OPTIONS = [
+  { value: 'es-MX', label: 'Spanish (Mexico)' },
+  { value: 'es-US', label: 'Spanish (US)' },
+  { value: 'es-ES', label: 'Spanish (Spain)' },
+  { value: 'en-US', label: 'English (US)' },
+  { value: 'en-GB', label: 'English (UK)' },
+]
+
 function NewCase({ reviewers, onClose }: { reviewers: any[]; me: Me; onClose: () => void }) {
-  const [v, setV] = useState({ first_name: '', last_name: '', phone: '', patient_mode: false, assigned_reviewer: reviewers[0]?.id ?? '' })
+  const [v, setV] = useState({ first_name: '', last_name: '', phone: '', language: 'es-MX', patient_mode: false, assigned_reviewer: reviewers[0]?.id ?? '' })
   const [link, setLink] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const save = async () => {
     try {
-      const r = await api('/api/clinic/cases', { body: { ...v, language: 'es-MX', assigned_reviewer: v.assigned_reviewer || null } })
+      const r = await api('/api/clinic/cases', { body: { ...v, assigned_reviewer: v.assigned_reviewer || null } })
       setLink(r.link)
     } catch (e: any) { setErr(e.message) }
   }
@@ -71,7 +79,11 @@ function NewCase({ reviewers, onClose }: { reviewers: any[]; me: Me; onClose: ()
         <label className="field">First name<input className="input" value={v.first_name} onChange={(e) => setV({ ...v, first_name: e.target.value })} /></label>
         <label className="field">Last name<input className="input" value={v.last_name} onChange={(e) => setV({ ...v, last_name: e.target.value })} /></label>
         <label className="field">Phone (optional)<input className="input" value={v.phone} onChange={(e) => setV({ ...v, phone: e.target.value })} /></label>
-        <label className="field">Language<select className="input" disabled><option>Spanish (es-MX) — only option in Phase 1</option></select></label>
+        <label className="field">Language <span className="soft">(the applicant can change this themselves before talking)</span>
+          <select className="input" value={v.language} onChange={(e) => setV({ ...v, language: e.target.value })}>
+            {LANGUAGE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        </label>
         <label className="check"><input type="checkbox" checked={v.patient_mode} onChange={(e) => setV({ ...v, patient_mode: e.target.checked })} /> Patient mode (slower voice, longer pauses)</label>
         <label className="field">Assigned reviewer
           <select className="input" value={v.assigned_reviewer} onChange={(e) => setV({ ...v, assigned_reviewer: e.target.value })}>
