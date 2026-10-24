@@ -220,6 +220,7 @@ def applicant_case(s: Session, case: Case) -> dict[str, Any]:
         "packet_ready": s.scalars(select(Packet).where(Packet.case_id == case.id, Packet.status == "current")).first()
         is not None,
         "reminders": reminders(s, case), "settings": cs.applicant_settings(case),
+        "consent_given": cs.consent_given(s, case),
     }
 
 

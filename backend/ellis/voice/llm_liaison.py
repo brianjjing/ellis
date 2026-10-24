@@ -123,7 +123,7 @@ class LlmLiaison:
 
     # ------------------------------------------------------------ lifecycle
 
-    def start(self) -> list[Say]:
+    def start(self, disclosure_shown: bool = False) -> list[Say]:
         self.cfg = self.c.session_start(self.channel)
         clinic_name = self.cfg.get("clinic_name") or ("su clínica" if self.language == "es" else "your clinic")
         self._system = PROMPT_PATH.read_text(encoding="utf-8").replace("{clinic_name}", clinic_name)
@@ -131,7 +131,8 @@ class LlmLiaison:
             disclosure = script("disclosure", lang=self.language, clinic_name=clinic_name)
             self.history.append({"role": "user", "content": "[session started]"})  # API requires user first
             self.history.append({"role": "assistant", "content": disclosure.text})
-            return self._said([disclosure])
+            # back on a chat whose disclosure is still on screen, unanswered: wait for the reply, don't repeat it
+            return [] if disclosure_shown else self._said([disclosure])
         # resuming: seed real conversational memory from what was actually said, so the model picks the
         # thread back up instead of feeling like a fresh form.
         past = self.c.recent_transcript()

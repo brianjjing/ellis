@@ -55,7 +55,7 @@ export class VoiceClient {
     this.h = h
   }
 
-  async start(lang: string = 'en', locale: string = 'en-US') {
+  async start(lang: string = 'en', locale: string = 'en-US', disclosureShown = false) {
     this.h.onState('connecting')
     // ponytail: request the context at STT's native 16 kHz so the browser's own (band-limited) resampler
     // does the downsampling instead of naive decimation.
@@ -75,7 +75,7 @@ export class VoiceClient {
     if (this.ended) { this.stream?.getTracks().forEach((t) => t.stop()); return }
     const ws = new WebSocket(wsUrl('/api/a/voice'))
     this.ws = ws
-    ws.onopen = () => ws.send(JSON.stringify({ type: 'start', voice: this.voice, language: lang, locale }))
+    ws.onopen = () => ws.send(JSON.stringify({ type: 'start', voice: this.voice, language: lang, locale, disclosure_shown: disclosureShown }))
     ws.onmessage = (e) => this.onMessage(JSON.parse(e.data))
     ws.onclose = () => {
       if (!this.ended) this.h.onError('offline')

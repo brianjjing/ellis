@@ -96,7 +96,7 @@ class VoiceSession:
         connecting = asyncio.gather(self._connect("tts", cartesia.TTS(locale=locale)),
                                     self._connect("stt", cartesia.STT(patient=patient))) \
             if settings.cartesia_api_key else None
-        lines = await asyncio.to_thread(self.liaison.start)
+        lines = await asyncio.to_thread(self.liaison.start, bool(start.get("disclosure_shown")))
         if connecting:
             await connecting
         if self.tts:

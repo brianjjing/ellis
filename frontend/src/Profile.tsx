@@ -59,6 +59,7 @@ export default function Profile() {
 
   const decline = async (id: string) => { await api(`/api/a/gaps/${id}/decline`, { body: {} }); reload() }
   const setLanguage = async (locale: string) => { await api('/api/a/language', { body: { locale } }); setPicking(false); reload() }
+  const setConsent = async (agree: boolean) => { await api('/api/a/consent', { body: { agree } }); reload() }
   const signOut = async () => { await api('/api/a/logout', { body: {} }); navigate('/signin', true) }
   // Deep links like /profile?tab=flags land on the Advanced section.
   useEffect(() => { if (location.search.includes('tab=')) document.getElementById('advanced')?.scrollIntoView() }, [])
@@ -87,6 +88,11 @@ export default function Profile() {
           </div>
           <h3 className="h3 rule" style={{ marginTop: 12 }}>Privacy</h3>
           <div className="stack" style={{ marginTop: -20 }}>
+            <Setting name="Consent to talk with Ellis" note={data.consent_given
+              ? 'You agreed. Ellis is an AI, not a lawyer. It saves the text of your chats, not the audio.'
+              : "Not given. Ellis is an AI, not a lawyer, and saves the text of your chats, not the audio. It can't save your answers until you agree."}>
+              <button type="button" className={`btn${data.consent_given ? '' : ' primary'}`} onClick={() => setConsent(!data.consent_given)}>{data.consent_given ? 'Withdraw' : 'I agree'}</button>
+            </Setting>
             <Setting name="Sensitive numbers" note="You type them; they are never spoken. The AI only sees a placeholder." />
             <Setting name={<><Icon name="globe" />Language</>} note={`${dialects.find((d) => d.code === data.language)?.label ?? data.language}. Ellis talks with you in this language.`}>
               <button type="button" className="btn" aria-expanded={picking} onClick={() => setPicking(!picking)}>Change</button>

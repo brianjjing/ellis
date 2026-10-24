@@ -111,9 +111,10 @@ def fact_values(s: Session, case_id: str, masked: bool = True) -> dict[str, Any]
 
 
 def consent_given(s: Session, case: Case) -> bool:
-    ev = s.scalars(select(Event).where(Event.case_id == case.id, Event.kind == "consent.given")
+    # the latest answer wins, so a "no" from settings withdraws an earlier "yes"
+    ev = s.scalars(select(Event).where(Event.case_id == case.id, Event.kind.in_(("consent.given", "consent.declined")))
                    .order_by(Event.id.desc()).limit(1)).first()
-    return ev is not None and ev.payload.get("disclosure_version") == case.disclosure_version
+    return ev is not None and ev.kind == "consent.given" and ev.payload.get("disclosure_version") == case.disclosure_version
 
 
 def fact_dict(f: Fact) -> dict[str, Any]:

@@ -79,7 +79,8 @@ export default function Chat() {
     })
     vc.current = c
     c.soundOn = soundOn
-    c.start(lang, data.language ?? 'en-US')
+    // the disclosure is only said again on a fresh chat ("New chat" or a reload); the server knows if they agreed
+    c.start(lang, data.language ?? 'en-US', live.some((m) => m.kind === 'disclosure'))
     return () => c.stop(false)
   }, [session])
 
