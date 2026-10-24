@@ -19,6 +19,7 @@ export default function ApplicantApp({ token }: { token: string }) {
   const [data, setData] = useState<CaseView | null>(null)
   const [error, setError] = useState<{ code: string; message: string } | null>(null)
   const [screen, setScreen] = useState<'welcome' | 'explain' | 'mic' | 'session' | 'progress' | 'review' | 'packet'>('welcome')
+  const [wantVoice, setWantVoice] = useState(true)
   const [overlay, setOverlay] = useState<Overlay>(null)
   const [cards, setCards] = useState<any[]>([])
   const [docStatus, setDocStatus] = useState<Record<string, string>>({})
@@ -104,9 +105,9 @@ export default function ApplicantApp({ token }: { token: string }) {
 
       {screen === 'welcome' && <Welcome data={data} onStart={() => setScreen('mic')} onExplain={() => setScreen('explain')} />}
       {screen === 'explain' && <Explainer onBack={() => setScreen('welcome')} />}
-      {screen === 'mic' && <MicPrompt onGo={() => setScreen('session')} />}
+      {screen === 'mic' && <MicPrompt onGo={(voice) => { setWantVoice(voice); setScreen('session') }} />}
       {screen === 'session' && (
-        <Session data={data} reload={load} highlight={highlight} docStatus={docStatus}
+        <Session data={data} reload={load} highlight={highlight} docStatus={docStatus} wantVoice={wantVoice}
           onUpload={() => setOverlay({ kind: 'upload' })}
           onEnd={() => { load(); setScreen(data.state === 'ready' ? 'review' : 'progress') }} />
       )}
@@ -193,13 +194,16 @@ function Explainer({ onBack }: { onBack: () => void }) {
   )
 }
 
-function MicPrompt({ onGo }: { onGo: () => void }) {
+function MicPrompt({ onGo }: { onGo: (voice: boolean) => void }) {
   const [denied, setDenied] = useState(false)
   const ask = async () => {
+    // ponytail: getUserMedia can hang forever (e.g. OS never shows the permission prompt) instead of
+    // rejecting; without a timeout the applicant would be stuck on this screen with no way out.
+    const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('mic_timeout')), 8000))
     try {
-      const s = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const s = await Promise.race([navigator.mediaDevices.getUserMedia({ audio: true }), timeout])
       s.getTracks().forEach((t) => t.stop())
-      onGo()
+      onGo(true)
     } catch {
       setDenied(true)
     }
@@ -214,7 +218,7 @@ function MicPrompt({ onGo }: { onGo: () => void }) {
         <h1 className="display">Sin micrófono no podemos hablar.</h1>
         <p className="lead">Puede activarlo en la configuración de su navegador.</p>
         <button className="btn lg primary a-big" onClick={ask}>Intentar otra vez</button>
-        <button className="link-btn" onClick={onGo}>Seguir sin micrófono (escribir)</button>
+        <button className="link-btn" onClick={() => onGo(false)}>Seguir sin micrófono (escribir)</button>
       </>}
     </main>
   )

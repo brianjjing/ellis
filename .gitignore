@@ -3,6 +3,7 @@ __pycache__/
 *.pyc
 .venv/
 backend/ellis.db
+backend/ellis.db-*
 backend/data/
 .coverage
 .pytest_cache/

@@ -6,9 +6,9 @@ import { VoiceClient, type Caption, type VoiceState } from './voice'
 
 const CHIP_ICON: Record<string, string> = { document: '▢', spoken: '◔', confirmed: '✓', review: '!', corrected: '↺', deferred: '■' }
 
-export default function Session({ data, reload, highlight, docStatus, onUpload, onEnd }: {
+export default function Session({ data, reload, highlight, docStatus, onUpload, onEnd, wantVoice }: {
   data: CaseView; reload: () => void; highlight: Record<string, number>; docStatus: Record<string, string>
-  onUpload: () => void; onEnd: () => void
+  onUpload: () => void; onEnd: () => void; wantVoice: boolean
 }) {
   const [state, setState] = useState<VoiceState>('connecting')
   const [captions, setCaptions] = useState<Caption[]>([])
@@ -45,7 +45,7 @@ export default function Session({ data, reload, highlight, docStatus, onUpload, 
       },
     })
     vc.current = c
-    c.start(true)
+    c.start(wantVoice)
     return () => c.stop(false)
   }, [])
 

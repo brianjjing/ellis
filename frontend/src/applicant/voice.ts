@@ -51,8 +51,14 @@ export class VoiceClient {
     this.h.onState('connecting')
     this.ctx = new AudioContext()
     if (wantVoice) {
+      // ponytail: getUserMedia can hang forever instead of rejecting (e.g. OS never shows the
+      // permission prompt); without a timeout the session would be stuck on "connecting" with no WS.
+      const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('mic_timeout')), 8000))
       try {
-        this.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1 } })
+        this.stream = await Promise.race([
+          navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1 } }),
+          timeout,
+        ])
       } catch {
         this.h.onError('mic_denied')
         wantVoice = false
