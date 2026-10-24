@@ -1,0 +1,82 @@
+{
+  "title": "N-400 trip date and name consistency — issue memo",
+  "work_type": "review",
+  "instructions": "Review the three synthetic documents in documents/ for this made-up N-400 packet. Compare the worksheet, the passport transcript, and the green card transcript. Write issue-memo.md. For each real defect include the issue, the source documents, a severity (Critical, High, Moderate, or Low), the impact, and a recommended next step. Put ordinary timing and matching identifiers on a non-issue list. Do not give legal advice, do not say the applicant is eligible or ineligible, and do not apply H-1B, PERM, LCA, or EB rules. The person and every number in the documents are invented.",
+  "deliverables": {
+    "issue-memo.md": "issue-memo.md"
+  },
+  "criteria": [
+    {
+      "id": "C-001",
+      "title": "Identifies the trip return-date conflict",
+      "deliverables": ["issue-memo.md"],
+      "match_criteria": "PASS if the memo identifies that the N-400 worksheet says Elena returned to the United States on 2 March 2024 and the passport admission stamp says ADMITTED 12 MAR 2024. FAIL if this date conflict is not identified."
+    },
+    {
+      "id": "C-002",
+      "title": "Cites the worksheet and the passport stamp for the date conflict",
+      "deliverables": ["issue-memo.md"],
+      "match_criteria": "PASS if the date-conflict finding names both documents/n400-worksheet.txt (or the worksheet) and documents/passport-transcript.txt (or the passport stamp). FAIL if either source is missing from that finding."
+    },
+    {
+      "id": "C-003",
+      "title": "Rates the return-date conflict Critical or High",
+      "deliverables": ["issue-memo.md"],
+      "match_criteria": "PASS if the return-date conflict is rated Critical or High. FAIL if it is rated Moderate or Low, or if no severity is assigned."
+    },
+    {
+      "id": "C-004",
+      "title": "States the impact as unsettled absence length, without a legal verdict",
+      "deliverables": ["issue-memo.md"],
+      "match_criteria": "PASS if the memo says the two return dates produce different lengths of absence and that physical presence or continuous residence cannot be settled until one date is confirmed. FAIL if the memo says the applicant is eligible, ineligible, approved, or that continuous residence is broken."
+    },
+    {
+      "id": "C-005",
+      "title": "Recommends reading the return date back rather than choosing one",
+      "deliverables": ["issue-memo.md"],
+      "match_criteria": "PASS if the next step for the date conflict is to read the return date back to the applicant, or otherwise to confirm which date is correct, and the memo does not silently adopt 2 March 2024 or 12 March 2024 as the filed date. FAIL if there is no next step, or if the memo picks one date without a confirmation step."
+    },
+    {
+      "id": "C-006",
+      "title": "Identifies the middle-name spelling conflict and which document is the outlier",
+      "deliverables": ["issue-memo.md"],
+      "match_criteria": "PASS if the memo identifies that the passport biographical page spells the middle name Marisole while the green card and the worksheet spell it Marisol. FAIL if the spelling conflict is not identified, or if the memo treats the green card as the document that disagrees with the other two."
+    },
+    {
+      "id": "C-007",
+      "title": "Rates the middle-name spelling Moderate rather than Critical",
+      "deliverables": ["issue-memo.md"],
+      "match_criteria": "PASS if the middle-name spelling conflict is rated Moderate. Low also passes, because a single-letter middle-name difference is debatable as Moderate or Low. FAIL if it is rated Critical, or if no severity is assigned."
+    },
+    {
+      "id": "C-008",
+      "title": "Recommends asking which spelling is the legal name",
+      "deliverables": ["issue-memo.md"],
+      "match_criteria": "PASS if the next step for the name conflict is to ask the applicant which spelling is the legal name, or to confirm the spelling against the documents she uses, and the memo does not instruct anyone to alter the green card. FAIL if there is no next step, or if the memo says to change the green card transcript."
+    },
+    {
+      "id": "C-009",
+      "title": "Does not flag Saturday delivery and Monday receipt as an error",
+      "deliverables": ["issue-memo.md"],
+      "match_criteria": "PASS if the memo does not treat the Saturday 15 March 2025 FedEx delivery and the Monday 17 March 2025 receipt date as a wrong receipt date, a data-entry error, or a defect. Mentioning the pair as a non-issue, or as expected lockbox timing, also passes. FAIL if the memo flags that two-day gap as an error requiring correction."
+    },
+    {
+      "id": "C-010",
+      "title": "Does not flag the matching A-Number, date of birth, or resident-since date",
+      "deliverables": ["issue-memo.md"],
+      "match_criteria": "PASS if the memo does not flag A-204-118-673, the date of birth 14 March 1986, or the resident-since date 12 June 2021 as discrepancies. Those three values match on the worksheet and the green card, and the date of birth also matches the passport. FAIL if any of those three matching values is written up as a conflict."
+    },
+    {
+      "id": "C-011",
+      "title": "Each real finding has issue, sources, severity, impact, and next step",
+      "deliverables": ["issue-memo.md"],
+      "match_criteria": "PASS if both the return-date finding and the middle-name finding each include all five of: the issue, the source documents, a severity, the impact, and a recommended next step. FAIL if either finding omits one of those five."
+    },
+    {
+      "id": "C-012",
+      "title": "Includes an explicit non-issue note for the lockbox dates",
+      "deliverables": ["issue-memo.md"],
+      "match_criteria": "PASS if the memo has a non-issue list (or an equivalent section) that includes the 15 March 2025 delivery and the 17 March 2025 receipt date and explains them as ordinary next-business-day lockbox timing. FAIL if that pair is absent from the memo, or if it appears only as a defect."
+    }
+  ]
+}

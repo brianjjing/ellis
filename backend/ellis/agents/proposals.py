@@ -6,6 +6,7 @@ items are dropped and logged as proposal.rejected. Every proposal carries a run_
 
 from __future__ import annotations
 
+import re
 from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -96,6 +97,36 @@ class BriefingP(BaseModel):
     applicant_visible_flags: list[str] = Field(default_factory=list)
     reviewer_notes_for_applicant: list[str] = Field(default_factory=list)
     session_close: Optional[dict[str, Any]] = None
+
+
+# Paralegal gap keys. The trailing colon is part of the flag and document formats.
+_FLAG_GAP_KEY = re.compile(r"^flag:([a-z0-9_]+):$")
+_REVIEW_GAP_KEY = re.compile(r"^review:([a-z0-9_]+):([A-Za-z0-9_.\[\]]+)$")
+_DOC_GAP_KEY = re.compile(r"^doc:([a-z0-9_]+):$")
+_STOP_GAP_TOKENS = ("criminal", "arrest", "removal")
+
+
+def gap_key_blocked(key: str) -> bool:
+    """A gap key names a stop-now topic and must not be stored.
+
+    Recognized paralegal keys are ``flag:<flag_type>:``, ``review:<category>:<field>``,
+    and ``doc:<document_type>:``. Only the segment that names the topic is checked.
+    Other keys keep the older whole-string check so existing skeleton keys still store.
+    """
+    flag = _FLAG_GAP_KEY.fullmatch(key)
+    if flag:
+        return _gap_token_blocked(flag.group(1))
+    review = _REVIEW_GAP_KEY.fullmatch(key)
+    if review:
+        return _gap_token_blocked(review.group(1)) or _gap_token_blocked(review.group(2))
+    doc = _DOC_GAP_KEY.fullmatch(key)
+    if doc:
+        return _gap_token_blocked(doc.group(1))
+    return any(key.startswith(tok) or tok in key for tok in _STOP_GAP_TOKENS)
+
+
+def _gap_token_blocked(token: str) -> bool:
+    return any(tok in token for tok in _STOP_GAP_TOKENS)
 
 
 PAYLOADS = {"task": TaskP, "review_item": ReviewItemP, "gap": GapP, "gap_close": GapCloseP, "memo": MemoP,
@@ -204,7 +235,7 @@ def apply_proposal(s: Session, env: Envelope, backend: str = "skeleton", ms: int
                 if _add_note(s, case, p.category, p.field, p.note, who):
                     accepted.append({"type": "review_note"})
             elif item.type == "gap":
-                if any(p.key.startswith(f) or f in p.key for f in ("criminal", "arrest", "removal")):
+                if gap_key_blocked(p.key):
                     _reject(s, case, env.agent, env.run_id, item, "no documents for stop-now sections", rejected)
                     continue
                 if s.scalars(select(Gap).where(Gap.case_id == case.id, Gap.key == p.key)).first():
@@ -216,6 +247,10 @@ def apply_proposal(s: Session, env: Envelope, backend: str = "skeleton", ms: int
                 cs.emit(s, case, "gap.opened", {"gap_id": g.id, "document_type": p.document_type}, "agent", who)
                 accepted.append({"type": "gap", "id": g.id})
             elif item.type == "gap_close":
+                # Same key the paralegal stored: flag:<type>:, review:<category>:<field>, or doc:<type>:.
+                if gap_key_blocked(p.key):
+                    _reject(s, case, env.agent, env.run_id, item, "no documents for stop-now sections", rejected)
+                    continue
                 g = s.scalars(select(Gap).where(Gap.case_id == case.id, Gap.key == p.key, Gap.status == "open")).first()
                 d = s.get(Document, p.document_id)
                 if g is None or d is None or d.case_id != case.id:
@@ -332,4 +367,5 @@ def _add_note(s: Session, case: Case, category: str, field: str | None, note: st
     return True
 
 
-__all__ = ["Envelope", "Item", "validate_envelope", "apply_proposal", "ValidationError", "AUTHORITY"]
+__all__ = ["Envelope", "Item", "validate_envelope", "apply_proposal", "ValidationError", "AUTHORITY",
+           "gap_key_blocked"]

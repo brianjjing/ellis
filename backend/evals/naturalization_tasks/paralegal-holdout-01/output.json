@@ -1,0 +1,152 @@
+{
+    "case_id": "case_holdout_01",
+    "items": [
+      {
+        "type": "doc_checks",
+        "document_id": "doc_passport",
+        "exhibit": 1,
+        "checks": {
+          "legible": "not_checked: no file",
+          "document_type": "passport — matches listed type; biographical fields present (given_name, middle_name, family_name, expiration_date, stamps)",
+          "pages_complete": "not_checked: no file",
+          "not_expired": "current — expiration_date 2031-08-14, which is after the filing date 2026-11-01",
+          "belongs_to_client": "not_checked: no file; given, middle and family name all match the case name facts",
+          "consistent_with_facts": "given [GIVEN_1], middle [MIDDLE_1], family [FAMILY_1] all match; exit stamp 2022-06-04 = trip_1_departure; entry stamp 2022-06-18 = trip_1_return",
+          "supports_or_closes": "supports both legs of trip 1; no open flags in this case to close"
+        }
+      },
+      {
+        "type": "doc_checks",
+        "document_id": "doc_green_card",
+        "exhibit": 2,
+        "checks": {
+          "legible": "not_checked: no file",
+          "document_type": "green card — matches listed type; front and back both listed in sides_in_file",
+          "pages_complete": "front and back both listed in sides_in_file; no third side exists for this type",
+          "not_expired": "not determinable — extraction carries no expiration date field; staleness could not be checked",
+          "belongs_to_client": "not_checked: no file; a_number [ANUM_1] matches the case fact, given and family name match",
+          "consistent_with_facts": "given [GIVEN_1] and family [FAMILY_1] match; middle_name prints [MIDDLE_2] against fact [MIDDLE_1]; a_number agrees; resident_since 2018-06-12 is not in the case facts",
+          "supports_or_closes": "shows permanent residence since 2018-06-12; no open flags in this case to close"
+        }
+      },
+      {
+        "type": "review_item",
+        "category": "name_mismatch",
+        "field": "name.middle",
+        "severity": "Moderate",
+        "source_document_ids": ["doc_passport", "doc_green_card"],
+        "source_facts": ["name.middle"],
+        "note": "Passport middle_name prints [MIDDLE_1]; green card middle_name prints [MIDDLE_2]; case fact name.middle is [MIDDLE_1]. Given name [GIVEN_1], family name [FAMILY_1] and A-Number [ANUM_1] are identical on both documents, so the variance is confined to the middle name and is not an identity break. Rate is Moderate under the playbook for a middle-name difference where the rest of the name matches. The masked tokens do not show whether the middle name is omitted, misspelled, or replaced."
+      },
+      {
+        "type": "gap",
+        "document_type": "middle_name_legal_record",
+        "reason": "Passport prints middle name [MIDDLE_1] and green card prints [MIDDLE_2], with the remaining name elements and A-Number matching. A record showing the legal spelling of the middle name resolves which version the filing should carry.",
+        "label": "A document that shows the legal spelling of your middle name (for example, a birth certificate or a court order)",
+        "label_language": "en",
+        "key": "review:name_mismatch:name.middle"
+      },
+      {
+        "type": "evidence",
+        "category": "identity",
+        "field": "name.given",
+        "document_id": "doc_passport"
+      },
+      {
+        "type": "evidence",
+        "category": "identity",
+        "field": "name.family",
+        "document_id": "doc_passport"
+      },
+      {
+        "type": "evidence",
+        "category": "identity",
+        "field": "a_number",
+        "document_id": "doc_green_card"
+      },
+      {
+        "type": "evidence",
+        "category": "immigration_status",
+        "field": "resident_since",
+        "document_id": "doc_green_card"
+      },
+      {
+        "type": "evidence",
+        "category": "travel",
+        "field": "trip_1_departure",
+        "document_id": "doc_passport"
+      },
+      {
+        "type": "evidence",
+        "category": "travel",
+        "field": "trip_1_return",
+        "document_id": "doc_passport"
+      },
+      {
+        "type": "evidence",
+        "category": "document_validity",
+        "field": "expiration_date",
+        "document_id": "doc_passport"
+      },
+      {
+        "type": "task",
+        "kind": "finding",
+        "title": "Green card expiration date is not in the extraction, so staleness was not checked",
+        "severity": "Low",
+        "source_document_ids": ["doc_green_card"],
+        "impact": "doc_green_card lists front and back as present but carries no expiration date field. The card cannot be checked against the 2026-11-01 filing date, so a timing risk on the card would not surface in this pass. The passport is valid past the filing date, so no timing issue is recorded for it.",
+        "next_step": "Staff to read the expiration date off the green card back and record it in the extraction; no client request, since both sides are already in the file."
+      },
+      {
+        "type": "task",
+        "kind": "finding",
+        "title": "Residence start date on the green card is not in the case facts",
+        "severity": "Low",
+        "source_document_ids": ["doc_green_card"],
+        "impact": "doc_green_card prints resident_since 2018-06-12 and no case fact carries that date, so nothing in the fact set cross-checks the residence start.",
+        "next_step": "Case manager to record resident_since 2018-06-12 from doc_green_card as a case fact."
+      },
+      {
+        "type": "non_issue",
+        "field": "name.given",
+        "source_document_ids": ["doc_passport", "doc_green_card"],
+        "note": "Given name [GIVEN_1] appears identically on both documents and matches the case fact. The middle name is the only name element that differs."
+      },
+      {
+        "type": "non_issue",
+        "field": "name.family",
+        "source_document_ids": ["doc_passport", "doc_green_card"],
+        "note": "Family name [FAMILY_1] appears identically on both documents and matches the case fact."
+      },
+      {
+        "type": "non_issue",
+        "field": "a_number",
+        "source_document_ids": ["doc_green_card"],
+        "note": "Card prints [ANUM_1], the same value as the case fact. No digit difference to reconcile."
+      },
+      {
+        "type": "non_issue",
+        "field": "trip_1_departure",
+        "source_document_ids": ["doc_passport"],
+        "note": "Passport exit stamp 2022-06-04 matches the stated departure 2022-06-04 exactly."
+      },
+      {
+        "type": "non_issue",
+        "field": "trip_1_return",
+        "source_document_ids": ["doc_passport"],
+        "note": "Passport entry stamp 2022-06-18 matches the stated return 2022-06-18 exactly. Trip set for this case: 1 trip recorded in the facts, 1 matched by passport stamps, 0 with no supporting document."
+      },
+      {
+        "type": "non_issue",
+        "field": "expiration_date",
+        "source_document_ids": ["doc_passport"],
+        "note": "Passport expires 2031-08-14 and the filing date is 2026-11-01, so the passport is valid on the date it will be used and is not stale."
+      },
+      {
+        "type": "non_issue",
+        "field": "sides_in_file",
+        "source_document_ids": ["doc_green_card"],
+        "note": "Extraction lists both front and back for the green card, so no side is missing from the file for this document type."
+      }
+    ]
+  }

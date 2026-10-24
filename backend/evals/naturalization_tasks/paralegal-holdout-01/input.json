@@ -1,0 +1,49 @@
+{
+  "instructions": "TEST RUN. The case tools are not connected yet, so use this data as if get_case and list_documents returned it. There are no file URLs in this test; mark legibility, pages and owner checks as \"not_checked: no file\".",
+  "get_case": {
+    "case_id": "case_holdout_01",
+    "client_language": "en",
+    "stop_now_sections": [],
+    "open_flags": [],
+    "facts": [
+      {"field": "filing_date", "value": "2026-11-01", "source": "case", "confidence": "high"},
+      {"field": "name.given", "value": "[GIVEN_1]", "source": "voice", "confidence": "high"},
+      {"field": "name.middle", "value": "[MIDDLE_1]", "source": "voice", "confidence": "high"},
+      {"field": "name.family", "value": "[FAMILY_1]", "source": "voice", "confidence": "high"},
+      {"field": "a_number", "value": "[ANUM_1]", "source": "voice", "confidence": "high"},
+      {"field": "trip_1_departure", "value": "2022-06-04", "source": "voice", "confidence": "high"},
+      {"field": "trip_1_return", "value": "2022-06-18", "source": "voice", "confidence": "high"}
+    ],
+    "gap_list": [],
+    "evidence_index": [],
+    "review_items": []
+  },
+  "list_documents": [
+    {
+      "document_id": "doc_passport",
+      "type": "passport",
+      "extraction": {
+        "given_name": "[GIVEN_1]",
+        "middle_name": "[MIDDLE_1]",
+        "family_name": "[FAMILY_1]",
+        "expiration_date": "2031-08-14",
+        "stamps": [
+          {"type": "exit", "date": "2022-06-04"},
+          {"type": "entry", "date": "2022-06-18"}
+        ]
+      }
+    },
+    {
+      "document_id": "doc_green_card",
+      "type": "green_card",
+      "extraction": {
+        "sides_in_file": ["front", "back"],
+        "given_name": "[GIVEN_1]",
+        "middle_name": "[MIDDLE_2]",
+        "family_name": "[FAMILY_1]",
+        "a_number": "[ANUM_1]",
+        "resident_since": "2018-06-12"
+      }
+    }
+  ]
+}
