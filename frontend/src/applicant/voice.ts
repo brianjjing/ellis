@@ -66,8 +66,10 @@ export class VoiceClient {
           timeout,
         ])
       } catch {
+        // No mic doesn't mean no Cartesia: TTS output needs no microphone, only STT does. Keep
+        // mode:'voice' so the backend still connects Cartesia and speaks replies; startMic() below
+        // just no-ops (no this.stream), and the applicant types instead of talking.
         this.h.onError('mic_denied')
-        wantVoice = false
       }
     }
     if (this.ended) { this.stream?.getTracks().forEach((t) => t.stop()); return }

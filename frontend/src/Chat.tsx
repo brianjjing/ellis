@@ -44,7 +44,7 @@ export default function Chat() {
   const lang = langOf(data)
   const [msgs, setMsgs] = useState(live)
   const [partial, setPartial] = useState('')
-  const [voice, setVoice] = useState(false)
+  const [voice, setVoice] = useState(true)
   const [state, setState] = useState<VoiceState>('connecting')
   const [notice, setNotice] = useState<string | null>(null)
   const [session, setSession] = useState(0)

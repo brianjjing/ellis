@@ -31,6 +31,7 @@ from ...services.case_service import today
 from ...voice import cartesia
 from ...voice.client import InProcessClient
 from ...voice.liaison import Liaison, Say
+from ...voice.llm_liaison import LlmLiaison
 from ..deps import APPLICANT_COOKIE
 
 log = logging.getLogger("ellis.voice")
@@ -41,7 +42,7 @@ class VoiceSession:
     def __init__(self, ws: WebSocket, case_id: str):
         self.ws = ws
         self.case_id = case_id
-        self.liaison: Liaison | None = None
+        self.liaison: Liaison | LlmLiaison | None = None
         self.q: asyncio.Queue[Say] = asyncio.Queue()
         self.current: dict[str, Any] | None = None
         self.held: list[str] = []
@@ -81,11 +82,14 @@ class VoiceSession:
         language = start.get("language") if start.get("language") in ("es", "en") else default_lang
         locale = start.get("locale") or (case_locale if language == default_lang else
                                          ("en-US" if language == "en" else "es-MX"))
-        from ...voice.humanize import humanizer
-        from ...voice.llm import extractor
-        self.liaison = Liaison(InProcessClient(self.case_id), today=today(),
-                               channel="voice" if want_voice else "text", llm=extractor(),
-                               humanizer=humanizer(), language=language)
+        channel = "voice" if want_voice else "text"
+        if settings.conversation_engine == "llm" and settings.anthropic_api_key:
+            self.liaison = LlmLiaison(InProcessClient(self.case_id), language=language, channel=channel)
+        else:
+            from ...voice.humanize import humanizer
+            from ...voice.llm import extractor
+            self.liaison = Liaison(InProcessClient(self.case_id), today=today(), channel=channel,
+                                   llm=extractor(), humanizer=humanizer(), language=language)
         lines = await asyncio.to_thread(self.liaison.start)
         patient = bool(self.liaison.cfg.get("patient_mode"))
         cartesia_ok = False

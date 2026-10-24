@@ -45,6 +45,18 @@ class InProcessClient:
         from ..services import case_service as cs
         return self._run(lambda s, case: cs.liaison_briefing(s, case))
 
+    def recent_transcript(self, limit: int = 24) -> list[tuple[str, str]]:
+        """Last turns (speaker, text) for this case, oldest first -- context for a resumed conversation."""
+        from sqlalchemy import select
+
+        from ..db import Utterance
+
+        def f(s, case):
+            rows = s.scalars(select(Utterance).where(Utterance.case_id == case.id)
+                             .order_by(Utterance.ts.desc()).limit(limit)).all()
+            return [(u.speaker, u.text) for u in reversed(rows)]
+        return self._run(f)
+
     def record_fact(self, field: str, value: Any, hedge: bool = False, utterance_id: str | None = None,
                     interrupted_at_word: str | None = None, is_correction: bool = False,
                     utterance_text: str | None = None) -> dict[str, Any]:
