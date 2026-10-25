@@ -60,6 +60,7 @@ class VoiceSession:
         self.stt: cartesia.STT | None = None
         self.stt_task: asyncio.Task | None = None
         self.patient = False
+        self.opening = False  # Ellis's first line is still being prepared
         self.want_voice = True  # talking (vs. typing): silence only means "gone" when they talk
         self.talk: dict[str, Any] | None = None  # transcript so far while the talk button is held (+ tail)
         self.nudges = 0  # silence check-ins since the applicant last did something
@@ -98,15 +99,12 @@ class VoiceSession:
                              "ANTHROPIC_API_KEY."})
             return
         self.liaison = LlmLiaison(InProcessClient(self.case_id), language=language, channel="voice")
-        # Cartesia connects while Ellis's first line is prepared, each on its own: no Ink-2 only means typing,
-        # and Ellis keeps Sonic's voice.
+        # The session opens (no model call) while Cartesia connects, each on its own: no Ink-2 only means typing,
+        # and Ellis keeps Sonic's voice. Then the applicant can talk at once; the opening line follows.
         self.patient = patient
-        connecting = asyncio.gather(self._connect("tts", cartesia.TTS(locale=locale, voice_id=voice_id)),
-                                    self._connect_stt(locale)) \
-            if settings.cartesia_api_key else None
-        lines = await asyncio.to_thread(self.liaison.start, bool(start.get("disclosure_shown")))
-        if connecting:
-            await connecting
+        connects = [self._connect("tts", cartesia.TTS(locale=locale, voice_id=voice_id)),
+                    self._connect_stt(locale)] if settings.cartesia_api_key else []
+        await asyncio.gather(asyncio.to_thread(self.liaison.begin), *connects)
         if self.tts:
             self.tts.speed = self.liaison.cfg["tts"]["speed"]
         await self.send({"type": "ready", "mode": "voice" if self.stt else "text", "cartesia": bool(self.tts),
@@ -117,8 +115,9 @@ class VoiceSession:
         self.tasks.append(asyncio.create_task(self.watchdog()))
         if self.stt:
             self.stt_task = asyncio.create_task(self.stt_loop())
-        for ln in lines:
-            await self.q.put(ln)
+        self.opening = True
+        await self.send({"type": "state", "state": "thinking"})
+        self.tasks.append(asyncio.create_task(self.open(bool(start.get("disclosure_shown")))))
         try:
             while True:
                 msg = await self.ws.receive()
@@ -139,6 +138,23 @@ class VoiceSession:
             pass
         finally:
             await self.shutdown()
+
+    async def open(self, disclosure_shown: bool) -> None:
+        """Ellis's first line, prepared after `ready` so the applicant can already talk or type. It holds the turn
+        lock: a turn sent meanwhile waits for it, and the model is told that turn came before they heard it."""
+        lines: list[Say] = []
+        try:
+            async with self.lock:
+                lines = await asyncio.to_thread(self.liaison.start, disclosure_shown)
+        except Exception:  # noqa: BLE001 - the applicant can still talk; the next turn answers
+            log.exception("opening failed")
+        finally:
+            self.opening = False
+            self.last_line_end = time.time()  # silence check-ins count from now, not from connecting
+        for ln in lines:
+            await self.q.put(ln)
+        if not lines and self.current is None and not self.user_active:
+            await self.send({"type": "state", "state": "listening"})
 
     async def _connect_stt(self, locale: str) -> None:
         """The speech-to-text model that hears this language (none: the applicant types)."""
@@ -373,7 +389,7 @@ class VoiceSession:
         while not self.closed:
             await asyncio.sleep(1)
             if (not self.want_voice or self.liaison is None or self.liaison.ended or self.current is not None
-                    or self.user_active):
+                    or self.user_active or self.opening):
                 continue
             waits = self.liaison.cfg.get("silence_thresholds_s", [15, 45, 120])
             if self.nudges >= len(waits) or time.time() - self.last_line_end < waits[self.nudges]:

@@ -251,3 +251,65 @@ def test_saving_ellis_lines_never_holds_up_the_reply(seeded):
     _CAPTIONS.submit(lambda: None).result()  # a resume waits for this too
     said = [t for who, t, _ in a.c.recent_transcript() if who == "liaison"]
     assert said[-1] == "¿Dónde trabaja?"
+
+
+def _voice_ws(client, monkeypatch, *responses, delay=0.0):
+    """Sign in as Jorge (consent given) and open WS /api/a/voice with a scripted model and no Cartesia key."""
+    import time
+    from ellis.config import settings
+    from ellis.voice import llm_liaison
+    monkeypatch.setattr(type(settings), "anthropic_api_key", property(lambda self: "test"))
+    monkeypatch.setattr(type(settings), "cartesia_api_key", property(lambda self: None))
+    model = FakeModel(*responses)
+    real = model.create
+
+    def slow(**kw):
+        time.sleep(delay)
+        return real(**kw)
+    model.create = slow
+    monkeypatch.setattr(llm_liaison.LlmLiaison, "_client_", lambda self: model)
+    assert client.post("/api/a/session", json={"token": "demo-jorge"}).status_code == 200
+    return model
+
+
+def _until(ws, kind, seen):
+    while True:
+        m = ws.receive_json()
+        seen.append(m)
+        if m["type"] == kind:
+            return m
+
+
+def test_the_mic_is_ready_before_ellis_opening_line(client, monkeypatch):
+    model = _voice_ws(client, monkeypatch, say("Bienvenido otra vez, Jorge."), say("Anotado: Acme Foods."),
+                      say("Hasta luego."))
+    with client.websocket_connect("/api/a/voice") as ws:
+        ws.send_json({"type": "start", "voice": False, "language": "es", "locale": "es-MX"})
+        seen = []
+        ready = _until(ws, "ready", seen)
+        assert ready["mode"] == "text" and ready["talk_unavailable"]
+        assert not any(m["type"] == "line" for m in seen)  # ready came first
+        line = _until(ws, "line", seen)
+        assert line["text"] == "Bienvenido otra vez, Jorge."
+        ws.send_json({"type": "text", "text": "Trabajo en Acme Foods"})
+        assert _until(ws, "user_final", seen)["text"] == "Trabajo en Acme Foods"
+        assert _until(ws, "line", seen)["text"] == "Anotado: Acme Foods."
+        ws.send_json({"type": "end"})
+    assert len(model.calls) >= 2  # the opening and the turn (the goodbye may still be running)
+
+
+def test_typing_before_the_opening_is_ready_loses_neither_line(client, monkeypatch):
+    model = _voice_ws(client, monkeypatch, say("Hola de nuevo."), say("Claro, le explico."), say("Hasta luego."),
+                      delay=0.4)
+    with client.websocket_connect("/api/a/voice") as ws:
+        ws.send_json({"type": "start", "voice": False, "language": "es", "locale": "es-MX"})
+        seen = []
+        _until(ws, "ready", seen)
+        ws.send_json({"type": "text", "text": "¿Qué documentos necesito?"})  # while the opening is prepared
+        lines = [_until(ws, "line", seen)["text"], _until(ws, "line", seen)["text"]]
+        ws.send_json({"type": "end"})
+    assert lines == ["Hola de nuevo.", "Claro, le explico."]
+    # the model is told the question came before the opening reached them
+    turn = next(m["content"] for m in model.calls[1]["messages"]
+                if isinstance(m["content"], str) and "¿Qué documentos necesito?" in m["content"])
+    assert "never heard it" in turn

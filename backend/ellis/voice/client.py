@@ -49,6 +49,11 @@ class InProcessClient:
         from ..services import views
         return self._run(lambda s, case: views.agent_context(s, case, focus))
 
+    def suggested_next(self) -> dict[str, Any]:
+        """The one step Ellis recommends first (views.suggested_next), without building the whole live case data."""
+        from ..services import views
+        return self._run(lambda s, case: views.suggested_next(s, case, views.section_progress(s, case)))
+
     def latest_event_id(self) -> int | None:
         """Every change to a case appends an event: the same id means the case hasn't changed."""
         from sqlalchemy import select

@@ -145,10 +145,19 @@ class LlmLiaison:
 
     # ------------------------------------------------------------ lifecycle
 
-    def start(self, disclosure_shown: bool = False) -> list[Say]:
+    def begin(self) -> dict[str, Any]:
+        """Open the session: the call config (voice speed, consent, clinic) and the system prompt. Quick (no model
+        call), so the voice gateway can start listening before the opening line is ready."""
         self.cfg = self.c.session_start(self.channel)
         clinic_name = self.cfg.get("clinic_name") or ("su clínica" if self.language == "es" else "your clinic")
         self._system = PROMPT_PATH.read_text(encoding="utf-8").replace("{clinic_name}", clinic_name)
+        return self.cfg
+
+    def start(self, disclosure_shown: bool = False) -> list[Say]:
+        """The opening: the disclosure until consent is given, else Claude picking the conversation back up."""
+        if not self.cfg:
+            self.begin()
+        clinic_name = self.cfg.get("clinic_name") or ("su clínica" if self.language == "es" else "your clinic")
         if not self.cfg.get("consent_given"):
             disclosure = script("disclosure", lang=self.language, clinic_name=clinic_name)
             self.history.append({"role": "user", "content": "[session started]"})  # API requires user first
@@ -178,7 +187,7 @@ class LlmLiaison:
         """Opening: the focus becomes the suggested next step, so the next-step bar on screen and what Ellis
         recommends are the same thing. The applicant still chooses what to do."""
         try:
-            self.focus = dict(self.c.agent_context(self.focus)["suggested_next_step"])
+            self.focus = dict(self.c.suggested_next())
         except Exception:  # noqa: BLE001 - no suggestion beats a crashed opening
             log.exception("suggested_next failed")
         return {"focus": self.focus}
