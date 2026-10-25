@@ -4,7 +4,7 @@ import { Icon } from './icons'
 import { navigate } from './main'
 import { api } from './api'
 import { goSignIn } from './auth'
-import { GuideStart, LangMenu } from './applicant/Guide'
+import { GuideFoot, GuideStart } from './applicant/Guide'
 import { t, type Lang } from './applicant/i18n'
 
 type Msg = { who: 'you' | 'ellis'; text: string }
@@ -21,6 +21,7 @@ export default function GuestChat() {
   const [typed, setTyped] = useState('')
   const [busy, setBusy] = useState(false)
   const [lang, setLang] = useState(guestLang)
+  const [voice, setVoice] = useState(false) // talking needs an account, so the guest box starts in text mode
   useEffect(() => { if (msgs.length) scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' }) }, [msgs.length])
   const send = async (raw?: string) => {
     const text = (raw ?? typed).trim()
@@ -74,17 +75,21 @@ export default function GuestChat() {
                 <form className="ask" onSubmit={(e) => { e.preventDefault(); send() }}>
                   <span className="tools">
                     <button type="button" aria-label={t(lang, 'uploadDoc')} className="icon-btn" onClick={() => goSignIn('/')}><Icon name="clip" size={20} /></button>
-                    <button type="button" className="btn" onClick={() => goSignIn('/')}>{t(lang, 'signInToTalk')}</button>
+                    <button type="button" aria-label={voice ? t(lang, 'typeWord') : t(lang, 'talk')} title={voice ? t(lang, 'typeWord') : t(lang, 'talk')} className="icon-btn" onClick={() => setVoice(!voice)}><Icon name={voice ? 'keyboard' : 'talk'} size={20} /></button>
                   </span>
                   <label htmlFor="msg" className="sr-only">Message Ellis</label>
-                  <input id="msg" type="text" autoComplete="off" placeholder="Ask anything, in any language" value={typed} onChange={(e) => setTyped(e.target.value)} />
-                  <button type="submit" aria-label="Send" className="icon-btn" style={{ background: 'var(--ink)', color: 'var(--white)' }}><Icon name="send" size={20} /></button>
+                  <input id="msg" type="text" autoComplete="off" readOnly={voice} placeholder={voice ? t(lang, 'micHint') : 'Ask anything, in any language'} value={voice ? '' : typed} onChange={(e) => setTyped(e.target.value)} />
+                  {voice ? (
+                    <button type="button" aria-label={t(lang, 'signInToTalk')} title={t(lang, 'signInToTalk')} className="icon-btn mic" onClick={() => goSignIn('/')}><Icon name="mic" size={22} /></button>
+                  ) : (
+                    <button type="submit" aria-label="Send" className="icon-btn" style={{ background: 'var(--ink)', color: 'var(--white)' }}><Icon name="send" size={20} /></button>
+                  )}
                 </form>
                 {empty && <GuideStart lang={lang} onChip={send} />}
               </div>
             </div>
+            {empty && <GuideFoot lang={lang} onLocale={pick} />}
           </section>
-          {empty && <LangMenu lang={lang} onLocale={pick} />}
         </div>
       </main>
     </Shell>

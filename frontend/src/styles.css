@@ -151,8 +151,8 @@ main, .enter, .dialog::backdrop { animation: enter .18s ease-out; }
 .ask input:focus-visible { outline: none; } /* the bar is the box; it shows focus instead */
 .ask:focus-within { box-shadow: 0 0 0 3px var(--green-tint); }
 .ask input[readonly] { cursor: default; }
-.icon-btn.talk { background: var(--green); color: var(--white); touch-action: none; user-select: none; -webkit-user-select: none; transition: background-color .15s, box-shadow .15s; }
-.icon-btn.talk[aria-pressed='true'] { background: var(--ink); box-shadow: 0 0 0 4px var(--green-tint); }
+.icon-btn.mic { box-sizing: border-box; border: 2px solid var(--green); background: var(--white); color: var(--green); transition: background-color .15s, color .15s; } /* tap on, tap off */
+.icon-btn.mic[aria-pressed='true'] { background: var(--green); color: var(--white); }
 .suggest { gap: 6px; }
 .suggest .btn { min-height: 0; height: 30px; padding: 0 10px; font-size: 13px; }
 .history { flex: 1 1 320px; min-width: 0; box-sizing: border-box; padding: 24px; border-left: 1px solid var(--line); background: var(--white); display: flex; flex-direction: column; gap: 14px; }
@@ -168,8 +168,7 @@ main, .enter, .dialog::backdrop { animation: enter .18s ease-out; }
 .opt[aria-checked='true'] > .dot { border: 6px solid var(--green); }
 .part { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; width: 100%; min-height: 64px; padding: 14px 0; border: 0; border-bottom: 1px solid var(--line); background: transparent; color: var(--ink); cursor: pointer; text-align: left; }
 .talk { display: inline-flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; }
-.talk-btn { min-height: 56px; padding: 0 18px; gap: 8px; font-size: 16px; }
-.talk-btn.pulse { animation: ellis-pulse 1.4s ease-in-out infinite; }
+.icon-btn.mic.pulse { animation: ellis-pulse 1.4s ease-in-out infinite; }
 @keyframes ellis-pulse { 50% { box-shadow: 0 0 0 6px var(--green-tint); } }
 .demo-tools { display: flex; flex-direction: column; gap: 8px; }
 .demo-tools summary { list-style: none; cursor: pointer; }

@@ -14,7 +14,7 @@ test('phase 1 screens', async ({ page }) => {
   for (const width of widths) {
     await page.setViewportSize({ width, height: 900 })
     await page.goto('/')
-    await page.waitForSelector('text=Have these ready')
+    await page.waitForSelector('text=few short sessions')
     await page.screenshot({ path: `e2e-shots/guest-${width}.png`, fullPage: true })
   }
 

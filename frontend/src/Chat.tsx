@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import Shell from './Shell'
 import { Flag, Icon } from './icons'
 import { daysToFile, useCase, type CaseView } from './applicant/ApplicantApp'
-import { GuideStart, LangMenu } from './applicant/Guide'
+import { GuideFoot, GuideStart } from './applicant/Guide'
 import { langOf, t } from './applicant/i18n'
 import { VoiceClient, type VoiceState } from './applicant/voice'
 import { api } from './api'
@@ -65,8 +65,6 @@ export default function Chat() {
   const showGuide = !viewing && !!data.consent_given && !started && msgs.length === 0
   // The liaison waits until they leave the consent screen and the start screen. A chip can be typed before the socket opens.
   const composerOn = !showConsent && !showGuide
-  // On the start screen the centered box types; its Talk button starts a voice session, like "Start talking" did.
-  const talking = voice && !showGuide
 
   // One liaison session per chat; only "New chat" starts a fresh one. Typing vs. talking shares it.
   useEffect(() => {
@@ -285,17 +283,17 @@ export default function Chat() {
                 <form className="ask" onSubmit={(e) => { e.preventDefault(); send() }}>
                   <span className="tools">
                     <button type="button" aria-label={t(lang, 'uploadDoc')} className="icon-btn" onClick={() => upload()}><Icon name="clip" size={20} /></button>
-                    <button type="button" className="btn" onClick={() => showGuide ? (setMode(true), setStarted(true)) : setMode(!voice)}>{talking ? t(lang, 'typeWord') : t(lang, 'talk')}</button>
+                    <button type="button" aria-label={voice ? t(lang, 'typeWord') : t(lang, 'talk')} title={voice ? t(lang, 'typeWord') : t(lang, 'talk')} className="icon-btn" onClick={() => setMode(!voice)}><Icon name={voice ? 'keyboard' : 'talk'} size={20} /></button>
                   </span>
-                  <label htmlFor="msg" className="sr-only">{talking ? t(lang, 'listening') : 'Message Ellis'}</label>
-                  <input id="msg" type="text" autoComplete="off" readOnly={talking} value={talking ? partial : typed} onChange={(e) => setTyped(e.target.value)}
-                    placeholder={!talking ? 'Ask anything, in any language' : t(lang, VOICE_KEY[state])} />
-                  {talking ? (
+                  <label htmlFor="msg" className="sr-only">{voice ? t(lang, 'listening') : 'Message Ellis'}</label>
+                  <input id="msg" type="text" autoComplete="off" readOnly={voice} value={voice ? partial : typed} onChange={(e) => setTyped(e.target.value)}
+                    placeholder={!voice ? 'Ask anything, in any language' : showGuide || state === 'idle' ? t(lang, 'micHint') : t(lang, VOICE_KEY[state])} />
+                  {voice ? (
+                    // On the start screen the first tap starts the voice session, like "Start talking" did; after that it toggles the mic.
                     <button type="button" aria-label={holding || state === 'speaking' ? t(lang, 'stop') : t(lang, 'talk')} aria-pressed={holding || state === 'listening'}
-                      className={`btn primary talk-btn${state === 'listening' || state === 'speaking' ? ' pulse' : ''}`}
-                      onClick={tap}>
+                      className={`icon-btn mic${state === 'listening' || state === 'speaking' ? ' pulse' : ''}`}
+                      onClick={showGuide ? () => setStarted(true) : tap}>
                       <Icon name="mic" size={22} />
-                      {holding || state === 'speaking' ? t(lang, 'stop') : t(lang, 'talk')}
                     </button>
                   ) : (
                     <button type="submit" aria-label="Send" className="icon-btn" style={{ background: 'var(--ink)', color: 'var(--white)' }}><Icon name="send" size={20} /></button>
@@ -310,8 +308,8 @@ export default function Chat() {
                 )}
               </div>
             </div>}
+            {showGuide && <GuideFoot lang={lang} onLocale={async (code) => { await api('/api/a/language', { body: { locale: code } }); await reload() }} />}
           </section>
-          {showGuide && <LangMenu lang={lang} onLocale={async (code) => { await api('/api/a/language', { body: { locale: code } }); await reload() }} />}
 
           {history && (
             <aside aria-label="Past chats" className="history enter">
