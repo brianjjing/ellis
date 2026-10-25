@@ -15,7 +15,7 @@ export default function Reminders() {
   const days = daysToFile(data)
   const date = f && new Date(f.earliest_filing + 'T12:00').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })
   // The rules engine's window is timing only: until the form is signed, the card shows the next step instead.
-  const left = data.progress.filter((p: any) => p.state !== 'done').length
+  const left = data.progress.filter((p: any) => p.total > 0 && p.state !== 'done').length // a part with nothing required (travel) never holds the form up
   const next = data.state === 'signed' ? null
     : left > 0 ? { text: `${left} part${left > 1 ? 's' : ''} left on your form`, href: '/form', cta: 'Finish my form' }
     : data.state === 'ready' ? { text: 'Review and sign your form', href: '/review', cta: 'Review and sign' }
