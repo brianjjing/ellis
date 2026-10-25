@@ -210,6 +210,11 @@ def _to_date(v: Any) -> date | None:
         return None
 
 
+def optional_fields(cur: dict[str, dict]) -> list[str]:
+    """Optional field keys that apply to this case (derived ones aside: nobody answers those)."""
+    return [k for k, d in _static().items() if not d.get("required") and d.get("capture") != "E" and _requires_ok(d, cur)]
+
+
 def list_items_required(name: str, cur: dict[str, dict], derived: dict[str, Any] | None, today: date) -> list[str]:
     """Required item field keys for one list, in conversational order."""
     lcfg = lists()[name]

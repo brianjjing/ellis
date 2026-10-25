@@ -107,6 +107,25 @@ def secure(body: SecureReq, request: Request) -> dict[str, Any]:
         return {"saved": True, "field": body.field, "fact_id": res["fact"]["id"]}
 
 
+class AnswerReq(BaseModel):
+    field: str
+    value: Any
+
+
+@router.post("/answer")
+def answer(body: AnswerReq, request: Request) -> dict[str, Any]:
+    """A question answered on the form page: the same checks as a spoken answer, confirmed since they typed it."""
+    with session_scope() as s:
+        case = applicant_case(request, s)
+        try:
+            res = cs.record_fact(s, case, body.field, body.value, source="applicant_typed", actor="applicant",
+                                 actor_type="applicant")
+        except cs.CaseError as e:
+            raise err(e.status, e.code, e.message, e.field) from None
+        cs.push(s, case, "fact.saved", {"field": body.field})
+        return {"saved": bool(res.get("saved", True)), "field": body.field}
+
+
 @router.post("/clear")
 def clear(request: Request) -> dict[str, Any]:
     with session_scope() as s:

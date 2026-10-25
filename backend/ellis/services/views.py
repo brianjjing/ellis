@@ -148,6 +148,7 @@ def section_progress(s: Session, case: Case) -> list[dict[str, Any]]:
     der = cs.latest_derived(s, case.id)
     view = cs.cur_view(s, case.id)
     req = catalog.required_fields(view, der.data if der else None, cs.today())
+    opt = catalog.optional_fields(view)
     out = []
     for sec in catalog.sections():
         keys = [k for k in req if catalog.section_of(k) == sec["key"]]
@@ -159,9 +160,24 @@ def section_progress(s: Session, case: Case) -> list[dict[str, Any]]:
         state = ("blocked" if deferred else "done" if len(conf) == len(keys)
                  else "partial" if have else "not_started")
         label = sec.get("label_en") if lang == "en" else sec["label_es"]
+        # consent has its own screen and derived fields aren't asked: the facts list hides them too
+        missing = [_blank(k, True, lang) for k in keys
+                   if k not in view and k != "consent" and (catalog.field_def(k) or {}).get("capture") != "E"]
+        missing += [_blank(k, False, lang) for k in opt if catalog.section_of(k) == sec["key"] and k not in view]
         out.append({"section": sec["key"], "label": label or sec["label_es"], "state": state,
-                    "done": len(conf), "total": len(keys)})
+                    "done": len(conf), "total": len(keys), "missing": missing,
+                    "optional": [k for k in opt if catalog.section_of(k) == sec["key"]]})
     return out
+
+
+def _blank(key: str, required: bool, lang: str) -> dict[str, Any]:
+    """A question the form shows as a row to fill in."""
+    d = catalog.field_def(key) or {}
+    t = d.get("type", "string")
+    opts = {"bool": [True, False], "yes_no_unsure": ["yes", "no", "not_sure"]}.get(t) or d.get("options")
+    label = catalog.label_en(key) if lang == "en" else catalog.label_es(key)
+    return {"field": key, "label": label, "type": t, "required": required, "masked": catalog.is_masked(key),
+            "options": [{"value": o, "label": cs.spoken_value(key, o, lang).capitalize()} for o in opts] if opts else None}
 
 
 def team_cards(s: Session, case: Case, limit: int = 8) -> list[dict[str, Any]]:
