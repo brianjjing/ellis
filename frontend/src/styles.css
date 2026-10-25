@@ -87,7 +87,8 @@ main, .enter, .dialog::backdrop { animation: enter .18s ease-out; }
 /* Sidebar: sticky so it stays put while long pages scroll; at rest it sits exactly where the design puts it. */
 .side { flex: 1 0 240px; background: var(--sand); border-right: 1px solid var(--line-strong); }
 .sidebar { position: sticky; top: 0; max-height: 100vh; overflow-y: auto; overscroll-behavior: contain; width: 100%; min-height: min(640px, 100vh); box-sizing: border-box; padding: 24px 14px; display: flex; flex-direction: column; gap: 28px; background: var(--sand); }
-.sidebar .wordmark { padding: 0 12px; }
+.sidebar .wordmark { padding: 0 12px; margin-top: -3.4px; }
+.sidebar .logo { height: 25.5px; } /* the wordmark's cap height (15.9px) and baseline (41.5px down) match the header .h1; retune both if .bar padding or .h1 changes */
 .nav-list { display: flex; flex-direction: column; gap: 4px; }
 .nav-foot { margin-top: auto; padding-top: 16px; border-top: 1px solid var(--line-strong); }
 .navlink { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 12px; border-radius: 4px; text-decoration: none; color: var(--ink); font-size: 16px; line-height: 22px; font-weight: 400; }
