@@ -23,6 +23,8 @@ from ellis.db import reset_engine  # noqa: E402
 
 @pytest.fixture()
 def seeded():
+    from ellis.services import auth
+    auth._hits.clear()  # every test starts with a fresh login rate limit, like it starts with a fresh database
     reset_engine()
     from seed import load
     load.load(reset=True, language="es-MX")  # the acceptance flows are scripted in Spanish
