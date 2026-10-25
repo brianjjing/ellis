@@ -16,8 +16,10 @@ export default function Reminders() {
   const date = f && new Date(f.earliest_filing + 'T12:00').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })
   // The rules engine's window is timing only: until the form is signed, the card shows the next step instead.
   const left = data.progress.filter((p: any) => p.total > 0 && p.state !== 'done').length // a part with nothing required (travel) never holds the form up
+  const waiting = data.facts.flatMap((g: any) => g.items).filter((i: any) => i.chip.key === 'needs_ok').length
+  const todo = [left && `${left} part${left > 1 ? 's' : ''} left on your form`, waiting && `${waiting} answer${waiting > 1 ? 's need' : ' needs'} your OK`]
   const next = data.state === 'signed' ? null
-    : left > 0 ? { text: `${left} part${left > 1 ? 's' : ''} left on your form`, href: '/form', cta: 'Finish my form' }
+    : left || waiting ? { text: todo.filter(Boolean).join(' · '), href: '/form', cta: 'Finish my form' }
     : data.state === 'ready' ? { text: 'Review and sign your form', href: '/review', cta: 'Review and sign' }
     : { text: 'Your clinic is checking your form', href: null, cta: null }
   const ghost = { borderColor: 'var(--on-ink-soft)', background: 'transparent', color: 'var(--white)' }

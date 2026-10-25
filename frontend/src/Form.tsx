@@ -13,7 +13,7 @@ const statusMeta: Record<string, { label: string; cls: string }> = {
   not_started: { label: 'Not started', cls: 'soft' },
 }
 const segment: Record<string, string> = { done: 'green', partial: 'gold', blocked: 'gold', not_started: 'segment-idle' }
-const chipColor: Record<string, string> = { confirmed: 'green', review: 'blue', deferred: 'rust' }
+const chipColor: Record<string, string> = { confirmed: 'green', review: 'blue', deferred: 'rust', needs_ok: 'rust' }
 const saveErrors: Record<string, string> = {
   invalid_value: 'Check this answer and try again.',
   consent_required: 'Agree to the notice in the chat with Ellis first, then answer here.',
@@ -59,6 +59,20 @@ function Blank({ q, onSaved }: { q: any; onSaved: () => void }) {
       {error && <p className="small" role="alert" style={{ flexBasis: '100%', color: 'var(--rust)' }}>{error}</p>}
     </form>
   )
+}
+
+// An answer Ellis has but the applicant hasn't said yes to (its read-back didn't finish): confirm it right here.
+function ConfirmAnswer({ field, onSaved }: { field: string; onSaved: () => void }) {
+  const [state, setState] = useState<'idle' | 'busy' | 'failed'>('idle')
+  const confirm = async () => {
+    setState('busy')
+    try { await api('/api/a/confirm', { body: { field } }) } catch { return setState('failed') }
+    onSaved()
+  }
+  return <>
+    <button type="button" className="btn sm" disabled={state === 'busy'} onClick={confirm}>{state === 'busy' ? 'Saving…' : "Yes, that's right"}</button>
+    {state === 'failed' && <p className="small" role="alert" style={{ flexBasis: '100%', color: 'var(--rust)' }}>This answer couldn't be confirmed. Try again.</p>}
+  </>
 }
 
 export default function Form() {
@@ -142,6 +156,7 @@ export default function Form() {
                       {t.corrected_from && <><s>{t.corrected_from}</s> → </>}{t.value}{t.days !== undefined && ` · ${t.days} days`}
                     </span>
                     <span className={`status ${chipColor[t.chip.key] ?? ''}`}>{t.chip.label}</span>
+                    {t.chip.key === 'needs_ok' && <ConfirmAnswer field={t.field} onSaved={() => reload().catch(() => undefined)} />}
                   </div>
                 ))}
               </section>}
