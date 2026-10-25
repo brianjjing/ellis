@@ -56,7 +56,7 @@ export default function Form() {
               <div className="panel" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 32 }}>
                 <p className="lead soft" style={{ margin: 0 }}>Nothing here yet. Ellis asks these questions in the chat, one at a time.</p>
                 <div className="btns" style={{ alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                  <a href="/" data-nav className="btn lg primary"><Icon name="mic" />Answer with Ellis</a>
+                  <a href="/" data-nav className="btn lg primary">Answer with Ellis<Icon name="mic" /></a>
                   {nav}
                 </div>
               </div>
@@ -76,7 +76,7 @@ export default function Form() {
                 ))}
               </section>
               <div className="btns" style={{ alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                <a href="/" data-nav className="talk"><Icon name="mic" />Continue with Ellis</a>
+                <a href="/" data-nav className="talk">Continue with Ellis<Icon name="mic" /></a>
                 {nav}
               </div>
             </>}
@@ -92,7 +92,7 @@ export default function Form() {
                   <span className="soft small">{p.done} of {p.total}</span>
                   <span className={`status ${meta.cls}`}>{meta.label}</span>
                   <div className="btns" style={{ gap: 6, flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
-                    <a href="/" data-nav className="btn sm"><Icon name="mic" size={14} />Answer</a>
+                    <a href="/" data-nav className="btn sm">Answer<Icon name="mic" size={14} /></a>
                     <button type="button" className="btn sm" onClick={() => open(n)}>Edit</button>
                   </div>
                 </div>
