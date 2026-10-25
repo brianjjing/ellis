@@ -287,9 +287,12 @@ def reminders(s: Session, case: Case) -> list[dict[str, Any]]:
     der = cs.latest_derived(s, case.id)
     if der and der.data.get("earliest_filing") and case.state not in ("signed", "referred_out", "closed"):
         open_ = der.data.get("window_open")
-        add("filing", "You can file your N-400" if open_ else "Your filing window opens", 30,
-            "By the rules engine; your clinic confirms it.", on=None if open_ else der.data["earliest_filing"],
-            when="now" if open_ else None)
+        # the window is timing only: "you can file" waits for a signed form (this is what Ellis reads out too)
+        title = ("Your filing window opens" if not open_ else "You can file your N-400" if case.state == "signed"
+                 else "Your filing window is open")
+        note = "By the rules engine; your clinic confirms it." + ("" if case.state == "signed" or not open_
+                                                                 else " Finish and sign your form first.")
+        add("filing", title, 30, note, on=None if open_ else der.data["earliest_filing"], when="now" if open_ else None)
     out.sort(key=lambda r: (-r["score"], r["days_left"] if r["days_left"] is not None else 9999))
     return out
 
