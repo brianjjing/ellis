@@ -81,7 +81,7 @@ export default function GuestChat() {
                   <label htmlFor="msg" className="sr-only">Message Ellis</label>
                   <input id="msg" type="text" autoComplete="off" readOnly={voice} placeholder={voice ? t(lang, 'micHint') : 'Ask anything, in any language'} value={voice ? '' : typed} onChange={(e) => setTyped(e.target.value)} />
                   {voice ? (
-                    <button type="button" aria-label={t(lang, 'signInToTalk')} title={t(lang, 'signInToTalk')} className="icon-btn mic" onClick={() => goSignIn('/')}><Icon name="mic" size={22} /></button>
+                    <button type="button" aria-label={t(lang, 'signInToTalk')} title={t(lang, 'signInToTalk')} className="icon-btn mic" onClick={() => goSignIn('/')}><Icon name="micOff" size={22} /></button>
                   ) : (
                     <button type="submit" aria-label="Send" className="icon-btn" style={{ background: 'var(--ink)', color: 'var(--white)' }}><Icon name="send" size={20} /></button>
                   )}

@@ -300,7 +300,7 @@ export default function Chat() {
                     <button type="button" aria-label={holding || state === 'speaking' ? t(lang, 'stop') : t(lang, 'talk')} aria-pressed={holding || state === 'listening'}
                       className={`icon-btn mic${state === 'listening' || state === 'speaking' ? ' pulse' : ''}`}
                       onClick={showGuide ? () => setStarted(true) : tap}>
-                      <Icon name="mic" size={22} />
+                      <Icon name={holding || state === 'listening' ? 'mic' : 'micOff'} size={22} />
                     </button>
                   ) : (
                     <button type="submit" aria-label="Send" className="icon-btn" style={{ background: 'var(--ink)', color: 'var(--white)' }}><Icon name="send" size={20} /></button>
