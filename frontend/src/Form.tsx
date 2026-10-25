@@ -101,9 +101,12 @@ export default function Form() {
             <button type="button" className="btn primary" onClick={() => upload('n400')}><Icon name="upload" />Fill from a document</button>
           </div>
         </header>
-        <div aria-hidden="true" className="progress" style={{ gridTemplateColumns: `repeat(${parts.length}, minmax(0, 1fr))` }}>
-          {parts.map((p: any) => <div key={p.section} style={{ background: `var(--${segment[p.state]})` }} />)}
-        </div>
+        <nav aria-label="Form parts" className="progress" style={{ gridTemplateColumns: `repeat(${parts.length}, minmax(0, 1fr))` }}>
+          {parts.map((p: any, n: number) => (
+            <button key={p.section} type="button" title={p.label} aria-label={`Part ${n + 1} of ${parts.length}: ${p.label}`}
+              aria-current={question && n === i ? 'step' : undefined} style={{ backgroundColor: `var(--${segment[p.state]})` }} onClick={() => open(n)} />
+          ))}
+        </nav>
 
         {question && part ? (
           <div key={i} className="content enter" style={{ padding: '48px 24px', gap: 28 }}>
