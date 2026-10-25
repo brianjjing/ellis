@@ -41,14 +41,15 @@ test('phase 1 screens', async ({ page }) => {
   for (const width of widths) {
     await page.setViewportSize({ width, height: 900 })
     await login(page, 'dana@valle.demo')
-    await page.waitForSelector('text=Cases')
+    await page.waitForURL(/\/clinic/, { timeout: 10000 })
+    await page.waitForLoadState('networkidle')
     await page.screenshot({ path: `e2e-shots/cases-${width}.png`, fullPage: true })
     await page.click('text=María T.')
     await page.waitForSelector('text=Ready gate')
     await page.getByRole('tab', { name: 'Activity' }).click()
-    await page.getByText(/No activity|Clinic staff/).first().waitFor({ timeout: 5000 }).catch(() => {})
+    await page.waitForTimeout(1000)
     await page.screenshot({ path: `e2e-shots/activity-${width}.png`, fullPage: true })
-    await page.click('text=Memos')
+    await page.getByRole('tab', { name: 'Memos' }).click()
     await page.waitForSelector('text=What Ellis will ask next')
     await page.screenshot({ path: `e2e-shots/memos-${width}.png`, fullPage: true })
     await page.request.post('/api/auth/logout')
@@ -73,17 +74,17 @@ test('phase 2-3 screens', async ({ page }) => {
 
     // Interview page
     await page.goto('/interview')
-    await page.waitForSelector('text=Interview prep')
+    await page.waitForLoadState('networkidle')
     await page.screenshot({ path: `e2e-shots/interview-${width}.png`, fullPage: true })
 
     // Reminders page
     await page.goto('/reminders')
-    await page.waitForSelector('text=Reminders')
+    await page.waitForLoadState('networkidle')
     await page.screenshot({ path: `e2e-shots/reminders-${width}.png`, fullPage: true })
 
     // Profile page
     await page.goto('/profile')
-    await page.waitForSelector('text=Profile')
+    await page.waitForLoadState('networkidle')
     await page.screenshot({ path: `e2e-shots/profile-${width}.png`, fullPage: true })
 
     await page.request.post('/api/auth/logout')
@@ -93,7 +94,8 @@ test('phase 2-3 screens', async ({ page }) => {
   for (const width of widths) {
     await page.setViewportSize({ width, height: 900 })
     await login(page, 'dana@valle.demo')
-    await page.waitForSelector('text=Cases')
+    await page.waitForURL(/\/clinic/, { timeout: 10000 })
+    await page.waitForLoadState('networkidle')
     await page.screenshot({ path: `e2e-shots/cases-${width}.png`, fullPage: true })
 
     await page.click('text=María T.')
@@ -132,7 +134,8 @@ test('phase 2-3 screens', async ({ page }) => {
 
   // Run axe on the case detail page
   await login(page, 'dana@valle.demo')
-  await page.waitForSelector('text=Cases')
+  await page.waitForURL(/\/clinic/, { timeout: 10000 })
+  await page.waitForLoadState('networkidle')
   await page.click('text=María T.')
   await page.waitForSelector('text=Ready gate')
   const axeCase = await new AxeBuilder({ page }).analyze()

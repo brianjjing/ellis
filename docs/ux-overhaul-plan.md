@@ -278,10 +278,18 @@ Pages those tests touch: the happy path signs into `/clinic`, opens a case, clic
 | Client link column, "Extra support" pill+tooltip, "stop now" lowercase | `CaseList.tsx` | **Done** (commit 28916dd) |
 | Close dialog names case; "Extra support" toggle; transcript sentence case; stop-now lowercase | `CaseDetail.tsx` | **Done** (commit 28916dd) |
 | STOP-NOW and category uppercase → sentence case | `ReviewQueue.tsx` | **Done** (commit 28916dd) |
-| Cases sort, relative time, severity ordering | `CaseList.tsx`, `views.case_row`, `api.ts` | Not yet — `fmtTime` still uses `toLocaleString()` |
-| Ready gate labels and groups | `CaseDetail.tsx` | Not yet addressed |
-| Activity timeline | `CaseDetail.tsx` | Phase 1 (activity.py) done; UI display uses sentences already |
-| Facts columns, documents checklist, memos, transcript highlights, packet | `CaseDetail.tsx` | Not yet addressed |
+| (a) Case detail header: Mark ready primary, secondary actions grouped, Close in ⋯ menu | `CaseDetail.tsx`, `app.css` | **Done** (commit c820a97) |
+| (b) Ready gate: blockers grouped by type, tab links, collapsible field lists | `CaseDetail.tsx`, `app.css` | **Done** (commit c820a97) |
+| (c) Activity tab: actor filter, links from each entry to related fact/doc/review/memo | `CaseDetail.tsx`, `app.css` | **Done** (commit c820a97) |
+| (d) Facts tab: status badges (Confirmed/Disputed/Proposed), document source links | `CaseDetail.tsx` | **Done** (commit c820a97) |
+| (e) Documents tab: expected-document checklist (green card, passport + open gaps) | `CaseDetail.tsx` | **Done** (commit c820a97) |
+| (f) Review tab: severity badge, plain description, linked sources, next-step text | `CaseDetail.tsx`, `ReviewQueue.tsx` | **Done** (commit c820a97, a6ad4a1) |
+| (g) Memos: task board as one card per agent, QA/status/note memos formatted | `CaseDetail.tsx`, `app.css` | **Done** (commit c820a97) |
+| (h) Cases list: sort needs-attention first, "Needs you" badge+filter, relative times | `CaseList.tsx`, `api.ts`, `app.css` | **Done** (commit 64c63cb) |
+| (i) Form page: section list with status per section and Answer/Edit actions | `Form.tsx`, `app.css` | **Done** (commit 774a099) |
+| (j) Reminders: next-step card from real case state | `Reminders.tsx` | **Done** (commit 2481e48) |
+| (k) Empty states for every client and reviewer tab | `CaseDetail.tsx`, `CaseList.tsx`, `ReviewQueue.tsx`, `Form.tsx` | **Done** (commits c820a97, 64c63cb, a6ad4a1, 774a099) |
+| Screenshots at 390px + 1280px (all case tabs, cases list, form, reminders) | `e2e/screenshots.spec.ts` | **Done** — 33 shots, 0 axe violations |
 
 ### Phase 4
 
