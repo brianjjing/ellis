@@ -293,6 +293,46 @@ Pages those tests touch: the happy path signs into `/clinic`, opens a case, clic
 
 ### Phase 4
 
-Copy, contrast, focus, and one button hierarchy touch `styles.css`, `app.css`, and the pages above. Axe is not installed. Legal numbers already in the UI that must be marked `[VERIFY against current USCIS source]` and not edited: the civics line "NEED 12 OF 20 TO PASS" in `Interview.tsx`, and any day-count the rules engine already speaks (early filing, presence). Do not add a 15-minute estimate.
+| Item | Files | Status |
+| --- | --- | --- |
+| canFile copy: remove legal conclusion from rules-engine output | `Chat.tsx:159` | **Done** (commit 583bd83) — "Earliest filing: X days away — your clinic will confirm" |
+| Review tab inline actions: Resolve, Send to client, Write memo | `CaseDetail.tsx:294` | **Done** (commit 34e869d) — wired to `/api/clinic/review/{id}/decision` and `/api/clinic/cases/{id}/notes` |
+| Applicant sign-off copy: what happens after signing | `applicant/Review.tsx:63,92` | **Done** (commit 869bbb9) — expanded top panel, "Sign and send to clinic", "What happens after you sign" note |
+| Form keyboard: section rows focusable and keyboard-activatable | `Form.tsx:83` | **Done** (commit 869bbb9) — role=button + tabIndex + onKeyDown |
+| Hackathon README: Cartesia features, agent team, responsibility, VERIFY list | `README.md` | **Done** (commit b086d5b) |
+| Component refactor, spacing tokens | — | Skipped |
+| Full i18n pass (clinic, sign-in, sign-up) | — | Skipped |
+| New Spanish strings for sign-off copy | `applicant/Review.tsx` | Bilingual inline strings added; TODO for native human review |
 
-Untranslated after a minimal Phase 1 i18n pass, unless that phase grows: clinic app, sign-in, sign-up, profile, interview, reminders, review-and-sign.
+### [VERIFY] items for human check before any real clinic use
+
+These are marked in the code with `NEEDS EXPERT CHECK` or `[VERIFY against current USCIS source]`.
+A human with current USCIS access must verify each one before the app is used with real cases.
+
+| What needs checking | File | Line |
+| --- | --- | --- |
+| N-400 edition and background question text (currently `verified: false` paraphrases) | `backend/config/background_questions.yaml` | 1–6 |
+| Trip-day convention (calendar difference vs departure/return day counts) | `backend/config/rule_config/2026.10-a.yaml` | 3 |
+| Fee waiver criteria and poverty table | `backend/config/fees.yaml` | 7–9 |
+| Pending fee rule — effective-date treatment | `backend/config/fees.yaml` | 20 |
+| Preparer/interpreter section of N-400 (currently left blank) | `backend/config/n400_fields.yaml` | 36 |
+| Civics test "12 of 20" passing threshold | `frontend/src/Interview.tsx` | 123 |
+| All fees and form editions in guest FAQ (marked `[VERIFY against current USCIS source]`) | `backend/prompts/guest_faq.md` | 13–19 |
+| Skeleton agent NEEDS EXPERT CHECK notes in QA memo output | `backend/ellis/agents/skeleton.py` | 157, 348, 392, 448 |
+
+### Final demo run commands
+
+```bash
+# Start the app (seeds demo data)
+./scripts/dev.sh
+
+# Verify demo path
+# Guest chat: http://localhost:5173
+# Clinic reviewer: http://localhost:5173/clinic  — dana@valle.demo / ellis-demo
+# Applicant: http://localhost:5173/a/demo-jorge
+
+# Run all tests
+cd backend && uv run pytest                          # 91 tests
+cd frontend && npm run build                         # type-check + Vite
+cd frontend && npm run screenshots                   # 33 shots, 0 axe violations
+```
