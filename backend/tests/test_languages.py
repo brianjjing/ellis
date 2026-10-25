@@ -174,7 +174,8 @@ def test_a_new_language_clears_the_chosen_voice_and_unknown_voices_are_refused(c
         return [{"id": "v_mx", "name": "Lucía", "accents": [{"locale": "es-MX", "accent": "mexican"}]}]
     monkeypatch.setattr(cartesia, "voices", fake)
     assert client.get("/api/a/voices").json()["voices"][0] == {
-        "id": "v_mx", "name": "Lucía", "description": None, "gender": None, "preview_url": None, "accent": "mexican"}
+        "id": "v_mx", "name": "Lucía", "description": None, "gender": None, "preview_url": "/api/a/voices/v_mx/sample",
+        "accent": "mexican"}
     assert client.post("/api/a/voice", json={"voice_id": "nope"}).status_code == 400
     assert client.post("/api/a/voice", json={"voice_id": "v_mx"}).status_code == 200
     with session_scope() as s:
@@ -231,3 +232,26 @@ def test_the_keyword_backstop_works_in_the_applicants_language(seeded):
         stored = s.scalars(select(Utterance).where(Utterance.case_id == "c_jorge")
                            .order_by(Utterance.ts.desc())).first()
         assert stored.text == "[STOP:arrest]"  # the words are never written
+
+
+def test_a_voice_sample_says_ellis_greeting_in_the_applicants_accent(client, monkeypatch):
+    from ellis.config import settings
+    from ellis.voice import cartesia
+    assert client.post("/api/a/session", json={"token": "demo-maria"}).status_code == 200
+    client.post("/api/a/language", json={"locale": "ja-JP"})
+    monkeypatch.setattr(type(settings), "cartesia_api_key", property(lambda self: "k"))
+    said = []
+
+    async def voices(locale):
+        return [{"id": "v_ja"}]
+
+    async def sample(voice_id, locale, text):
+        said.append((voice_id, locale, text))
+        return b"RIFF"
+    monkeypatch.setattr(cartesia, "voices", voices)
+    monkeypatch.setattr(cartesia, "sample", sample)
+    r = client.get("/api/a/voices/v_ja/sample")
+    assert r.status_code == 200 and r.headers["content-type"] == "audio/wav"
+    voice_id, locale, text = said[0]
+    assert (voice_id, locale) == ("v_ja", "ja-JP") and text.startswith("こんにちは。")
+    assert client.get("/api/a/voices/v_other/sample").status_code == 404

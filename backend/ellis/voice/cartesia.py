@@ -112,6 +112,24 @@ async def voice_id_for(locale: str = "es-MX") -> str | None:
     return best
 
 
+_samples: dict[tuple[str, str], bytes] = {}
+
+
+async def sample(voice_id: str, locale: str, text: str) -> bytes:
+    """A short WAV of this voice saying `text` in this accent (for choosing a voice). Cached per voice and locale."""
+    key = (voice_id, locale)
+    if key not in _samples:
+        model = os.environ.get("CARTESIA_TTS_MODEL") or "sonic-3.6"
+        req: dict[str, Any] = {"model_id": model, "transcript": speakable(text), "voice": {"mode": "id", "id": voice_id},
+                               "output_format": {"container": "wav", "encoding": "pcm_s16le", "sample_rate": TTS_RATE}}
+        req["locale" if uses_locale(model) else "language"] = locale if uses_locale(model) else locale.split("-")[0]
+        async with httpx.AsyncClient(timeout=20) as c:
+            r = await c.post(f"{BASE}/tts/bytes", headers=headers(), json=req)
+            r.raise_for_status()
+            _samples[key] = r.content
+    return _samples[key]
+
+
 def uses_locale(model: str) -> bool:
     """Sonic 3.6 and later take the accent as `locale`; older models take the base `language`."""
     m = re.match(r"sonic-(\d+)(?:\.(\d+))?(?:-|$)", model)
