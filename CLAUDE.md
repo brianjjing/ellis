@@ -3,8 +3,9 @@
 ## What Ellis is
 
 Ellis is a voice-first naturalization (N-400) preparation app for small immigration law clinics. An applicant
-does intake by talking in Spanish (or English). AI staff agents build the case file. The clinic's attorneys
-and accredited representatives review flagged items and approve. The applicant confirms every fact and signs.
+does intake by talking in their own language (any of the 44 that Cartesia's Sonic speaks). AI staff agents
+build the case file. The clinic's attorneys and accredited representatives review flagged items and approve.
+The applicant confirms every fact and signs.
 
 **Ellis never files and never gives legal advice.**
 
@@ -66,7 +67,7 @@ backend/
     services/        Domain logic: case_service.py, documents.py, guest.py, views.py,
                      activity.py, catalog.py, accounts.py, views.py
     rules/           Pure rules engine (dates, presence, fees)
-    voice/           LlmLiaison, Cartesia gateway, scripts_en/es.yaml
+    voice/           LlmLiaison, Cartesia gateway, scripts_<lang>.yaml
     agents/          Staff agents (case_manager, doc_paralegal, docketing_clerk, qa_reviewer)
     extraction/      Sandboxed document extraction worker
   config/
@@ -99,8 +100,12 @@ docs/
 3. **Ellis never gives legal advice or eligibility judgments.** Any outcome statement must end with
    "Your clinic will review this" or equivalent.
 
-4. **Only English and Spanish are supported.** The language picker lists only what `LANGUAGES` in
-   `applicant/i18n.ts` contains (English and Spanish dialects). Do not add Vietnamese or any other language.
+4. **Languages come from `backend/config/languages.yaml` only.** It lists every language and accent Cartesia's
+   Sonic speaks; both sides' pickers read it through `GET /api/languages`. Never add a second language list.
+   Ellis talks in the case's language (`case_language()`); Ellis's own screen and server text exists in English
+   and Spanish only (`case_lang()`: every other language reads English). The fixed legal lines
+   (`voice/scripts_<lang>.yaml`) and keyword lists (`config/keywords_i18n.yaml`) for languages other than English
+   and Spanish are machine-translated drafts: never mark one `reviewed: true` without a native speaker's review.
 
 5. **Field labels come from `backend/config/fields.yaml` only** — `catalog.label_en` / `label_es` through
    the API. Never add a second frontend label map. A key missing from `fields.yaml` title-cases.
