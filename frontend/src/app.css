@@ -84,7 +84,7 @@ button { font-family: inherit; }
 .referral { pointer-events: auto; max-width: 560px; margin: 0 auto; width: 100%; box-sizing: border-box; padding: 16px; background: var(--white); border: 2px solid var(--gold); border-radius: 8px; box-shadow: 0 6px 24px rgba(14, 25, 43, .18); display: flex; flex-direction: column; gap: 8px; }
 .referral.stop { border-color: var(--ink); }
 
-.sheet { margin: auto auto 0; max-width: 560px; border-radius: 10px 10px 0 0; max-height: 90vh; overflow-y: auto; }
+.sheet { margin: auto; max-width: 560px; border-radius: 6px; max-height: 90vh; overflow-y: auto; } /* centered modal, same corners as .dialog */
 .sheet-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .tile { min-height: 64px; padding: 10px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--white); font-size: 16px; font-weight: 700; cursor: pointer; }
