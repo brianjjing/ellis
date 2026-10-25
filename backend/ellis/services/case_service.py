@@ -28,19 +28,48 @@ READBACK_WINDOW_S = 120
 
 
 # Reads repeated within one session (a chat turn rebuilds the case view from several helpers) are made once: on a
-# hosted database each is a ~100 ms round trip. A flush, commit or rollback drops them, and a session holding
-# unflushed changes reads fresh, so a read always sees the session's own writes.
+# hosted database each is a ~100 ms round trip. A read always sees the session's own writes: a pending change to
+# the table a read depends on makes it read fresh (the query autoflushes), and a flush drops the reads of the
+# tables it wrote. Commit and rollback drop them all.
+def _memo_model(key: tuple):
+    return {"facts": Fact, "consent": Event, "open_flags": Flag, "derived": Derived, "open_gaps": Gap,
+            "briefing": Briefing, "review_items": ReviewItem, "documents": Document}[key[0]]
+
+
+def _touches(objs, key: tuple) -> bool:
+    model = _memo_model(key)
+    for o in objs:
+        if isinstance(o, model) and (model is not Event or str(o.kind or "").startswith("consent.")):
+            return True  # of the event table, only consent events change a memoized read
+    return False
+
+
+def _pending(s: Session) -> list:
+    return [*s.new, *s.dirty, *s.deleted]
+
+
 def _memo(s: Session, key: tuple, load):
-    if s.new or s.dirty or s.deleted:
-        s.info.pop("reads", None)
-        return load()
     reads = s.info.setdefault("reads", {})
+    if _touches(_pending(s), key):
+        reads.pop(key, None)
+        out = load()
+        if not _touches(_pending(s), key):  # the query flushed them: what it read is current
+            reads[key] = out
+        return out
     if key not in reads:
         reads[key] = load()
     return reads[key]
 
 
 @sa_event.listens_for(Session, "after_flush")
+def _drop_flushed_reads(s: Session, _ctx) -> None:
+    reads = s.info.get("reads")
+    if reads:
+        flushed = _pending(s)  # still the pre-flush state inside after_flush
+        for key in [k for k in reads if _touches(flushed, k)]:
+            del reads[key]
+
+
 @sa_event.listens_for(Session, "after_commit")
 @sa_event.listens_for(Session, "after_soft_rollback")
 def _drop_reads(s: Session, *_) -> None:
@@ -105,8 +134,10 @@ def facts_for(s: Session, case_id: str, field: str | None = None, include_supers
         q = q.where(Fact.field == field)
     if not include_superseded:
         q = q.where(Fact.status != "superseded")
-    if field is not None or include_superseded:
+    if include_superseded:
         return list(s.scalars(q.order_by(Fact.ts, Fact.id)))
+    if field is not None:  # one field: the same rows, from the case's memoized facts
+        return [f for f in facts_for(s, case_id) if f.field == field]
     return list(_memo(s, ("facts", case_id), lambda: list(s.scalars(q.order_by(Fact.ts, Fact.id)))))
 
 
@@ -1114,6 +1145,18 @@ def set_state(s: Session, case: Case, to: str, reason: str, actor_type: str = "s
     frm = case.state
     case.state = to
     emit(s, case, "case.state_changed", {"from": frm, "to": to, "reason": reason}, actor_type, actor)
+
+
+def review_items(s: Session, case_id: str) -> list[ReviewItem]:
+    """Every review item of the case, oldest first (screens filter this one read)."""
+    return list(_memo(s, ("review_items", case_id), lambda: list(
+        s.scalars(select(ReviewItem).where(ReviewItem.case_id == case_id).order_by(ReviewItem.ts, ReviewItem.id)))))
+
+
+def documents(s: Session, case_id: str) -> list[Document]:
+    """Every document of the case, oldest first."""
+    return list(_memo(s, ("documents", case_id), lambda: list(
+        s.scalars(select(Document).where(Document.case_id == case_id).order_by(Document.ts, Document.id)))))
 
 
 def open_gaps(s: Session, case_id: str) -> list[Gap]:

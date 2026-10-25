@@ -6,7 +6,7 @@ import re
 from datetime import date
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..db import (
@@ -184,19 +184,16 @@ def referral_cards(s: Session, case: Case) -> list[dict[str, Any]]:
 
 def applicant_case(s: Session, case: Case) -> dict[str, Any]:
     clinic = s.get(Clinic, case.clinic_id)
-    open_items = s.scalar(select(func.count()).select_from(ReviewItem).where(
-        ReviewItem.case_id == case.id, ReviewItem.status == "open")) or 0
+    items = cs.review_items(s, case.id)  # one read, filtered below
+    open_items = sum(1 for r in items if r.status == "open")
     gaps = [{"id": g.id, "document_type": g.document_type, "label": g.label_es or g.reason}
-            for g in s.scalars(select(Gap).where(Gap.case_id == case.id, Gap.status == "open"))]
+            for g in cs.open_gaps(s, case.id)]
     docs = [{"id": d.id, "document_type": d.document_type, "status": d.status, "quality": d.quality,
-             "filename": d.filename, "ts": d.ts.isoformat()}
-            for d in s.scalars(select(Document).where(Document.case_id == case.id).order_by(Document.ts))]
+             "filename": d.filename, "ts": d.ts.isoformat()} for d in cs.documents(s, case.id)]
     notes = [{"id": r.id, "note": r.decision_note, "label": (s.get(Flag, r.flag_id).applicant_label_es
                                                               if r.flag_id and s.get(Flag, r.flag_id) else None)}
-             for r in s.scalars(select(ReviewItem).where(ReviewItem.case_id == case.id,
-                                                         ReviewItem.decision == "clear_with_referral"))]
-    blocked = s.scalars(select(ReviewItem).where(ReviewItem.case_id == case.id,
-                                                 ReviewItem.status == "case_blocked")).first() is not None
+             for r in items if r.decision == "clear_with_referral"]
+    blocked = any(r.status == "case_blocked" for r in items)
     der = cs.latest_derived(s, case.id)
     filing = None
     if der and der.data.get("earliest_filing"):
@@ -254,7 +251,7 @@ def reminders(s: Session, case: Case) -> list[dict[str, Any]]:
                     "pressing": score >= 80, "action": action, "score": score})
 
     clinic = s.get(Clinic, case.clinic_id)
-    if s.scalars(select(ReviewItem).where(ReviewItem.case_id == case.id, ReviewItem.status == "case_blocked")).first():
+    if any(r.status == "case_blocked" for r in cs.review_items(s, case.id)):
         add("clinic", "Talk with your clinic", 95, "A person at your clinic needs to talk with you first.",
             action={"call": (clinic.settings or {}).get("phone")}, when="now")
     if case.state == "ready":
@@ -271,8 +268,7 @@ def reminders(s: Session, case: Case) -> list[dict[str, Any]]:
             d.note or "", on=d.date)
     # ponytail: only the latest upload of each type counts, so a good upload retires an earlier failed one (two
     # different "other" letters share a type: a failed one is hidden by any later one)
-    latest = {d.document_type: d for d in s.scalars(select(Document).where(Document.case_id == case.id)
-                                                     .order_by(Document.ts))}
+    latest = {d.document_type: d for d in cs.documents(s, case.id)}
     for doc in latest.values():
         if doc.status == "failed" or (doc.status == "extracted" and doc.quality == "low"):
             title = ("Upload your N-400 again" if doc.document_type == "n400"
@@ -309,7 +305,7 @@ def suggested_next(s: Session, case: Case, progress: list[dict[str, Any]]) -> di
     """The one step Ellis recommends first, in a focus shape; the applicant decides what to actually do.
     Same order as their screen: sign once the clinic is done, else the first unfinished N-400 part (the form's
     order), then missing documents, then interview practice."""
-    if s.scalars(select(ReviewItem).where(ReviewItem.case_id == case.id, ReviewItem.status == "case_blocked")).first():
+    if any(r.status == "case_blocked" for r in cs.review_items(s, case.id)):
         return {"task": "clinic_question", "next_step": "Your clinic will contact you"}
     if case.state == "ready":
         return {"task": "general", "next_step": "Review and sign your answers", "link": "/review"}
