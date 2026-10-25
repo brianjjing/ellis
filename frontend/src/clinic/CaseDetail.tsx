@@ -56,7 +56,7 @@ export default function CaseDetail({ id, me, tick }: { id: string; me: Me; tick:
         {TABS.map((t) => <button key={t} role="tab" className="tab" aria-selected={tab === t} onClick={() => setTab(t)}>{t}{t === 'Review' && d.review_items.filter((r: any) => r.status === 'open').length ? ` (${d.review_items.filter((r: any) => r.status === 'open').length})` : ''}</button>)}
       </div>
       <div className="detail-body">
-        {tab === 'Facts' && <Facts d={d} reveal={reveal} onReveal={doReveal} canReveal={me.role !== 'intake'} />}
+        {tab === 'Facts' && <><Facts d={d} reveal={reveal} onReveal={doReveal} canReveal={me.role !== 'intake'} /><TravelCandidates d={d} /></>}
         {tab === 'Documents' && <Docs d={d} id={id} reload={load} />}
         {tab === 'Review' && <ReviewItems d={d} id={id} reload={load} />}
         {tab === 'Activity' && <Activity d={d} />}
@@ -186,6 +186,54 @@ function Facts({ d, reveal, onReveal, canReveal }: { d: any; reveal: Record<stri
         ))}
       </tbody>
     </table>
+  )
+}
+
+// e2. Travel candidates — trips that need client voice confirmation
+const SOURCE_LABELS: Record<string, string> = { i94: 'I-94', passport_stamp: 'Passport stamp', missing: 'Missing' }
+
+function TravelCandidates({ d }: { d: any }) {
+  const candidates = (d.travel_candidates ?? []) as any[]
+  const pending = candidates.filter((c: any) => c.status === 'pending')
+  if (!pending.length) return null
+  return (
+    <section style={{ marginTop: 20 }}>
+      <h3 className="h3 rule">Trips: needs client confirmation</h3>
+      <p className="small soft" style={{ marginBottom: 8 }}>
+        The document checker found these trip dates. Ellis will read them back to the client for voice confirmation.
+      </p>
+      <div className="stack" style={{ gap: 8 }}>
+        {pending.map((tc: any) => {
+          const docs = (d.documents ?? []).filter((doc: any) => (tc.source_document_ids ?? []).includes(doc.id))
+          return (
+            <div key={tc.id} className="panel" style={{ flexDirection: 'column', gap: 6 }}>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                <span className="label">Trip {tc.trip_index + 1}</span>
+                <span className="small">
+                  Departure: <strong>{tc.departure_date}</strong>
+                  <span className="soft"> ({SOURCE_LABELS[tc.departure_source] ?? tc.departure_source})</span>
+                </span>
+                <span className="small">
+                  Return: {tc.return_date
+                    ? <><strong>{tc.return_date}</strong><span className="soft"> ({SOURCE_LABELS[tc.return_source] ?? tc.return_source})</span></>
+                    : <span className="soft">missing</span>}
+                </span>
+              </div>
+              {docs.length > 0 && (
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {docs.map((doc: any) => (
+                    <a key={doc.id} href={`/api/clinic/documents/${doc.id}/file`} target="_blank" rel="noreferrer" className="pill" style={{ textDecoration: 'none' }}>
+                      {doc.document_label || labelOf(d, doc.document_type)} ↗
+                    </a>
+                  ))}
+                </div>
+              )}
+              {tc.note && <p className="small soft" style={{ margin: 0 }}>{tc.note}</p>}
+            </div>
+          )
+        })}
+      </div>
+    </section>
   )
 }
 
@@ -349,6 +397,18 @@ function ReviewItems({ d, id, reload }: { d: any; id: string; reload: () => void
             {r.agent_notes.map((n: any, i: number) => (
               <p key={i} className="small soft" style={{ margin: 0 }}>{n.note} — {n.by.split('@')[0].replace(/_/g, ' ')}</p>
             ))}
+          </div>
+        )}
+        {r.citation && (
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+            <span className="soft small">Cite:</span>
+            <a href={r.citation.url} target="_blank" rel="noreferrer" className="small link-btn" title={r.citation.quote}>
+              {r.citation.rule}
+            </a>
+            <details className="inline" style={{ display: 'inline' }}>
+              <summary className="small link-btn" style={{ cursor: 'pointer' }}>quote</summary>
+              <span className="small soft" style={{ marginLeft: 4 }}>{r.citation.quote}</span>
+            </details>
           </div>
         )}
         {isOpenItem && !r.decision && (
