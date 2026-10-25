@@ -52,9 +52,10 @@ class InProcessClient:
     def latest_event_id(self) -> int | None:
         """Every change to a case appends an event: the same id means the case hasn't changed."""
         from sqlalchemy import select
-        from ..db import Event
-        return self._run(lambda s, case: s.scalars(select(Event.id).where(Event.case_id == case.id)
-                                                   .order_by(Event.id.desc()).limit(1)).first())
+        from ..db import Event, session_scope
+        with session_scope() as s:  # one query: no need to load the case row
+            return s.scalars(select(Event.id).where(Event.case_id == self.case_id)
+                             .order_by(Event.id.desc()).limit(1)).first()
 
     def case_context(self, focus: dict[str, Any]) -> tuple[int | None, dict[str, Any]]:
         """agent_context plus the latest event id read before it (a change after the id still shows as new)."""
