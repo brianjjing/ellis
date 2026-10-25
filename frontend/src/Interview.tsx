@@ -113,7 +113,7 @@ export default function Interview() {
               <p className="lead">Answer the way you answered on your form, in a full sentence. If you don't understand a question, ask the officer to repeat it.</p>
             </section>
             <div className="btns">
-              <button type="button" className="btn lg primary strong" disabled={mic} onClick={answerOutLoud}><Icon name="mic" color="#1e6b5b" />{mic ? 'Listening…' : heard ? 'Answer again out loud' : 'Answer out loud'}</button>
+              <button type="button" className="btn lg primary strong" disabled={mic} onClick={answerOutLoud}>{mic ? 'Listening…' : heard ? 'Answer again out loud' : 'Answer out loud'}<Icon name="mic" size={18} /></button>
               <button type="button" className="btn lg" onClick={next}>Next question</button>
             </div>
           </>}
@@ -126,7 +126,7 @@ export default function Interview() {
             </div>
             <h2 className="display">{c.q}</h2>
             <div className="btns">
-              <button type="button" className="btn lg primary strong" disabled={mic} onClick={answerOutLoud}><Icon name="mic" color="#1e6b5b" />{mic ? 'Listening…' : 'Answer out loud'}</button>
+              <button type="button" className="btn lg primary strong" disabled={mic} onClick={answerOutLoud}>{mic ? 'Listening…' : 'Answer out loud'}<Icon name="mic" size={18} /></button>
               <button type="button" className="btn lg" onClick={() => setShowChoices(!showChoices)}>{showChoices ? 'Hide choices' : 'Show choices'}</button>
             </div>
             {showChoices && (
