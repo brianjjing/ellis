@@ -236,3 +236,18 @@ def test_live_case_data_is_built_between_turns_and_checked_with_one_query(seeded
     a.handle("¿Hay algo nuevo?")
     a._prefetch.result()
     assert len(checks) == 2 and len(builds) == 7  # the check saw the new event: built again (+ the prefetch)
+
+
+def test_saving_ellis_lines_never_holds_up_the_reply(seeded):
+    import time
+    a = agent("c_jorge", say("¿Dónde trabaja?"))
+    a.cfg = {"consent_given": True}
+    real = a.c.liaison_said
+    a.c.liaison_said = lambda *args: time.sleep(0.5) or real(*args)
+    t0 = time.time()
+    assert a.handle("Hola")[0].text == "¿Dónde trabaja?"
+    assert time.time() - t0 < 0.4
+    from ellis.voice.llm_liaison import _CAPTIONS
+    _CAPTIONS.submit(lambda: None).result()  # a resume waits for this too
+    said = [t for who, t, _ in a.c.recent_transcript() if who == "liaison"]
+    assert said[-1] == "¿Dónde trabaja?"

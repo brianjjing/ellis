@@ -27,6 +27,7 @@ from pathlib import Path
 from typing import Any
 
 from ..config import settings
+from ..db import now
 from ..services.case_service import APPLICANT_SETTINGS, SETTING_NAMES
 from ..services.flags import STOP_NOW, category as flag_category
 from ..services.views import FOCI
@@ -42,6 +43,8 @@ STOP_NOTE = ("[the applicant raised a topic only a licensed professional can rev
 # tools that only show a card or sheet: the live case data built before them is still current
 # builds the next turn's live case data off the reply path; shared, so a session leaves no thread behind
 _PREFETCH = ThreadPoolExecutor(max_workers=4, thread_name_prefix="liaison-ctx")
+# saves Ellis's lines to the transcript off the reply path, one at a time and in order (each stamped when said)
+_CAPTIONS = ThreadPoolExecutor(max_workers=1, thread_name_prefix="liaison-captions")
 CARD_TOOLS = {"set_focus", "request_secure_entry", "request_upload", "request_biographics", "change_setting",
               "ask_clinic", "end_call"}
 
@@ -152,6 +155,7 @@ class LlmLiaison:
             return [] if disclosure_shown else self._said([disclosure])
         # resuming: seed real conversational memory from what was actually said, so the model picks the
         # thread back up instead of feeling like a fresh form.
+        _CAPTIONS.submit(lambda: None).result()  # lines still being saved belong in it
         past = self.c.recent_transcript()
         for speaker, text, _ in past:
             if text.startswith("[STOP:"):  # a stored stop turn: the model gets the live note, never the category
@@ -186,11 +190,13 @@ class LlmLiaison:
             self.history.append({"role": role, "content": content})
 
     def _said(self, lines: list[Say]) -> list[Say]:
-        for ln in lines:
+        def save(ln: Say, ts) -> None:
             try:
-                self.c.liaison_said(ln.text, ln.locked, {"kind": ln.kind})  # kind: so a resume can skip check-ins
+                self.c.liaison_said(ln.text, ln.locked, {"kind": ln.kind}, ts)  # kind: so a resume can skip check-ins
             except Exception:  # noqa: BLE001 - captions are best-effort
                 log.exception("liaison_said failed")
+        for ln in lines:
+            _CAPTIONS.submit(save, ln, now())
         return lines
 
     def _payload(self) -> list[dict]:

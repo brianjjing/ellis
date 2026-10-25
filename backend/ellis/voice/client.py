@@ -148,11 +148,11 @@ class InProcessClient:
         from ..services import case_service as cs
         return self._run(lambda s, case: cs.applicant_turn(s, case, text, self.session_id))
 
-    def liaison_said(self, text: str, locked: bool = False, meta: dict | None = None) -> None:
+    def liaison_said(self, text: str, locked: bool = False, meta: dict | None = None, ts=None) -> None:
         from ..services import case_service as cs
 
         def f(s, case):
-            cs.liaison_utterance(s, case, text, self.session_id, locked, meta)
+            cs.liaison_utterance(s, case, text, self.session_id, locked, meta, ts)
             cs.push(s, case, "caption", {"speaker": "liaison", "text": text, "locked": locked})
         self._run(f)
 
@@ -230,7 +230,7 @@ class HttpClient:
     def applicant_turn(self, text) -> dict[str, Any]:
         return self._post("applicant_turn", {"text": text})
 
-    def liaison_said(self, text, locked=False, meta=None) -> None:
+    def liaison_said(self, text, locked=False, meta=None, ts=None) -> None:  # the server stamps ts
         self._post("liaison_said", {"text": text, "locked": locked})
 
     def third_party(self, present, relation) -> None:

@@ -256,9 +256,9 @@ def applicant_turn(s: Session, case: Case, text: str, session_id: str | None = N
 
 
 def liaison_utterance(s: Session, case: Case, text: str, session_id: str | None = None, locked: bool = False,
-                      meta: dict | None = None) -> Utterance:
+                      meta: dict | None = None, ts: datetime | None = None) -> Utterance:
     u = Utterance(clinic_id=case.clinic_id, case_id=case.id, session_id=session_id, speaker="liaison",
-                  text=text, locked=locked, meta=meta or {})
+                  text=text, locked=locked, meta=meta or {}, ts=ts or now())
     s.add(u)
     s.flush()
     return u
