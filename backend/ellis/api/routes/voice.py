@@ -145,7 +145,8 @@ class VoiceSession:
             await self.turn(str(data.get("text", "")))
         elif t == "talk":
             if data.get("down"):
-                self.talk = {"done": [], "partial": "", "uncertain": False, "open": False}
+                self.talk = {"done": [], "partial": "", "uncertain": False, "open": False,
+                             "mode": "tap" if data.get("mode") == "tap" else "hold", "finishing": False}
                 self.nudges = 0
                 await self.user_started()
             elif self.talk is not None:
@@ -187,7 +188,10 @@ class VoiceSession:
         await self.send({"type": "stop_audio", "line_id": cur["id"]})
 
     async def talk_up(self, talk: dict) -> None:
-        """Talk button let go: send everything said while held as soon as Ink-2 has closed the turn."""
+        """Button released, or Ink-2 closed a tap-to-talk turn: send what was said once the turn is closed."""
+        if talk.get("finishing"):
+            return
+        talk["finishing"] = True
         t_up = time.time()
         while time.time() - t_up < PTT_MAX_WAIT_S:
             heard = talk["done"] or talk["partial"]
@@ -241,6 +245,9 @@ class VoiceSession:
                 elif t == "turn.end":
                     talk["done"].append(ev.get("transcript", ""))
                     talk["partial"], talk["open"] = "", False
+                    # Tap-to-talk ends on Ink's turn, without waiting for a second tap.
+                    if talk.get("mode") == "tap" and not talk.get("finishing"):
+                        self.tasks.append(asyncio.create_task(self.talk_up(talk)))
                 else:
                     continue
                 await self.send({"type": "user_partial", "text": " ".join(talk["done"] + [talk["partial"]]).strip()})
