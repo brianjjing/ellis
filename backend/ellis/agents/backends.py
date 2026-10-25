@@ -160,23 +160,35 @@ def _findings_to_tasks(findings: list[dict]) -> list[dict]:
     return items
 
 
+def _parse_chat_items(chat_text: str) -> list[dict]:
+    """Generic fenced ```json {"items": [...]}``` block anywhere in an agent's chatText -- the shape
+    doc_paralegal's engine already returns, and the one a Gmail-MCP-equipped agent (doc_paralegal's
+    inbox search, case_manager's escalation-sent note) is expected to use too, same as any other item
+    it proposes. Unknown/malformed content yields no items rather than raising -- chatText is prose with
+    an optional block in it, not a guaranteed contract."""
+    m = re.search(r"```json\s*(.*?)\s*```", chat_text or "", re.S)
+    if not m:
+        return []
+    try:
+        obj = json.loads(m.group(1))
+    except json.JSONDecodeError:
+        return []
+    out = []
+    for it in obj.get("items", []):
+        if it.get("type") not in _VALID_ITEM_TYPES:
+            continue
+        payload = {k: v for k, v in it.items() if k != "type"}
+        if "exhibit" in payload and payload["exhibit"] is not None:
+            payload["exhibit"] = str(payload["exhibit"])
+        out.append({"type": it["type"], "payload": payload})
+    return out
+
+
 def _translate(agent: str, result: dict, headers: dict, language: str) -> list[dict]:
     """Each Creao engine returns its own native shape (see the design doc). Map the parts we can into
     our proposal envelope's item list; anything not mapped here is simply not written back yet."""
     if agent == "doc_paralegal":
-        m = re.search(r"```json\s*(.*?)\s*```", result.get("chatText", ""), re.S)
-        if not m:
-            return []
-        obj = json.loads(m.group(1))
-        out = []
-        for it in obj.get("items", []):
-            if it.get("type") not in _VALID_ITEM_TYPES:
-                continue
-            payload = {k: v for k, v in it.items() if k != "type"}
-            if "exhibit" in payload and payload["exhibit"] is not None:
-                payload["exhibit"] = str(payload["exhibit"])
-            out.append({"type": it["type"], "payload": payload})
-        return out
+        return _parse_chat_items(result.get("chatText", ""))
     if agent == "docketing_clerk":
         url = _artifact_url(result, "docket.json")
         if not url:
@@ -188,13 +200,14 @@ def _translate(agent: str, result: dict, headers: dict, language: str) -> list[d
             return []
         return _findings_to_tasks(_fetch_json(headers, url).get("findings", []))
     if agent == "case_manager":
+        out = _parse_chat_items(result.get("chatText", ""))  # e.g. an escalation-sent memo, if any
         url = _artifact_url(result, "question_queue.json")
-        if not url:
-            return []
-        qkey = f"question_{language}"
-        queue = [{"kind": "ask", "field": q.get("field"), qkey: q.get("text"), "reason": q.get("why")}
-                for q in _fetch_json(headers, url).get("questions", [])]
-        return [{"type": "briefing", "payload": {"queue": queue}}]
+        if url:
+            qkey = f"question_{language}"
+            queue = [{"kind": "ask", "field": q.get("field"), qkey: q.get("text"), "reason": q.get("why")}
+                    for q in _fetch_json(headers, url).get("questions", [])]
+            out.append({"type": "briefing", "payload": {"queue": queue}})
+        return out
     return []
 
 

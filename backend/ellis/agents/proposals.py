@@ -138,8 +138,11 @@ AUTHORITY: dict[str, dict[str, Any]] = {
     "case_manager": {"types": {"briefing", "task", "memo", "review_item"}, "memo_kinds": {"status"},
                      "task_kinds": {"finding", "question"}, "review_categories": {"other_path"}},
     "doc_paralegal": {"types": {"gap", "gap_close", "task", "review_item", "evidence", "doc_checks"},
-                      "task_kinds": {"finding"}, "review_categories": {"document_conflict", "name_mismatch",
-                                                                       "document_owner"}},
+                      # "question" lets a Gmail-search candidate go to read-back instead of being written
+                      # straight to the case -- see tests/test_gmail_tool.py
+                      "task_kinds": {"finding", "question"}, "review_categories": {"document_conflict",
+                                                                                    "name_mismatch",
+                                                                                    "document_owner"}},
     "docketing_clerk": {"types": {"deadline", "task"}, "task_kinds": {"finding"}},
     "qa_reviewer": {"types": {"task", "review_item", "memo", "review_note"}, "memo_kinds": {"qa"},
                     "task_kinds": {"challenge", "finding"},

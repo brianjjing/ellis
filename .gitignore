@@ -13,3 +13,5 @@ frontend/e2e-shots/
 frontend/test-results/
 frontend/playwright-report/
 backend/evals/vendor/
+backend/.gmail_client_secret.json
+backend/.gmail_token*.json

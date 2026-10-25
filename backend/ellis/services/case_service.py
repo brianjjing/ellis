@@ -540,7 +540,57 @@ def record_fact(s: Session, case: Case, field: str, value: Any, *, hedge: bool =
         resp.update({"stopped": True, "script_key": "stop"})
     if fact and fact.status == "disputed":
         resp["note"] = "disputed"
+    if field == "email_search_consent" and value is True:
+        _maybe_search_email_for_hedged_trips(s, case)
     return resp
+
+
+def _maybe_search_email_for_hedged_trips(s: Session, case: Case) -> None:
+    """Rough demo wiring: consent given -> search -> propose a read-back question, entirely in our own
+    code (not a Creao agent run) so the demo doesn't depend on whether/when a hosted agent decides to
+    use its own Gmail tool. Real search if ELLIS_GMAIL_TOKEN points at a token file from
+    `gmail_search.py setup`; otherwise MockGmailService's canned data, so this isn't blocked on OAuth
+    setup. See ellis/agents/gmail_search.py."""
+    import os
+
+    from ..agents import gmail_search
+
+    view = cur_view(s, case.id)
+    for key, v in view.items():
+        if not (key.startswith("trips[") and key.endswith((".departure", ".return")) and v.get("hedge")
+               and v.get("value")):
+            continue
+        dup = s.scalars(select(Task).where(Task.case_id == case.id, Task.field == key,
+                                           Task.proposed_by == "gmail_search_tool")).first()
+        if dup is not None:
+            continue
+        around = date.fromisoformat(str(v["value"])[:10])
+        token_path = os.environ.get("ELLIS_GMAIL_TOKEN")
+        if token_path and os.path.exists(token_path):
+            candidates = gmail_search.search_travel_emails(gmail_search.get_service(token_path), around)
+        else:
+            candidates = gmail_search.MockGmailService().search(around)
+        if not candidates:
+            continue
+        c = candidates[0]
+        which_es = "regreso" if key.endswith(".return") else "salida"
+        which_en = "return" if key.endswith(".return") else "departure"
+        q_es = f'Encontré un correo ("{c["subject"]}") cerca de esa fecha. ¿Es correcta la fecha de {which_es}?'
+        s.add(Task(clinic_id=case.clinic_id, case_id=case.id, agent="doc_paralegal", kind="question",
+                   title=f"Possible {which_en} date found in email", field=key, question_es=q_es,
+                   round=1, proposed_by="gmail_search_tool", ts=now()))
+        # Task alone never reaches the live conversation -- the liaison only speaks from the latest
+        # published Briefing's queue (services/views.py:365, case_team_asks). kind must be "read_back",
+        # not "ask": pending_item() (case_service.py) drops "ask" items whose field already has a value
+        # in view, which this one does (hedged, but present) -- "read_back" is what the rest of the app
+        # already uses for exactly this ("field has a value, needs confirming") case.
+        b = latest_briefing(s, case.id)
+        body = dict(b.body) if b else {"queue": []}
+        queue = [it for it in body.get("queue", []) if it.get("field") != key or it.get("kind") != "read_back"]
+        queue.append({"kind": "read_back", "field": key,
+                      "reason": f'a matching email was found ("{c["subject"]}")'})
+        body["queue"] = queue
+        publish_briefing(s, case, body, proposed_by="gmail_search_tool")
 
 
 def _record_consent(s, case, value, utterance_id, session_id, third_party, actor_type, actor) -> dict[str, Any]:

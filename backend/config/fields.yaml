@@ -25,6 +25,8 @@ sections:
 fields:
   - {key: consent, section: consent, type: bool, required: true, capture: V, confirm: direct,
      label_es: "Consentimiento", label_en: "Consent"}
+  - {key: email_search_consent, section: travel, type: bool, required: false, capture: V, confirm: direct,
+     label_es: "Permiso para revisar correo", label_en: "Email search consent"}
   - {key: lpr_since, section: eligibility, type: date, required: true, capture: DV, confirm: readback, material: true,
      document_authoritative: true, label_es: "Residente desde", label_en: "Resident since", rb_doc_es: "que es residente desde", rb_es: "la fecha desde la que es residente",
      rb_doc_en: "that you've been a resident since", rb_en: "the date you became a resident",

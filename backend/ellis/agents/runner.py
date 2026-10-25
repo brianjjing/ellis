@@ -50,6 +50,8 @@ def wakes(ev: Event) -> list[str]:
             out.append("doc_paralegal")
         if field.startswith("fee."):
             out.append("doc_paralegal")
+        if field.startswith("trips[") and field.endswith((".departure", ".return")):
+            out.append("doc_paralegal")  # may search the client's inbox for corroboration if hedged
     elif k == "flag.raised":
         out += ["case_manager", "doc_paralegal"]
         if p.get("speed") != "stop_now":
