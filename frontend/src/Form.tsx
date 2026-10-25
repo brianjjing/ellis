@@ -95,13 +95,14 @@ export default function Form() {
         ) : (
           <div className="content enter" style={{ padding: '40px 24px 48px', gap: 0 }}>
             {n400?.status === 'failed' && !filling && <p className="rust" role="alert" style={{ margin: '0 0 16px' }}>We couldn't read your N-400. Upload the fillable PDF of the form.</p>}
+            {filling && <span className="sr-only" role="status">Filling your form from your N-400</span>}
             {parts.map((p: any, n: number) => {
               const meta = statusMeta[p.state] ?? statusMeta.not_started
               return (
                 <div key={p.section} className="form-section-row" role="button" tabIndex={0} onClick={() => open(n)} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && open(n)}>
                   <span className="mono" style={{ flex: '0 0 28px', fontSize: 13, fontWeight: 700, color: 'var(--ink-soft)' }}>{String(n + 1).padStart(2, '0')}</span>
                   <span style={{ flex: '1 1 200px', fontSize: 17, fontWeight: 700 }}>{p.label}</span>
-                  {filling === p.section && <span className="dots" role="status" aria-label="Filling from your N-400" />}
+                  {filling && p.done < p.total && <span className="dots" aria-hidden="true" />}
                   <span className="soft small">{p.done} of {p.total}</span>
                   <span className={`status ${meta.cls}`}>{meta.label}</span>
                   <div className="btns" style={{ gap: 6, flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
