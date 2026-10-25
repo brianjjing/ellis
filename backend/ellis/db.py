@@ -55,6 +55,17 @@ class StaffUser(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
+class Account(Base):
+    """An applicant login. Staff keep their own table; one email belongs to at most one of the two."""
+    __tablename__ = "account"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("ac"))
+    email: Mapped[str] = mapped_column(String(200), unique=True)
+    name: Mapped[str] = mapped_column(String(200))
+    password_hash: Mapped[str] = mapped_column(String(300))
+    active_case_id: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
 class Case(Base):
     __tablename__ = "cases"
     id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("c"))
@@ -74,10 +85,24 @@ class Case(Base):
     # bump on material fact changes; QA memo must be newer than this for the gate
     material_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     signed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    account_id: Mapped[str | None] = mapped_column(ForeignKey("account.id"), nullable=True, index=True)
 
     @property
     def display_name(self) -> str:
         return f"{self.first_name} {self.last_name[:1]}."
+
+
+class Invitation(Base):
+    """A clinic's invitation to an applicant account, matched by email. Nothing moves until accepted."""
+    __tablename__ = "invitation"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("iv"))
+    clinic_id: Mapped[str] = mapped_column(String(40), index=True)
+    email: Mapped[str] = mapped_column(String(200), index=True)
+    invited_by: Mapped[str] = mapped_column(String(40))
+    status: Mapped[str] = mapped_column(String(20), default="pending")  # pending | accepted | declined
+    case_id: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class CaseLink(Base):
@@ -432,6 +457,8 @@ def create_all() -> None:
     Base.metadata.create_all(engine())
     if is_postgres():
         with engine().begin() as con:
+            con.execute(text("ALTER TABLE cases ADD COLUMN IF NOT EXISTS account_id VARCHAR(40)"))
+            con.execute(text("CREATE INDEX IF NOT EXISTS ix_cases_account_id ON cases (account_id)"))
             # NOTIFY case_events on every event insert (LISTEN case_events for cross-process consumers).
             con.execute(text("""
                 create or replace function notify_event() returns trigger as $$

@@ -548,6 +548,8 @@ def _record_consent(s, case, value, utterance_id, session_id, third_party, actor
         emit(s, case, "consent.given", payload, actor_type, actor)
         if case.state == "consent_pending":
             set_state(s, case, "intake", "consent.given")
+        from .accounts import apply_prefill  # noqa: PLC0415 -- guest answers become hedged facts after consent
+        apply_prefill(s, case)
         evaluate_rules(s, case)
         after_fact_change(s, case)
         return {"saved": True, "fact": fact_dict(f), "flags": [], "resolved_flags": [], "derived": None,

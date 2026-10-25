@@ -18,7 +18,7 @@ from ...db import Case, Clinic, Document, Event, Memo, ReviewItem, StaffUser, no
 from ...services import auth, bus, case_service as cs, catalog, documents as docsvc, review, views
 from ...services.demo import simulate_answers
 from ...services.flags import STOP_NOW
-from ..deps import STAFF_COOKIE, clinic_case, err, staff_user
+from ..deps import APPLICANT_COOKIE, STAFF_COOKIE, clinic_case, err, staff_user
 
 router = APIRouter(prefix="/api/clinic", tags=["clinic"])
 ALL = ("intake", "reviewer", "admin")
@@ -40,6 +40,7 @@ def login(body: LoginReq, request: Request, response: Response) -> dict[str, Any
             raise err(401, "bad_credentials", "wrong email or password")
         response.set_cookie(STAFF_COOKIE, auth.sign({"kind": "staff", "staff_id": u.id}), httponly=True,
                             samesite="lax", max_age=12 * 3600)
+        response.delete_cookie(APPLICANT_COOKIE)  # one role per browser, as /api/auth/login does
         cs.emit(s, None, "staff.login", {"staff_id": u.id}, "staff", u.id, clinic_id=u.clinic_id)
         return me_payload(s, u)
 
@@ -47,6 +48,7 @@ def login(body: LoginReq, request: Request, response: Response) -> dict[str, Any
 @router.post("/logout")
 def logout(response: Response) -> dict[str, Any]:
     response.delete_cookie(STAFF_COOKIE)
+    response.delete_cookie(APPLICANT_COOKIE)
     return {"ok": True}
 
 

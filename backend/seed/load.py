@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import os
 
-from ellis.db import Case, Clinic, Document, StaffUser, create_all, drop_all, now, session_scope
+from ellis.db import Account, Case, Clinic, Document, StaffUser, create_all, drop_all, now, session_scope
 from ellis.services import auth
 from ellis.services import case_service as cs
 from ellis.services import documents as docs
@@ -114,6 +114,12 @@ def load(reset: bool = True, language: str = "en-US") -> dict[str, str]:
         _briefing(s, rosa, 1, [])
         for c in (maria, jorge, ana, rosa):
             cs.after_fact_change(s, c)
+            # demo applicants log in for real: maria@valle.demo etc.
+            acct = Account(email=f"{c.id[2:]}@valle.demo", name=f"{c.first_name} {c.last_name}", password_hash=pw,
+                           active_case_id=c.id, created_at=now())
+            s.add(acct)
+            s.flush()
+            c.account_id = acct.id
     base = os.environ.get("ELLIS_PUBLIC_BASE_URL", "http://localhost:5173")
     return {cid: f"{base}/a/{tok}" for cid, tok in LINKS.items()}
 
@@ -121,5 +127,6 @@ def load(reset: bool = True, language: str = "en-US") -> dict[str, str]:
 if __name__ == "__main__":
     links = load()
     print("Seeded demo clinic. Staff logins (password: ellis-demo): admin@valle.demo, dana@valle.demo, sam@valle.demo")
+    print("Applicant logins (password: ellis-demo): maria@valle.demo, jorge@valle.demo, ana@valle.demo, rosa@valle.demo")
     for cid, url in links.items():
         print(f"  {cid}: {url}")

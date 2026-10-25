@@ -39,7 +39,7 @@ export default function ApplicantApp({ children }: { children: ReactNode }) {
   const reload = useCallback(() => api('/api/a/case').then((d) => { setData(d); return d }), [])
 
   useEffect(() => {
-    reload().catch((e) => (e instanceof ApiError && e.status === 401 ? navigate('/signin', true) : setFailed(true)))
+    reload().catch((e) => (e instanceof ApiError && e.status === 401 ? navigate('/signin?next=' + encodeURIComponent(location.pathname), true) : setFailed(true)))
   }, [reload])
 
   useEffect(() => {

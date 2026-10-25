@@ -9,7 +9,8 @@ const { chromium } = require('playwright');
   const logs = [];
   p.on('pageerror', e => logs.push('PAGEERROR ' + e.message));
   p.on('console', m => { if (m.type() === 'error') logs.push('console ' + m.text()) });
-  await p.goto('' + (process.env.ELLIS_WEB ?? 'http://localhost:5173') + '/clinic');
+  await p.goto('' + (process.env.ELLIS_WEB ?? 'http://localhost:5173') + '/clinic'); // logged out: the one sign-in page
+  await p.fill('#em', 'dana@valle.demo');
   await p.fill('#pw', 'ellis-demo');
   await p.click('button[type=submit]');
   await p.waitForSelector('text=Cases');
@@ -47,8 +48,11 @@ const { chromium } = require('playwright');
   if (ready && await ready.isEnabled()) { await ready.click(); await p.waitForTimeout(1500); console.log('MARKED READY', await p.textContent('[role=status]')); }
   // applicant signs
   const a = await (await b.newContext({ viewport: { width: 420, height: 900 } })).newPage();
-  // The link signs in and lands on the chat; its next-step card leads to /review once the case is ready.
-  await a.goto('' + (process.env.ELLIS_WEB ?? 'http://localhost:5173') + '/a/demo-maria');
+  // Her demo account logs in and lands on the chat; its next-step card leads to /review once the case is ready.
+  await a.goto('' + (process.env.ELLIS_WEB ?? 'http://localhost:5173') + '/signin');
+  await a.fill('#em', 'maria@valle.demo');
+  await a.fill('#pw', 'ellis-demo');
+  await a.click('button[type=submit]');
   await a.waitForSelector('#next');
   const sign = await a.$('#next a:text-is("Review and sign")');
   if (sign) { await sign.click(); await a.waitForSelector('.attest'); }
