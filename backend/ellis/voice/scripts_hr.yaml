@@ -1,0 +1,21 @@
+# Fixed lines for the Croatian chat: a MACHINE-TRANSLATED DRAFT of scripts_en.yaml's five fixed lines (version
+# en-1), not reviewed by a native speaker. A qualified reviewer must check them before real use; then set
+# reviewed: true. While reviewed is false, Ellis shows the English original under each of these lines.
+# Only these five keys: the chat writes everything else itself in the applicant's language.
+version: hr-draft-1
+reviewed: false
+disclosure:
+  locked: true
+  text: Dobar dan, ja sam Ellis, asistent umjetne inteligencije koji surađuje s {clinic_name}. Nisam odvjetnik i ne mogu vam davati pravne savjete. Pomažem vam pripremiti zahtjev za državljanstvo; vi sve pregledavate i potpisujete, a mi ga nikada ne podnosimo umjesto vas. Spremamo tekst ovog razgovora, a ne zvučni zapis. Slažete li se da nastavimo?
+stop:
+  locked: true
+  text: Hvala što ste mi rekli. To mora pregledati licencirani stručnjak za useljavanje prije nego što podnesete zahtjev. Vaša klinika će vam se javiti u vezi s tim. O tome vas ne mogu savjetovati. Želite li nastaviti s drugim dijelom?
+stop_repeat:
+  locked: false
+  text: To je pitanje za licenciranog stručnjaka; ne mogu na njega odgovoriti. Ali mogu vam pomoći s ostatkom zahtjeva.
+secure_entry_repeat:
+  locked: true
+  text: Radi vaše sigurnosti, molim vas da taj broj ne izgovarate naglas. Molim vas da ga upišete na zaslonu.
+tool_failure:
+  locked: false
+  text: Oprostite, to nisam uspio spremiti. Možete li ponoviti?

@@ -1,0 +1,21 @@
+# Fixed lines for the Odia chat: a MACHINE-TRANSLATED DRAFT of scripts_en.yaml's five fixed lines (version
+# en-1), not reviewed by a native speaker. A qualified reviewer must check them before real use; then set
+# reviewed: true. While reviewed is false, Ellis shows the English original under each of these lines.
+# Only these five keys: the chat writes everything else itself in the applicant's language.
+version: or-draft-1
+reviewed: false
+disclosure:
+  locked: true
+  text: ନମସ୍କାର, ମୁଁ Ellis, {clinic_name} ସହିତ କାମ କରୁଥିବା ଜଣେ କୃତ୍ରିମ ବୁଦ୍ଧିମତ୍ତା ସହାୟକ। ମୁଁ ଓକିଲ ନୁହେଁ ଏବଂ ଆପଣଙ୍କୁ ଆଇନଗତ ପରାମର୍ଶ ଦେଇପାରିବି ନାହିଁ। ମୁଁ ଆପଣଙ୍କ ନାଗରିକତା ଆବେଦନ ପ୍ରସ୍ତୁତ କରିବାରେ ସାହାଯ୍ୟ କରେ; ଆପଣ ସବୁକିଛି ଯାଞ୍ଚ କରି ଦସ୍ତଖତ କରନ୍ତି, ଏବଂ ଆମେ କେବେ ବି ଆପଣଙ୍କ ତରଫରୁ ଆବେଦନ ଦାଖଲ କରୁନାହୁଁ। ଆମେ ଏହି କଥାବାର୍ତ୍ତାର ଲେଖା ସଞ୍ଚୟ କରୁ, ଅଡିଓ ନୁହେଁ। ଆପଣ ଆଗକୁ ବଢ଼ିବାକୁ ରାଜି କି?
+stop:
+  locked: true
+  text: ମୋତେ କହିଥିବାରୁ ଧନ୍ୟବାଦ। ଆପଣ ଆବେଦନ କରିବା ପୂର୍ବରୁ ଏହାକୁ ଜଣେ ଲାଇସେନ୍ସପ୍ରାପ୍ତ ଇମିଗ୍ରେସନ ବିଶେଷଜ୍ଞ ସମୀକ୍ଷା କରିବା ଆବଶ୍ୟକ। ଏ ବିଷୟରେ ଆପଣଙ୍କ କ୍ଲିନିକ୍ ଆପଣଙ୍କ ସହ ଯୋଗାଯୋଗ କରିବ। ମୁଁ ଏ ବିଷୟରେ ଆପଣଙ୍କୁ ପରାମର୍ଶ ଦେଇପାରିବି ନାହିଁ। ଆପଣ ଅନ୍ୟ ଏକ ବିଭାଗ ସହିତ ଆଗକୁ ବଢ଼ିବାକୁ ଚାହିଁବେ କି?
+stop_repeat:
+  locked: false
+  text: ଏହା ଜଣେ ଲାଇସେନ୍ସପ୍ରାପ୍ତ ବିଶେଷଜ୍ଞଙ୍କ ପାଇଁ ପ୍ରଶ୍ନ; ମୁଁ ଏହାର ଉତ୍ତର ଦେଇପାରିବି ନାହିଁ। କିନ୍ତୁ ଆପଣଙ୍କ ଆବେଦନର ବାକି ଅଂଶରେ ମୁଁ ସାହାଯ୍ୟ କରିପାରିବି।
+secure_entry_repeat:
+  locked: true
+  text: ଆପଣଙ୍କ ସୁରକ୍ଷା ପାଇଁ, ଦୟାକରି ସେହି ନମ୍ବରଟି ଜୋରରେ କୁହନ୍ତୁ ନାହିଁ। ଦୟାକରି ଏହାକୁ ସ୍କ୍ରିନରେ ଟାଇପ୍ କରନ୍ତୁ।
+tool_failure:
+  locked: false
+  text: କ୍ଷମା କରିବେ, ମୁଁ ତାହା ସଞ୍ଚୟ କରିପାରିଲି ନାହିଁ। ଆପଣ ପୁଣି କହିପାରିବେ କି?

@@ -38,12 +38,21 @@ _ACK_CATEGORIES = {
 
 @lru_cache
 def scripts(lang: str = "es") -> dict[str, Any]:
-    return yaml.safe_load((Path(__file__).parent / f"scripts_{lang}.yaml").read_text(encoding="utf-8"))
+    """scripts_<lang>.yaml: every line for en/es; for other languages only the fixed lines the chat uses
+    (machine-translated drafts until reviewed). A language without a file has none."""
+    path = Path(__file__).parent / f"scripts_{lang}.yaml"
+    return yaml.safe_load(path.read_text(encoding="utf-8")) if path.exists() else {}
 
 
 def script(key: str, lang: str = "es", **kw) -> "Say":
-    sc = scripts(lang)[key]
-    return Say(sc["text"].format(**kw), locked=bool(sc.get("locked")), kind=key)
+    """A fixed line in `lang`, else the English one. A line from an unreviewed translation carries the English
+    original (meta.text_en), which the chat shows under it."""
+    own = scripts(lang)
+    sc = own.get(key) or scripts("en")[key]
+    say = Say(sc["text"].format(**kw), locked=bool(sc.get("locked")), kind=key)
+    if key in own and own.get("reviewed") is False:
+        say.meta = {"text_en": scripts("en")[key]["text"].format(**kw), "machine_translation": True}
+    return say
 
 
 @dataclass

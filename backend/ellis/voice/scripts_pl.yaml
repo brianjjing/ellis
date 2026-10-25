@@ -1,0 +1,21 @@
+# Fixed lines for the Polish chat: a MACHINE-TRANSLATED DRAFT of scripts_en.yaml's five fixed lines (version
+# en-1), not reviewed by a native speaker. A qualified reviewer must check them before real use; then set
+# reviewed: true. While reviewed is false, Ellis shows the English original under each of these lines.
+# Only these five keys: the chat writes everything else itself in the applicant's language.
+version: pl-draft-1
+reviewed: false
+disclosure:
+  locked: true
+  text: Dzień dobry, jestem Ellis, asystent sztucznej inteligencji współpracujący z {clinic_name}. Nie jestem prawnikiem i nie mogę udzielać porad prawnych. Pomagam przygotować wniosek o obywatelstwo; to Pan lub Pani sprawdza i podpisuje wszystko, a my nigdy nie składamy wniosku za Pana lub Panią. Zapisujemy tekst tej rozmowy, a nie nagranie dźwiękowe. Czy zgadza się Pan lub Pani na kontynuowanie?
+stop:
+  locked: true
+  text: Dziękuję, że mi Pan lub Pani o tym powiedział(a). Tę sprawę musi przejrzeć licencjonowany specjalista ds. imigracji, zanim złoży Pan lub Pani wniosek. Klinika skontaktuje się w tej sprawie. Nie mogę w tym doradzić. Czy chce Pan lub Pani przejść do innej części?
+stop_repeat:
+  locked: false
+  text: To pytanie do licencjonowanego specjalisty; nie mogę na nie odpowiedzieć. Mogę natomiast pomóc z resztą wniosku.
+secure_entry_repeat:
+  locked: true
+  text: Ze względów bezpieczeństwa proszę nie mówić tego numeru na głos. Proszę wpisać go na ekranie.
+tool_failure:
+  locked: false
+  text: Przepraszam, nie udało mi się tego zapisać. Czy może Pan lub Pani powtórzyć?

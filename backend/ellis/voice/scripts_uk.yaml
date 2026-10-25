@@ -1,0 +1,21 @@
+# Fixed lines for the Ukrainian chat: a MACHINE-TRANSLATED DRAFT of scripts_en.yaml's five fixed lines (version
+# en-1), not reviewed by a native speaker. A qualified reviewer must check them before real use; then set
+# reviewed: true. While reviewed is false, Ellis shows the English original under each of these lines.
+# Only these five keys: the chat writes everything else itself in the applicant's language.
+version: uk-draft-1
+reviewed: false
+disclosure:
+  locked: true
+  text: Вітаю, я Ellis, помічник на основі штучного інтелекту, який працює з {clinic_name}. Я не юрист і не можу надавати юридичних порад. Я допомагаю підготувати вашу заяву на отримання громадянства; ви перевіряєте й підписуєте все самі, а ми ніколи не подаємо заяву замість вас. Ми зберігаємо текст цієї розмови, але не аудіозапис. Ви згодні продовжити?
+stop:
+  locked: true
+  text: Дякую, що сказали мені. Це має розглянути ліцензований фахівець з імміграції до того, як ви подасте заяву. Ваша клініка зв'яжеться з вами з цього питання. Я не можу консультувати вас щодо цього. Бажаєте продовжити з іншим розділом?
+stop_repeat:
+  locked: false
+  text: Це запитання для ліцензованого фахівця; я не можу на нього відповісти. Але я можу допомогти вам з рештою заяви.
+secure_entry_repeat:
+  locked: true
+  text: Заради вашої безпеки, будь ласка, не називайте цей номер уголос. Будь ласка, введіть його на екрані.
+tool_failure:
+  locked: false
+  text: Вибачте, я не зміг це зберегти. Можете повторити?

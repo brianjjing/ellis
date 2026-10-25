@@ -1,0 +1,21 @@
+# Fixed lines for the Telugu chat: a MACHINE-TRANSLATED DRAFT of scripts_en.yaml's five fixed lines (version
+# en-1), not reviewed by a native speaker. A qualified reviewer must check them before real use; then set
+# reviewed: true. While reviewed is false, Ellis shows the English original under each of these lines.
+# Only these five keys: the chat writes everything else itself in the applicant's language.
+version: te-draft-1
+reviewed: false
+disclosure:
+  locked: true
+  text: నమస్కారం, నేను Ellis, {clinic_name}తో కలిసి పనిచేసే కృత్రిమ మేధస్సు సహాయకుడిని. నేను న్యాయవాదిని కాను, మీకు న్యాయ సలహా ఇవ్వలేను. మీ పౌరసత్వ దరఖాస్తును సిద్ధం చేయడంలో నేను సహాయం చేస్తాను; మీరు అన్నింటినీ సమీక్షించి సంతకం చేస్తారు, మేము మీ తరఫున ఎప్పుడూ దరఖాస్తును సమర్పించము. మేము ఈ సంభాషణ యొక్క వచనాన్ని భద్రపరుస్తాము, ఆడియోను కాదు. కొనసాగడానికి మీరు అంగీకరిస్తున్నారా?
+stop:
+  locked: true
+  text: నాకు చెప్పినందుకు ధన్యవాదాలు. మీరు దరఖాస్తు చేసే ముందు దీన్ని లైసెన్స్ పొందిన ఇమ్మిగ్రేషన్ నిపుణులు సమీక్షించాలి. దీని గురించి మీ క్లినిక్ మిమ్మల్ని సంప్రదిస్తుంది. దీనిపై నేను మీకు సలహా ఇవ్వలేను. మీరు మరో విభాగంతో కొనసాగాలనుకుంటున్నారా?
+stop_repeat:
+  locked: false
+  text: అది లైసెన్స్ పొందిన నిపుణుల కోసం ఉన్న ప్రశ్న; నేను దానికి సమాధానం చెప్పలేను. మీ దరఖాస్తులోని మిగతా భాగంలో నేను సహాయం చేయగలను.
+secure_entry_repeat:
+  locked: true
+  text: మీ భద్రత కోసం, దయచేసి ఆ నంబర్‌ను బిగ్గరగా చెప్పకండి. దయచేసి దాన్ని స్క్రీన్‌పై టైప్ చేయండి.
+tool_failure:
+  locked: false
+  text: క్షమించండి, దాన్ని భద్రపరచలేకపోయాను. మీరు మళ్ళీ చెప్పగలరా?

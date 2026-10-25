@@ -1,0 +1,21 @@
+# Fixed lines for the Greek chat: a MACHINE-TRANSLATED DRAFT of scripts_en.yaml's five fixed lines (version
+# en-1), not reviewed by a native speaker. A qualified reviewer must check them before real use; then set
+# reviewed: true. While reviewed is false, Ellis shows the English original under each of these lines.
+# Only these five keys: the chat writes everything else itself in the applicant's language.
+version: el-draft-1
+reviewed: false
+disclosure:
+  locked: true
+  text: Γεια σας, είμαι ο Ellis, ένας βοηθός τεχνητής νοημοσύνης που συνεργάζεται με το {clinic_name}. Δεν είμαι δικηγόρος και δεν μπορώ να σας δώσω νομικές συμβουλές. Σας βοηθώ να προετοιμάσετε την αίτηση πολιτογράφησής σας· εσείς ελέγχετε και υπογράφετε τα πάντα, και εμείς δεν υποβάλλουμε ποτέ την αίτηση για λογαριασμό σας. Αποθηκεύουμε το κείμενο αυτής της συνομιλίας, όχι τον ήχο. Συμφωνείτε να συνεχίσουμε;
+stop:
+  locked: true
+  text: Σας ευχαριστώ που μου το είπατε. Αυτό πρέπει να το εξετάσει ένας αδειοδοτημένος επαγγελματίας μετανάστευσης πριν υποβάλετε την αίτηση. Η κλινική σας θα επικοινωνήσει μαζί σας γι' αυτό. Δεν μπορώ να σας συμβουλέψω σχετικά. Θέλετε να συνεχίσουμε με άλλη ενότητα;
+stop_repeat:
+  locked: false
+  text: Αυτή είναι ερώτηση για έναν αδειοδοτημένο επαγγελματία· δεν μπορώ να την απαντήσω. Μπορώ όμως να σας βοηθήσω με την υπόλοιπη αίτηση.
+secure_entry_repeat:
+  locked: true
+  text: Για την ασφάλειά σας, μην πείτε αυτόν τον αριθμό δυνατά. Παρακαλώ πληκτρολογήστε τον στην οθόνη.
+tool_failure:
+  locked: false
+  text: Συγγνώμη, δεν μπόρεσα να το αποθηκεύσω. Μπορείτε να το πείτε ξανά;

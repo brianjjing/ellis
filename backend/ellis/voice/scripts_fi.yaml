@@ -1,0 +1,21 @@
+# Fixed lines for the Finnish chat: a MACHINE-TRANSLATED DRAFT of scripts_en.yaml's five fixed lines (version
+# en-1), not reviewed by a native speaker. A qualified reviewer must check them before real use; then set
+# reviewed: true. While reviewed is false, Ellis shows the English original under each of these lines.
+# Only these five keys: the chat writes everything else itself in the applicant's language.
+version: fi-draft-1
+reviewed: false
+disclosure:
+  locked: true
+  text: Hei, olen Ellis, tekoälyavustaja, joka työskentelee {clinic_name} -klinikan kanssa. En ole lakimies enkä voi antaa sinulle oikeudellista neuvontaa. Autan sinua valmistelemaan kansalaisuushakemuksesi; sinä tarkistat ja allekirjoitat kaiken, emmekä koskaan jätä hakemusta puolestasi. Tallennamme tämän keskustelun tekstin, emme ääntä. Hyväksytkö, että jatketaan?
+stop:
+  locked: true
+  text: Kiitos, että kerroit. Tämä asia on luvan saaneen maahanmuuttoasiantuntijan tarkistettava ennen kuin jätät hakemuksen. Klinikkasi ottaa sinuun yhteyttä tästä asiasta. En voi neuvoa sinua tässä. Haluatko jatkaa toisella osiolla?
+stop_repeat:
+  locked: false
+  text: Tämä on kysymys luvan saaneelle asiantuntijalle; en voi vastata siihen. Voin kuitenkin auttaa sinua hakemuksen muissa osissa.
+secure_entry_repeat:
+  locked: true
+  text: Turvallisuutesi vuoksi älä sano sitä numeroa ääneen. Kirjoita se näytölle.
+tool_failure:
+  locked: false
+  text: Anteeksi, en pystynyt tallentamaan sitä. Voitko sanoa sen uudelleen?

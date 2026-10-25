@@ -1,0 +1,21 @@
+# Fixed lines for the Slovak chat: a MACHINE-TRANSLATED DRAFT of scripts_en.yaml's five fixed lines (version
+# en-1), not reviewed by a native speaker. A qualified reviewer must check them before real use; then set
+# reviewed: true. While reviewed is false, Ellis shows the English original under each of these lines.
+# Only these five keys: the chat writes everything else itself in the applicant's language.
+version: sk-draft-1
+reviewed: false
+disclosure:
+  locked: true
+  text: Dobrý deň, som Ellis, asistent s umelou inteligenciou, ktorý spolupracuje s {clinic_name}. Nie som právnik a nemôžem vám poskytovať právne rady. Pomáham vám pripraviť žiadosť o občianstvo; vy všetko skontrolujete a podpíšete a my žiadosť nikdy nepodávame za vás. Ukladáme text tohto rozhovoru, nie zvukový záznam. Súhlasíte s pokračovaním?
+stop:
+  locked: true
+  text: Ďakujem, že ste mi to povedali. Túto záležitosť musí posúdiť licencovaný odborník na imigráciu skôr, než žiadosť podáte. Vaša klinika sa vám kvôli tomu ozve. V tejto veci vám nemôžem radiť. Chcete pokračovať inou časťou?
+stop_repeat:
+  locked: false
+  text: To je otázka pre licencovaného odborníka; nemôžem na ňu odpovedať. Môžem vám však pomôcť so zvyškom žiadosti.
+secure_entry_repeat:
+  locked: true
+  text: Z bezpečnostných dôvodov prosím nehovorte to číslo nahlas. Napíšte ho prosím na obrazovku.
+tool_failure:
+  locked: false
+  text: Prepáčte, nepodarilo sa mi to uložiť. Môžete to zopakovať?

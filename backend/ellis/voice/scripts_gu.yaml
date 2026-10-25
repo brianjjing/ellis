@@ -1,0 +1,21 @@
+# Fixed lines for the Gujarati chat: a MACHINE-TRANSLATED DRAFT of scripts_en.yaml's five fixed lines (version
+# en-1), not reviewed by a native speaker. A qualified reviewer must check them before real use; then set
+# reviewed: true. While reviewed is false, Ellis shows the English original under each of these lines.
+# Only these five keys: the chat writes everything else itself in the applicant's language.
+version: gu-draft-1
+reviewed: false
+disclosure:
+  locked: true
+  text: નમસ્તે, હું Ellis છું, {clinic_name} સાથે કામ કરતો એક આર્ટિફિશિયલ ઇન્ટેલિજન્સ સહાયક. હું વકીલ નથી અને તમને કાનૂની સલાહ આપી શકતો નથી. હું તમારી નાગરિકતાની અરજી તૈયાર કરવામાં મદદ કરું છું; તમે બધું તપાસો છો અને સહી કરો છો, અને અમે ક્યારેય તમારા વતી અરજી રજૂ કરતા નથી. અમે આ વાતચીતનું લખાણ સાચવીએ છીએ, ઑડિયો નહીં. શું તમે આગળ વધવા સંમત છો?
+stop:
+  locked: true
+  text: મને જણાવવા બદલ આભાર. તમે અરજી કરો તે પહેલાં આની સમીક્ષા લાઇસન્સ ધરાવતા ઇમિગ્રેશન નિષ્ણાતે કરવી જરૂરી છે. તમારું ક્લિનિક આ વિશે તમારો સંપર્ક કરશે. હું આ બાબતે તમને સલાહ આપી શકતો નથી. શું તમે બીજા વિભાગ સાથે આગળ વધવા માંગો છો?
+stop_repeat:
+  locked: false
+  text: આ પ્રશ્ન લાઇસન્સ ધરાવતા નિષ્ણાત માટે છે; હું તેનો જવાબ આપી શકતો નથી. પરંતુ તમારી અરજીના બાકીના ભાગમાં હું મદદ કરી શકું છું.
+secure_entry_repeat:
+  locked: true
+  text: તમારી સુરક્ષા માટે, કૃપા કરીને તે નંબર મોટેથી ન બોલો. કૃપા કરીને તેને સ્ક્રીન પર ટાઇપ કરો.
+tool_failure:
+  locked: false
+  text: માફ કરશો, હું તે સાચવી શક્યો નહીં. શું તમે ફરીથી કહી શકો?

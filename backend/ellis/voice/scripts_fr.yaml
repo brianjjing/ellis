@@ -1,0 +1,21 @@
+# Fixed lines for the French chat: a MACHINE-TRANSLATED DRAFT of scripts_en.yaml's five fixed lines (version
+# en-1), not reviewed by a native speaker. A qualified reviewer must check them before real use; then set
+# reviewed: true. While reviewed is false, Ellis shows the English original under each of these lines.
+# Only these five keys: the chat writes everything else itself in the applicant's language.
+version: fr-draft-1
+reviewed: false
+disclosure:
+  locked: true
+  text: Bonjour, je suis Ellis, un assistant d'intelligence artificielle qui travaille avec {clinic_name}. Je ne suis pas avocat et je ne peux pas vous donner de conseils juridiques. Je vous aide à préparer votre demande de citoyenneté ; vous vérifiez et signez tout, et nous ne la soumettons jamais à votre place. Nous enregistrons le texte de cette conversation, pas l'audio. Acceptez-vous de continuer ?
+stop:
+  locked: true
+  text: Merci de me l'avoir dit. C'est un point qu'un professionnel de l'immigration agréé doit examiner avant que vous ne déposiez votre demande. Votre clinique vous recontactera à ce sujet. Je ne peux pas vous conseiller là-dessus. Voulez-vous continuer avec une autre section ?
+stop_repeat:
+  locked: false
+  text: C'est une question pour un professionnel agréé ; je ne peux pas y répondre. Ce que je peux faire, c'est vous aider avec le reste de votre demande.
+secure_entry_repeat:
+  locked: true
+  text: Pour votre sécurité, ne dites pas ce numéro à voix haute. Veuillez le saisir à l'écran.
+tool_failure:
+  locked: false
+  text: Désolé, je n'ai pas pu enregistrer cela. Pouvez-vous le répéter ?

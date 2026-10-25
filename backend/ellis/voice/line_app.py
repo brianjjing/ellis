@@ -23,7 +23,7 @@ from line.events import (
 )
 from line.voice_agent_app import AgentEnv, CallRequest, VoiceAgentApp
 
-from ..services import keywords
+from ..services import keywords, languages
 from .client import HttpClient
 from .liaison import Liaison, script
 
@@ -126,7 +126,7 @@ def _llm_agent(case_id: str, clinic_name: str, lang: str = "en"):
         end_call,
     ]
     prompt = (PROMPT.read_text(encoding="utf-8").replace("{clinic_name}", clinic_name)
-              .replace("{language}", "Spanish" if lang == "es" else "English"))
+              .replace("{language}", languages.name(lang)))
     disclosure = script("disclosure", lang=lang, clinic_name=clinic_name).text
     return LlmAgent(model=os.environ.get("ELLIS_LINE_MODEL", "anthropic/claude-haiku-5-5"),
                     api_key=os.environ.get("ANTHROPIC_API_KEY"), tools=tools,

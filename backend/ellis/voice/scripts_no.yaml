@@ -1,0 +1,21 @@
+# Fixed lines for the Norwegian chat: a MACHINE-TRANSLATED DRAFT of scripts_en.yaml's five fixed lines (version
+# en-1), not reviewed by a native speaker. A qualified reviewer must check them before real use; then set
+# reviewed: true. While reviewed is false, Ellis shows the English original under each of these lines.
+# Only these five keys: the chat writes everything else itself in the applicant's language.
+version: no-draft-1
+reviewed: false
+disclosure:
+  locked: true
+  text: Hei, jeg er Ellis, en KI-assistent som jobber med {clinic_name}. Jeg er ikke advokat og kan ikke gi deg juridiske råd. Jeg hjelper deg med å forberede søknaden din om statsborgerskap; du går gjennom og signerer alt, og vi sender aldri inn søknaden for deg. Vi lagrer teksten fra denne samtalen, ikke lyden. Godtar du å fortsette?
+stop:
+  locked: true
+  text: Takk for at du sa ifra. Dette må vurderes av en autorisert fagperson innen innvandring før du sender inn søknaden. Klinikken din vil kontakte deg om dette. Jeg kan ikke gi deg råd om det. Vil du fortsette med en annen del?
+stop_repeat:
+  locked: false
+  text: Det er et spørsmål for en autorisert fagperson; jeg kan ikke svare på det. Men jeg kan hjelpe deg med resten av søknaden.
+secure_entry_repeat:
+  locked: true
+  text: Av hensyn til sikkerheten din, ikke si det nummeret høyt. Skriv det på skjermen i stedet.
+tool_failure:
+  locked: false
+  text: Beklager, jeg klarte ikke å lagre det. Kan du si det igjen?

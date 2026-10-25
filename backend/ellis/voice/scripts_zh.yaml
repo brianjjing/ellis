@@ -1,0 +1,21 @@
+# Fixed lines for the Chinese chat: a MACHINE-TRANSLATED DRAFT of scripts_en.yaml's five fixed lines (version
+# en-1), not reviewed by a native speaker. A qualified reviewer must check them before real use; then set
+# reviewed: true. While reviewed is false, Ellis shows the English original under each of these lines.
+# Only these five keys: the chat writes everything else itself in the applicant's language.
+version: zh-draft-1
+reviewed: false
+disclosure:
+  locked: true
+  text: 您好，我是 Ellis，一个与 {clinic_name} 合作的人工智能助手。我不是律师，不能为您提供法律建议。我帮助您准备公民入籍申请；所有内容都由您审核并签字，我们绝不会替您提交申请。我们会保存这次对话的文字，但不保存录音。您同意继续吗？
+stop:
+  locked: true
+  text: 谢谢您告诉我。这件事需要由持有执照的移民专业人士在您提交申请之前进行审核。您的诊所会就此事与您联系。我无法就此向您提供建议。您想继续填写其他部分吗？
+stop_repeat:
+  locked: false
+  text: 这个问题需要由持有执照的专业人士来回答，我无法回答。我能做的是帮助您完成申请的其余部分。
+secure_entry_repeat:
+  locked: true
+  text: 为了您的安全，请不要大声说出这个号码。请在屏幕上输入。
+tool_failure:
+  locked: false
+  text: 抱歉，我没能保存这条信息。您能再说一遍吗？

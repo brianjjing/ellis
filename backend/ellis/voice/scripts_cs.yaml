@@ -1,0 +1,21 @@
+# Fixed lines for the Czech chat: a MACHINE-TRANSLATED DRAFT of scripts_en.yaml's five fixed lines (version
+# en-1), not reviewed by a native speaker. A qualified reviewer must check them before real use; then set
+# reviewed: true. While reviewed is false, Ellis shows the English original under each of these lines.
+# Only these five keys: the chat writes everything else itself in the applicant's language.
+version: cs-draft-1
+reviewed: false
+disclosure:
+  locked: true
+  text: Dobrý den, jsem Ellis, asistent s umělou inteligencí, který spolupracuje s {clinic_name}. Nejsem právník a nemohu vám poskytovat právní rady. Pomáhám vám připravit žádost o občanství; vy vše zkontrolujete a podepíšete a my žádost nikdy nepodáváme za vás. Ukládáme text tohoto rozhovoru, ne zvukový záznam. Souhlasíte s pokračováním?
+stop:
+  locked: true
+  text: Děkuji, že jste mi to řekl(a). Tuto záležitost musí posoudit licencovaný odborník na imigraci dříve, než žádost podáte. Vaše klinika se vám kvůli tomu ozve. V této věci vám nemohu radit. Chcete pokračovat jinou částí?
+stop_repeat:
+  locked: false
+  text: To je otázka pro licencovaného odborníka; nemohu na ni odpovědět. Mohu vám ale pomoci se zbytkem žádosti.
+secure_entry_repeat:
+  locked: true
+  text: Z bezpečnostních důvodů prosím neříkejte to číslo nahlas. Napište ho prosím na obrazovku.
+tool_failure:
+  locked: false
+  text: Omlouvám se, nepodařilo se mi to uložit. Můžete to zopakovat?

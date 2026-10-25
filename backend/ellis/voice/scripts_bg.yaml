@@ -1,0 +1,21 @@
+# Fixed lines for the Bulgarian chat: a MACHINE-TRANSLATED DRAFT of scripts_en.yaml's five fixed lines (version
+# en-1), not reviewed by a native speaker. A qualified reviewer must check them before real use; then set
+# reviewed: true. While reviewed is false, Ellis shows the English original under each of these lines.
+# Only these five keys: the chat writes everything else itself in the applicant's language.
+version: bg-draft-1
+reviewed: false
+disclosure:
+  locked: true
+  text: Здравейте, аз съм Ellis, асистент с изкуствен интелект, който работи с {clinic_name}. Не съм адвокат и не мога да ви давам правни съвети. Помагам ви да подготвите молбата си за гражданство; вие преглеждате и подписвате всичко, а ние никога не я подаваме вместо вас. Запазваме текста на този разговор, но не и аудиото. Съгласни ли сте да продължим?
+stop:
+  locked: true
+  text: Благодаря, че ми казахте. Това трябва да бъде прегледано от лицензиран специалист по имиграция, преди да подадете молбата. Вашата клиника ще се свърже с вас по този въпрос. Не мога да ви съветвам по това. Искате ли да продължим с друг раздел?
+stop_repeat:
+  locked: false
+  text: Това е въпрос за лицензиран специалист; не мога да отговоря на него. Мога обаче да ви помогна с останалата част от молбата.
+secure_entry_repeat:
+  locked: true
+  text: За ваша сигурност, моля, не казвайте този номер на глас. Моля, въведете го на екрана.
+tool_failure:
+  locked: false
+  text: Съжалявам, не успях да запазя това. Можете ли да го повторите?

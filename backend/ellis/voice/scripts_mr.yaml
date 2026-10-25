@@ -1,0 +1,21 @@
+# Fixed lines for the Marathi chat: a MACHINE-TRANSLATED DRAFT of scripts_en.yaml's five fixed lines (version
+# en-1), not reviewed by a native speaker. A qualified reviewer must check them before real use; then set
+# reviewed: true. While reviewed is false, Ellis shows the English original under each of these lines.
+# Only these five keys: the chat writes everything else itself in the applicant's language.
+version: mr-draft-1
+reviewed: false
+disclosure:
+  locked: true
+  text: नमस्कार, मी Ellis आहे, {clinic_name} सोबत काम करणारा एक कृत्रिम बुद्धिमत्ता सहाय्यक. मी वकील नाही आणि तुम्हाला कायदेशीर सल्ला देऊ शकत नाही. मी तुमचा नागरिकत्वाचा अर्ज तयार करण्यात मदत करतो; तुम्ही सर्व काही तपासता आणि त्यावर सही करता, आणि आम्ही कधीही तुमच्या वतीने अर्ज सादर करत नाही. आम्ही या संभाषणाचा मजकूर जतन करतो, ऑडिओ नाही. पुढे जाण्यास तुमची संमती आहे का?
+stop:
+  locked: true
+  text: मला सांगितल्याबद्दल धन्यवाद. तुम्ही अर्ज करण्यापूर्वी याचे पुनरावलोकन परवानाधारक इमिग्रेशन तज्ज्ञाने करणे आवश्यक आहे. याबद्दल तुमचे क्लिनिक तुमच्याशी संपर्क साधेल. मी तुम्हाला यावर सल्ला देऊ शकत नाही. तुम्हाला दुसऱ्या विभागासह पुढे जायचे आहे का?
+stop_repeat:
+  locked: false
+  text: हा प्रश्न परवानाधारक तज्ज्ञासाठी आहे; मी त्याचे उत्तर देऊ शकत नाही. पण तुमच्या अर्जाच्या उर्वरित भागात मी मदत करू शकतो.
+secure_entry_repeat:
+  locked: true
+  text: तुमच्या सुरक्षिततेसाठी, कृपया तो नंबर मोठ्याने बोलू नका. कृपया तो स्क्रीनवर टाइप करा.
+tool_failure:
+  locked: false
+  text: माफ करा, मी ते जतन करू शकलो नाही. तुम्ही पुन्हा सांगू शकाल का?

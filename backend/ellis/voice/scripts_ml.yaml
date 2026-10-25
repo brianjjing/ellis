@@ -1,0 +1,21 @@
+# Fixed lines for the Malayalam chat: a MACHINE-TRANSLATED DRAFT of scripts_en.yaml's five fixed lines (version
+# en-1), not reviewed by a native speaker. A qualified reviewer must check them before real use; then set
+# reviewed: true. While reviewed is false, Ellis shows the English original under each of these lines.
+# Only these five keys: the chat writes everything else itself in the applicant's language.
+version: ml-draft-1
+reviewed: false
+disclosure:
+  locked: true
+  text: നമസ്കാരം, ഞാൻ Ellis ആണ്, {clinic_name}-നോടൊപ്പം പ്രവർത്തിക്കുന്ന ഒരു നിർമ്മിത ബുദ്ധി സഹായി. ഞാൻ ഒരു അഭിഭാഷകനല്ല, നിങ്ങൾക്ക് നിയമോപദേശം നൽകാൻ എനിക്ക് കഴിയില്ല. നിങ്ങളുടെ പൗരത്വ അപേക്ഷ തയ്യാറാക്കാൻ ഞാൻ സഹായിക്കുന്നു; നിങ്ങൾ എല്ലാം പരിശോധിച്ച് ഒപ്പിടുന്നു, ഞങ്ങൾ ഒരിക്കലും നിങ്ങൾക്കു വേണ്ടി അപേക്ഷ സമർപ്പിക്കുന്നില്ല. ഈ സംഭാഷണത്തിന്റെ എഴുത്തുരൂപം ഞങ്ങൾ സൂക്ഷിക്കുന്നു, ശബ്ദം സൂക്ഷിക്കുന്നില്ല. തുടരാൻ നിങ്ങൾ സമ്മതിക്കുന്നുണ്ടോ?
+stop:
+  locked: true
+  text: എന്നോട് പറഞ്ഞതിന് നന്ദി. നിങ്ങൾ അപേക്ഷ സമർപ്പിക്കുന്നതിന് മുമ്പ് ഇത് ലൈസൻസുള്ള ഒരു ഇമിഗ്രേഷൻ വിദഗ്ധൻ പരിശോധിക്കേണ്ടതാണ്. ഇതിനെക്കുറിച്ച് നിങ്ങളുടെ ക്ലിനിക് നിങ്ങളെ ബന്ധപ്പെടും. ഇക്കാര്യത്തിൽ എനിക്ക് ഉപദേശം നൽകാൻ കഴിയില്ല. മറ്റൊരു ഭാഗവുമായി തുടരാൻ നിങ്ങൾ ആഗ്രഹിക്കുന്നുണ്ടോ?
+stop_repeat:
+  locked: false
+  text: അത് ലൈസൻസുള്ള ഒരു വിദഗ്ധനോട് ചോദിക്കേണ്ട ചോദ്യമാണ്; എനിക്ക് അതിന് ഉത്തരം നൽകാൻ കഴിയില്ല. നിങ്ങളുടെ അപേക്ഷയുടെ ബാക്കി ഭാഗത്ത് ഞാൻ സഹായിക്കാം.
+secure_entry_repeat:
+  locked: true
+  text: നിങ്ങളുടെ സുരക്ഷയ്ക്കായി, ദയവായി ആ നമ്പർ ഉറക്കെ പറയരുത്. ദയവായി അത് സ്ക്രീനിൽ ടൈപ്പ് ചെയ്യുക.
+tool_failure:
+  locked: false
+  text: ക്ഷമിക്കണം, എനിക്ക് അത് സൂക്ഷിക്കാൻ കഴിഞ്ഞില്ല. നിങ്ങൾക്ക് ഒന്നുകൂടി പറയാമോ?

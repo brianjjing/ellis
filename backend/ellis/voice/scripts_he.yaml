@@ -1,0 +1,21 @@
+# Fixed lines for the Hebrew chat: a MACHINE-TRANSLATED DRAFT of scripts_en.yaml's five fixed lines (version
+# en-1), not reviewed by a native speaker. A qualified reviewer must check them before real use; then set
+# reviewed: true. While reviewed is false, Ellis shows the English original under each of these lines.
+# Only these five keys: the chat writes everything else itself in the applicant's language.
+version: he-draft-1
+reviewed: false
+disclosure:
+  locked: true
+  text: שלום, אני Ellis, עוזר מבוסס בינה מלאכותית שעובד עם {clinic_name}. אני לא עורך דין ואינני יכול לתת לך ייעוץ משפטי. אני עוזר להכין את בקשת האזרחות שלך; אתה בודק וחותם על הכול, ואנחנו אף פעם לא מגישים את הבקשה בשמך. אנחנו שומרים את הטקסט של השיחה הזאת, לא את ההקלטה. האם אתה מסכים להמשיך?
+stop:
+  locked: true
+  text: תודה שסיפרת לי. זה עניין שאיש מקצוע מורשה בתחום ההגירה צריך לבדוק לפני שאתה מגיש את הבקשה. המרפאה שלך תיצור איתך קשר בנושא. אינני יכול לייעץ לך בעניין הזה. האם תרצה להמשיך לחלק אחר?
+stop_repeat:
+  locked: false
+  text: זו שאלה לאיש מקצוע מורשה; אינני יכול לענות עליה. מה שאני כן יכול לעשות זה לעזור לך בשאר הבקשה.
+secure_entry_repeat:
+  locked: true
+  text: למען ביטחונך, אנא אל תאמר את המספר הזה בקול. אנא הקלד אותו על המסך.
+tool_failure:
+  locked: false
+  text: סליחה, לא הצלחתי לשמור את זה. אתה יכול לומר את זה שוב?

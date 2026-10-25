@@ -69,7 +69,8 @@ TOOLS = [
          "hedge": {"type": "boolean", "description": "true if the applicant sounded unsure or was guessing"}},
          "required": ["field", "value"]}},
     {"name": "read_back", "description": "Start a one-field read-back so the applicant can confirm it. Speak "
-     "exactly the sentence this tool returns; never combine two fields in one read-back.",
+     "exactly the sentence this tool returns (in reply_language, translated faithfully, when it isn't already in "
+     "it); never combine two fields in one read-back.",
      "input_schema": {"type": "object", "properties": {
          "field": {"type": "string"},
          "read_value": {"type": "string", "enum": ["applicant", "document"],
@@ -402,7 +403,9 @@ class LlmLiaison:
                         meta.update(self._suggest())
                 return out
             if name == "read_back":
-                out = self.c.read_back(args["field"], args.get("read_value"), lang=self.language)
+                # the sentence comes in Ellis's own text languages; the model says it in any other one
+                out = self.c.read_back(args["field"], args.get("read_value"),
+                                       lang=self.language if self.language in ("en", "es") else "en")
                 if not out.get("error"):
                     meta["readback_field"] = args["field"]
                 return out

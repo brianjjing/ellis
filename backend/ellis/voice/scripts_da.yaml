@@ -1,0 +1,21 @@
+# Fixed lines for the Danish chat: a MACHINE-TRANSLATED DRAFT of scripts_en.yaml's five fixed lines (version
+# en-1), not reviewed by a native speaker. A qualified reviewer must check them before real use; then set
+# reviewed: true. While reviewed is false, Ellis shows the English original under each of these lines.
+# Only these five keys: the chat writes everything else itself in the applicant's language.
+version: da-draft-1
+reviewed: false
+disclosure:
+  locked: true
+  text: Hej, jeg er Ellis, en AI-assistent, der arbejder sammen med {clinic_name}. Jeg er ikke advokat og kan ikke give dig juridisk rådgivning. Jeg hjælper dig med at forberede din ansøgning om statsborgerskab; du gennemgår og underskriver alt, og vi indsender aldrig ansøgningen for dig. Vi gemmer teksten fra denne samtale, ikke lyden. Er du indforstået med at fortsætte?
+stop:
+  locked: true
+  text: Tak, fordi du fortalte mig det. Det skal gennemgås af en autoriseret fagperson inden for immigration, før du indsender ansøgningen. Din klinik vil kontakte dig om det. Jeg kan ikke rådgive dig om det. Vil du fortsætte med et andet afsnit?
+stop_repeat:
+  locked: false
+  text: Det er et spørgsmål til en autoriseret fagperson; jeg kan ikke svare på det. Men jeg kan hjælpe dig med resten af ansøgningen.
+secure_entry_repeat:
+  locked: true
+  text: Af hensyn til din sikkerhed må du ikke sige det nummer højt. Skriv det venligst på skærmen.
+tool_failure:
+  locked: false
+  text: Undskyld, jeg kunne ikke gemme det. Kan du sige det igen?

@@ -1,0 +1,21 @@
+# Fixed lines for the Georgian chat: a MACHINE-TRANSLATED DRAFT of scripts_en.yaml's five fixed lines (version
+# en-1), not reviewed by a native speaker. A qualified reviewer must check them before real use; then set
+# reviewed: true. While reviewed is false, Ellis shows the English original under each of these lines.
+# Only these five keys: the chat writes everything else itself in the applicant's language.
+version: ka-draft-1
+reviewed: false
+disclosure:
+  locked: true
+  text: გამარჯობა, მე ვარ Ellis, ხელოვნური ინტელექტის ასისტენტი, რომელიც მუშაობს {clinic_name}-თან. მე არ ვარ ადვოკატი და არ შემიძლია იურიდიული რჩევის მოცემა. გეხმარებით მოქალაქეობის განაცხადის მომზადებაში; თქვენ ყველაფერს ამოწმებთ და ხელს აწერთ, ჩვენ კი არასდროს ვაგზავნით განაცხადს თქვენ ნაცვლად. ჩვენ ვინახავთ ამ საუბრის ტექსტს და არა აუდიოს. ეთანხმებით, რომ გავაგრძელოთ?
+stop:
+  locked: true
+  text: გმადლობთ, რომ მითხარით. ეს საკითხი ლიცენზირებულმა საიმიგრაციო სპეციალისტმა უნდა განიხილოს, სანამ განაცხადს შეიტანთ. თქვენი კლინიკა ამის შესახებ დაგიკავშირდებათ. ამ საკითხზე რჩევას ვერ მოგცემთ. გსურთ, სხვა ნაწილით გავაგრძელოთ?
+stop_repeat:
+  locked: false
+  text: ეს კითხვა ლიცენზირებული სპეციალისტისთვისაა; მე მასზე პასუხს ვერ გაგცემთ. სამაგიეროდ, შემიძლია დაგეხმაროთ განაცხადის დანარჩენ ნაწილში.
+secure_entry_repeat:
+  locked: true
+  text: თქვენი უსაფრთხოებისთვის, გთხოვთ, ეს ნომერი ხმამაღლა ნუ თქვით. გთხოვთ, აკრიფოთ ეკრანზე.
+tool_failure:
+  locked: false
+  text: ბოდიში, ვერ შევინახე. შეგიძლიათ გაიმეოროთ?

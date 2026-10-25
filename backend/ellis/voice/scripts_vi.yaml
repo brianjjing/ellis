@@ -1,0 +1,21 @@
+# Fixed lines for the Vietnamese chat: a MACHINE-TRANSLATED DRAFT of scripts_en.yaml's five fixed lines (version
+# en-1), not reviewed by a native speaker. A qualified reviewer must check them before real use; then set
+# reviewed: true. While reviewed is false, Ellis shows the English original under each of these lines.
+# Only these five keys: the chat writes everything else itself in the applicant's language.
+version: vi-draft-1
+reviewed: false
+disclosure:
+  locked: true
+  text: Xin chào, tôi là Ellis, một trợ lý trí tuệ nhân tạo làm việc với {clinic_name}. Tôi không phải là luật sư và không thể cho quý vị lời khuyên pháp lý. Tôi giúp quý vị chuẩn bị đơn xin nhập quốc tịch; quý vị tự xem lại và ký tất cả, và chúng tôi không bao giờ nộp đơn thay cho quý vị. Chúng tôi lưu lại văn bản của cuộc trò chuyện này, không lưu âm thanh. Quý vị có đồng ý tiếp tục không?
+stop:
+  locked: true
+  text: Cảm ơn quý vị đã cho tôi biết. Đây là vấn đề cần một chuyên gia di trú có giấy phép xem xét trước khi quý vị nộp đơn. Phòng khám của quý vị sẽ liên lạc với quý vị về việc này. Tôi không thể tư vấn cho quý vị về vấn đề này. Quý vị có muốn tiếp tục với phần khác không?
+stop_repeat:
+  locked: false
+  text: Đó là câu hỏi dành cho một chuyên gia có giấy phép; tôi không thể trả lời. Điều tôi có thể làm là giúp quý vị với phần còn lại của đơn.
+secure_entry_repeat:
+  locked: true
+  text: Vì sự an toàn của quý vị, xin đừng nói to số đó. Xin hãy nhập số đó trên màn hình.
+tool_failure:
+  locked: false
+  text: Xin lỗi, tôi không lưu được thông tin đó. Quý vị có thể nói lại không?

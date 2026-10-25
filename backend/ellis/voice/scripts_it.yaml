@@ -1,0 +1,21 @@
+# Fixed lines for the Italian chat: a MACHINE-TRANSLATED DRAFT of scripts_en.yaml's five fixed lines (version
+# en-1), not reviewed by a native speaker. A qualified reviewer must check them before real use; then set
+# reviewed: true. While reviewed is false, Ellis shows the English original under each of these lines.
+# Only these five keys: the chat writes everything else itself in the applicant's language.
+version: it-draft-1
+reviewed: false
+disclosure:
+  locked: true
+  text: Salve, sono Ellis, un assistente di intelligenza artificiale che lavora con {clinic_name}. Non sono un avvocato e non posso darle consulenza legale. La aiuto a preparare la sua domanda di cittadinanza; lei controlla e firma tutto, e noi non presentiamo mai la domanda al posto suo. Salviamo il testo di questa conversazione, non l'audio. È d'accordo a continuare?
+stop:
+  locked: true
+  text: Grazie per avermelo detto. È una questione che un professionista dell'immigrazione abilitato deve esaminare prima che lei presenti la domanda. La sua clinica la contatterà a riguardo. Non posso darle consigli su questo. Vuole continuare con un'altra sezione?
+stop_repeat:
+  locked: false
+  text: È una domanda per un professionista abilitato; io non posso rispondere. Posso però aiutarla con il resto della sua domanda.
+secure_entry_repeat:
+  locked: true
+  text: Per la sua sicurezza, non dica quel numero ad alta voce. Lo scriva sullo schermo, per favore.
+tool_failure:
+  locked: false
+  text: Mi dispiace, non sono riuscito a salvarlo. Può ripeterlo?

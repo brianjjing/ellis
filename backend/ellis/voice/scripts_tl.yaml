@@ -1,0 +1,21 @@
+# Fixed lines for the Tagalog chat: a MACHINE-TRANSLATED DRAFT of scripts_en.yaml's five fixed lines (version
+# en-1), not reviewed by a native speaker. A qualified reviewer must check them before real use; then set
+# reviewed: true. While reviewed is false, Ellis shows the English original under each of these lines.
+# Only these five keys: the chat writes everything else itself in the applicant's language.
+version: tl-draft-1
+reviewed: false
+disclosure:
+  locked: true
+  text: Kumusta po, ako si Ellis, isang AI assistant na nakikipagtulungan sa {clinic_name}. Hindi po ako abogado at hindi ako makapagbibigay ng legal na payo. Tumutulong ako sa paghahanda ng inyong aplikasyon para sa pagkamamamayan; kayo ang magrerepaso at pipirma sa lahat, at hindi namin kailanman isusumite ito para sa inyo. Sine-save namin ang teksto ng usapang ito, hindi ang audio. Pumapayag po ba kayong magpatuloy?
+stop:
+  locked: true
+  text: Salamat po sa pagsasabi sa akin. Ito ay kailangang suriin ng isang lisensyadong propesyonal sa imigrasyon bago kayo mag-file. Makikipag-ugnayan sa inyo ang inyong klinika tungkol dito. Hindi ko po kayo mapapayuhan tungkol dito. Gusto po ba ninyong magpatuloy sa ibang bahagi?
+stop_repeat:
+  locked: false
+  text: Tanong po iyan para sa isang lisensyadong propesyonal; hindi ko iyan masasagot. Ang magagawa ko ay tulungan kayo sa natitirang bahagi ng inyong aplikasyon.
+secure_entry_repeat:
+  locked: true
+  text: Para sa inyong seguridad, huwag po ninyong sabihin nang malakas ang numerong iyon. Pakisulat po ito sa screen.
+tool_failure:
+  locked: false
+  text: Paumanhin po, hindi ko iyon na-save. Puwede po ba ninyong ulitin?

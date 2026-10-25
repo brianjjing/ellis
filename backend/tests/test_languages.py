@@ -182,3 +182,22 @@ def test_a_new_language_clears_the_chosen_voice_and_unknown_voices_are_refused(c
     client.post("/api/a/language", json={"locale": "fr-CA"})
     with session_scope() as s:
         assert "voice_id" not in s.get(Case, "c_maria").settings
+
+
+def test_fixed_lines_exist_for_every_language_and_drafts_carry_the_english_original():
+    from ellis.voice.liaison import script, scripts
+    for lang in languages.catalog():
+        code = lang["code"]
+        for key in ("disclosure", "stop", "stop_repeat", "secure_entry_repeat", "tool_failure"):
+            line = script(key, lang=code, clinic_name="Valle Legal")
+            assert line.text and "{" not in line.text, (code, key)
+            if code in ("en", "es"):
+                assert not line.meta  # human-written: no draft note
+            else:
+                assert scripts(code)["reviewed"] is False and line.meta["machine_translation"]
+                assert line.meta["text_en"] == script(key, lang="en", clinic_name="Valle Legal").text
+        assert script("disclosure", lang=code, clinic_name="Valle Legal").locked
+    assert "Valle Legal" in script("disclosure", lang="vi", clinic_name="Valle Legal").text
+    # a line a draft doesn't have is the English one, with no draft note
+    assert script("stop_offer_end", lang="fr").text == script("stop_offer_end", lang="en").text
+    assert not script("stop_offer_end", lang="fr").meta
