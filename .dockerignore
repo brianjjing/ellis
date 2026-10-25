@@ -1,0 +1,17 @@
+# secrets never go into the image: Coolify passes them as environment variables
+**/.env
+.git
+.claude
+.venv
+**/__pycache__
+**/*.pyc
+.pytest_cache
+.coverage
+backend/ellis.db*
+backend/data
+backend/evals/vendor
+frontend/node_modules
+frontend/dist
+frontend/e2e-shots
+frontend/test-results
+frontend/playwright-report

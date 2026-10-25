@@ -136,6 +136,24 @@ source .venv/bin/activate && cd backend
 ELLIS_TODAY=2026-10-23 python -m evals.flows all -v
 ```
 
+### Deploying (Coolify)
+
+The repo-root `Dockerfile` builds one container: the web app is built with Vite and served by the Case API from
+the same origin, so cookies, `/api` and the WebSockets need no cross-domain setup. Run **one** instance: the
+staff-agent runner and the live-update bus live in the API process.
+
+1. **DNS (Porkbun):** an `A` record for `ellisai.work` and one for `www`, both pointing at the Coolify server's IP.
+2. **Coolify:** New Resource → Public Repository → `https://github.com/brianjjing/ellis`, branch `main`, build pack
+   **Dockerfile** (`/Dockerfile`), port **8000**, domain `https://ellisai.work` (Coolify issues the certificate).
+   Health check: `GET /api/health`. Add a persistent volume at `/data` if Supabase Storage isn't configured.
+3. **Environment variables:** the table above, with real `ELLIS_SESSION_SECRET`, `ELLIS_TOOL_SECRET` and
+   `VAULT_KEY`, `ELLIS_PUBLIC_BASE_URL=https://ellisai.work`, `CARTESIA_TTS_MODEL=sonic-3.6`. The database
+   schema is migrated on startup; load the demo data once from the container's terminal with `python -m seed.load`
+   (it never wipes Postgres without `--reset`).
+4. **Deploy on every push to `main`:** in the Coolify application, Webhooks → Manual Git Webhooks → GitHub: copy
+   the URL and set a secret. A repo admin adds it in GitHub → Settings → Webhooks (payload URL = that URL,
+   content type `application/json`, the same secret, "Just the push event"). Coolify then redeploys on each push.
+
 ### Cartesia features used
 
 - **Every Sonic language and accent** — `backend/config/languages.yaml` lists Sonic 3.6's 44 languages and 57 locales (e.g. `es-MX`, `fr-CA`, `pt-BR`, `en-IN`). The applicant picks a language and accent, and can choose Ellis's voice from Cartesia's voices for that accent (each one says Ellis's greeting first). Sonic gets the accent as `locale`.
