@@ -153,6 +153,7 @@ def test_guest_bug_conversation_no_key():
     assert second["reply"] != first["reply"]
     assert "don't know" in second["reply"].lower()
     assert "asking" in second["reply"].lower()
+    assert "resident since" in second["reply"].lower()
 
 
 def test_guest_bug_conversation_model(monkeypatch):

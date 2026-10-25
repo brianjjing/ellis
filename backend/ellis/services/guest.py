@@ -31,8 +31,8 @@ ACCOUNT = "That's what I need for a first check. Create a free account to save t
 ACCOUNT_ES = "Con eso basta para una primera revisión. Cree una cuenta gratis para guardar esto y empezar su N-400."
 DECLINE = "Okay. You can ask me about the process whenever you want."
 DECLINE_ES = "Está bien. Puede preguntarme sobre el proceso cuando quiera."
-CONFUSED_REPLY = "I don't know that. Ellis doesn't already know it; I'm asking you."
-CONFUSED_REPLY_ES = "No lo sé. Ellis no lo sabe de antemano; se lo estoy preguntando."
+CONFUSED_REPLY = "I don't know it. I'm asking so I can check where you stand. You can find it on your green card, next to 'Resident since.'"
+CONFUSED_REPLY_ES = "No lo sé. Le pregunto para ver dónde está. Puede encontrarlo en su tarjeta de residente, junto a 'Residente desde.'"
 OPENING = ("I help people get ready to apply for U.S. citizenship. Ask me how applying works, what to have ready, "
            "or what the interview is.")
 OPENING_ES = ("Ayudo a las personas a prepararse para solicitar la ciudadanía. Pregúnteme cómo funciona, qué tener "
