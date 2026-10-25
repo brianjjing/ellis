@@ -117,7 +117,7 @@ export default function Form() {
             {(data.state === 'ready' || data.state === 'signed') && (
               <a href="/review" data-nav className="btn lg primary" style={{ marginTop: 28, alignSelf: 'flex-start' }}>{data.state === 'ready' ? 'Review and sign' : 'Open my packet'}</a>
             )}
-            {parts.length > 0 && <button type="button" className="btn lg danger clear-all" style={{ marginTop: 28, alignSelf: 'flex-start' }} disabled={!!filling} onClick={() => setClearing('confirm')}>Clear all</button>}
+            {parts.length > 0 && <button type="button" className="btn lg danger clear-all" style={{ marginTop: 28, alignSelf: 'flex-end' }} disabled={!!filling} onClick={() => setClearing('confirm')}>Clear all</button>}
             {clearing && (
               <Sheet title="Clear all answers?" onClose={() => setClearing(null)}>
                 <p className="lead">Every answer in all parts of your form will be cleared. You can't undo this.</p>
