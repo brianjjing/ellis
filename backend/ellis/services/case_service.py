@@ -165,7 +165,8 @@ def document_candidates(s: Session, case_id: str, field: str) -> list[dict[str, 
     """Values documents assert for this field: [{value, document_id, quality, kind}]."""
     out = []
     for f in facts_for(s, case_id, field, include_superseded=True):
-        if f.source == "document":
+        # an N-400 is the applicant's own answers, not evidence: a newer one replaces it without a conflict
+        if f.source == "document" and f.provenance.get("document_type") != "n400":
             doc_id = f.provenance.get("document_id")
             out.append({"value": f.value, "document_id": doc_id, "quality": _doc_quality(s, doc_id), "kind": "fact"})
     m = catalog.LIST_RE.match(field)

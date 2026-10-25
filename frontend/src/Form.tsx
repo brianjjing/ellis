@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Shell from './Shell'
 import { Icon } from './icons'
 import { useCase } from './applicant/ApplicantApp'
@@ -14,7 +14,7 @@ const segment: Record<string, string> = { done: 'green', partial: 'gold', blocke
 const chipColor: Record<string, string> = { confirmed: 'green', review: 'blue', deferred: 'rust' }
 
 export default function Form() {
-  const { data, upload } = useCase()
+  const { data, upload, filling } = useCase()
   const parts = data.progress
   const [i, setI] = useState(Math.max(0, parts.findIndex((p: any) => p.state !== 'done')))
   const [view, setView] = useState<'question' | 'parts'>('question')
@@ -23,6 +23,8 @@ export default function Form() {
   const items = data.facts.find((g: any) => g.section === part?.section)?.items ?? []
   const done = parts.filter((p: any) => p.state === 'done').length
   const open = (n: number) => { setI(n); setView('question'); scrollTo(0, 0) }
+  useEffect(() => { if (filling) setView('parts') }, [filling]) // an N-400 upload fills the parts view live
+  const n400 = data.documents.filter((d: any) => d.document_type === 'n400').at(-1)
   const nav = (
     <div style={{ display: 'flex', gap: 8 }}>
       <button type="button" className="btn lg" disabled={i === 0} onClick={() => open(i - 1)}>Back</button>
@@ -39,7 +41,7 @@ export default function Form() {
           </div>
           <div className="btns">
             <button type="button" className="btn" onClick={() => setView(question ? 'parts' : 'question')}>{question ? 'See all parts' : 'Back to my question'}</button>
-            <button type="button" className="btn primary" onClick={() => upload()}><Icon name="upload" />Fill from a document</button>
+            <button type="button" className="btn primary" onClick={() => upload('n400')}><Icon name="upload" />Fill from a document</button>
           </div>
         </header>
         <div aria-hidden="true" className="progress" style={{ gridTemplateColumns: `repeat(${parts.length}, minmax(0, 1fr))` }}>
@@ -56,7 +58,7 @@ export default function Form() {
               <div className="panel" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 32 }}>
                 <p className="lead soft" style={{ margin: 0 }}>Nothing here yet. Ellis asks these questions in the chat, one at a time.</p>
                 <div className="btns" style={{ alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                  <a href="/" data-nav className="btn lg primary"><Icon name="mic" />Answer with Ellis</a>
+                  <a href="/" data-nav className="btn lg primary">Answer with Ellis<Icon name="mic" /></a>
                   {nav}
                 </div>
               </div>
@@ -76,23 +78,25 @@ export default function Form() {
                 ))}
               </section>
               <div className="btns" style={{ alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                <a href="/" data-nav className="talk"><Icon name="mic" />Continue with Ellis</a>
+                <a href="/" data-nav className="talk">Continue with Ellis<Icon name="mic" /></a>
                 {nav}
               </div>
             </>}
           </div>
         ) : (
           <div className="content enter" style={{ padding: '40px 24px 48px', gap: 0 }}>
+            {n400?.status === 'failed' && !filling && <p className="rust" role="alert" style={{ margin: '0 0 16px' }}>We couldn't read your N-400. Upload the fillable PDF of the form.</p>}
             {parts.map((p: any, n: number) => {
               const meta = statusMeta[p.state] ?? statusMeta.not_started
               return (
                 <div key={p.section} className="form-section-row" role="button" tabIndex={0} onClick={() => open(n)} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && open(n)}>
                   <span className="mono" style={{ flex: '0 0 28px', fontSize: 13, fontWeight: 700, color: 'var(--ink-soft)' }}>{String(n + 1).padStart(2, '0')}</span>
                   <span style={{ flex: '1 1 200px', fontSize: 17, fontWeight: 700 }}>{p.label}</span>
+                  {filling === p.section && <span className="dots" role="status" aria-label="Filling from your N-400" />}
                   <span className="soft small">{p.done} of {p.total}</span>
                   <span className={`status ${meta.cls}`}>{meta.label}</span>
                   <div className="btns" style={{ gap: 6, flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
-                    <a href="/" data-nav className="btn sm"><Icon name="mic" size={14} />Answer</a>
+                    <a href="/" data-nav className="btn sm">Answer<Icon name="mic" size={14} /></a>
                     <button type="button" className="btn sm" onClick={() => open(n)}>Edit</button>
                   </div>
                 </div>

@@ -5,7 +5,7 @@ Documents are data, never instructions: these schema fields are the only output 
 
 from __future__ import annotations
 
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -86,6 +86,11 @@ class Other(Base):
     summary: Optional[str] = None
 
 
+class N400(Base):
+    """What a swept N-400 left in its Extraction row: app field -> value (masked fields as their token)."""
+    answers: dict[str, Any] = Field(default_factory=dict)
+
+
 SCHEMAS: dict[str, type[Base]] = {
     "green_card": GreenCard,
     "passport": Passport,
@@ -95,6 +100,7 @@ SCHEMAS: dict[str, type[Base]] = {
     "tax_transcript": TaxTranscript,
     "benefit_letter": BenefitLetter,
     "other": Other,
+    "n400": N400,
 }
 
 # Identifier fields moved into the vault before any agent sees the extraction.
@@ -109,6 +115,7 @@ LABELS_ES = {
     "tax_transcript": "comprobante de impuestos",
     "benefit_letter": "carta de beneficios",
     "other": "documento",
+    "n400": "formulario N-400",
 }
 
 LABELS_EN = {
@@ -120,6 +127,7 @@ LABELS_EN = {
     "tax_transcript": "tax transcript",
     "benefit_letter": "benefit letter",
     "other": "document",
+    "n400": "N-400",
 }
 
 TWO_SIDED = {"green_card"}

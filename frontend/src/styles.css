@@ -90,7 +90,7 @@ main, .enter, .dialog::backdrop { animation: enter .18s ease-out; }
 .sidebar .wordmark { padding: 0 12px; margin-top: -3.4px; }
 .sidebar .logo { height: 25.5px; } /* the wordmark's cap height (15.9px) and baseline (41.5px down) match the header .h1; retune both if .bar padding or .h1 changes */
 .nav-list { display: flex; flex-direction: column; gap: 4px; }
-.nav-foot { margin-top: auto; padding-top: 16px; border-top: 1px solid var(--line-strong); }
+.nav-foot { margin-top: auto; padding-top: 16px; }
 .navlink { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 12px; border-radius: 4px; text-decoration: none; color: var(--ink); font-size: 16px; line-height: 22px; font-weight: 400; }
 .navlink[aria-current='page'] { background: var(--white); box-shadow: inset 3px 0 0 var(--green), inset 0 0 0 2.5px var(--line); font-weight: 700; } /* green left, light gray on the rest */
 .badge { font-family: var(--mono); font-size: 12px; font-weight: 400; color: var(--ink-soft); }
@@ -161,7 +161,7 @@ main, .enter, .dialog::backdrop { animation: enter .18s ease-out; }
 .past { display: flex; flex-direction: column; gap: 2px; padding: 12px 0; border-bottom: 1px solid var(--line); color: var(--ink); text-decoration: none; }
 
 /* N-400 form */
-.progress { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 3px; padding: 0 24px; margin-top: 12px; }
+.progress { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 3px; padding: 0 24px; margin-top: -3.25px; } /* 15.25px below the header h1: 5px (h1 centered in the 40px button row) + 13.5px .bar padding - 3.25px */
 .progress > div { height: 6px; }
 .opt { display: flex; align-items: center; gap: 16px; width: 100%; min-height: 64px; padding: 12px 20px; border-radius: 6px; cursor: pointer; color: var(--ink); box-sizing: border-box; background: var(--white); border: 1px solid var(--line-strong); }
 .opt.unsure { background: var(--sand); }

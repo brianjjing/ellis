@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(../.venv/bin/python -c \"import ellis.api.app; print\\('app imports ok'\\)\")",
+      "Bash(lsof -nP -iTCP:8000 -iTCP:5173 -sTCP:LISTEN)",
+      "Bash(python3 -c ' *)",
+      "Bash(../.venv/bin/python -I -c ' *)",
+      "Bash(python3 -)",
+      "Bash(npm run *)",
+      "Bash(uv run *)"
+    ]
+  }
+}

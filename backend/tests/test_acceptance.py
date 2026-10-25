@@ -235,6 +235,51 @@ def test_at11_to_at13_ana_documents(client, runner):
     assert r["fact"]["status"] == "confirmed"
 
 
+# N-400 upload: one sweep overrides the form; a blank or unreadable field clears the online answer -----------
+def test_n400_upload_overrides_form(client, monkeypatch):
+    from PIL import Image
+    from ellis.db import Extraction
+    from ellis.extraction.worker import resolve
+    from ellis.services import documents as docs
+    vals = {"G[0]": "", "G[1]": "F", "Ft": "5", "In": "", "A": "Ana", "B": ""}  # the worker's per-field resolve
+    assert resolve({"G[0]": "male", "G[1]": "female"}, vals) == "female"
+    assert resolve("{Ft} ft {In} in", vals) == "5 ft in" and resolve("{In}", vals) is None
+    assert resolve(["{A} {B}", "{B}"], vals) == ["Ana"]
+
+    consent(client)
+    tool(client, "c_maria", "record_fact", {"field": "marital.status", "value": "single"})
+    tool(client, "c_maria", "record_fact", {"field": "marital.times_married", "value": 2})
+    tool(client, "c_maria", "record_fact", {"field": "children.count", "value": 1})
+    swept = [("name.given", "Maria", "identity"), ("dob", "08/22/1996", "identity"), ("ssn", "987654321", "identity"),
+             ("marital.status", "married", "marital"), ("marital.times_married", None, "marital"),
+             ("children.count", "two", "children"), ("children[0].relationship", "biological daughter", "children"),
+             ("fee.income", "$72,000", "fee")]
+
+    def worker(doc, on_field):  # stands in for the sandboxed sweep: fields arrive one at a time, in form order
+        for field, value, section in swept:
+            on_field({"field": field, "value": value, "section": section})
+        return {"ok": True, "extractor": "test"}
+
+    pushes = []
+    monkeypatch.setattr(docs, "run_extraction_subprocess", worker)
+    monkeypatch.setattr(cs, "push", lambda s, case, kind, payload: pushes.append((kind, payload.get("section"))))
+    png = io.BytesIO()
+    Image.new("RGB", (8, 8)).save(png, format="PNG")
+    with session_scope() as s:
+        did = docs.store_upload(s, s.get(Case, "c_maria"), "n400", "n400.png", png.getvalue()).id
+    docs.extract_async(did)
+    with session_scope() as s:
+        cur = cs.current_facts(s, "c_maria")
+        assert cur["dob"].value == "1996-08-22" and cur["dob"].status == "confirmed"
+        assert cur["marital.status"].value == "married"  # replaced
+        assert "marital.times_married" not in cur and "children.count" not in cur  # blank / unreadable: cleared
+        assert cur["children[0].relationship"].value == "biological"
+        assert cs.vault_lookup(s, cur["ssn"].id) == "987-65-4321" and cs.vault_lookup(s, cur["fee.income"].id) == "72000"
+        assert "987654321" not in json.dumps([x.data for x in s.scalars(select(Extraction))])
+        assert s.get(Document, did).status == "extracted"
+    assert [sec for kind, sec in pushes if kind == "n400.fill"] == ["identity", "marital", "children", "fee", None]
+
+
 # AT14 --------------------------------------------------------------------------------------------------------
 def test_at14_mark_ready_blocked(client):
     maria_trip(client)

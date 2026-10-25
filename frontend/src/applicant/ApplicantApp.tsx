@@ -15,7 +15,8 @@ type Overlay =
   | { kind: 'biographics' }
   | null
 
-type Ctx = { data: CaseView; reload: () => Promise<CaseView>; upload: (documentType?: string) => void }
+// filling: the part an N-400 upload is filling right now (from the server's n400.fill pushes), else null
+type Ctx = { data: CaseView; reload: () => Promise<CaseView>; upload: (documentType?: string) => void; filling: string | null }
 const CaseCtx = createContext<Ctx>(null!)
 export const useCase = () => useContext(CaseCtx)
 
@@ -35,6 +36,7 @@ export default function ApplicantApp({ children }: { children: ReactNode }) {
   const [failed, setFailed] = useState(false)
   const [overlay, setOverlay] = useState<Overlay>(null)
   const [cards, setCards] = useState<any[]>([])
+  const [filling, setFilling] = useState<string | null>(null)
 
   const reload = useCallback(() => api('/api/a/case').then((d) => { setData(d); return d }), [])
 
@@ -51,6 +53,7 @@ export default function ApplicantApp({ children }: { children: ReactNode }) {
       if (m.type === 'open_secure_entry') setOverlay({ kind: 'secure', field: p.field, label: p.label })
       else if (m.type === 'open_upload') setOverlay({ kind: 'upload', documentType: p.document_type })
       else if (m.type === 'open_biographics') setOverlay({ kind: 'biographics' })
+      else if (m.type === 'n400.fill') setFilling(p.section ?? null)
       else if (m.type === 'referral_card' && p.variant === 'stop_now') setCards((c) => [...c.filter((x) => x.flag_id !== p.flag_id), p]) // other flags: a note beside the chat reply
       refresh()
     })
@@ -78,7 +81,7 @@ export default function ApplicantApp({ children }: { children: ReactNode }) {
   }
 
   return (
-    <CaseCtx.Provider value={{ data, reload, upload: (documentType) => setOverlay({ kind: 'upload', documentType }) }}>
+    <CaseCtx.Provider value={{ data, reload, filling, upload: (documentType) => setOverlay({ kind: 'upload', documentType }) }}>
       {children}
       {cards.length > 0 && (
         <div className="card-stack">

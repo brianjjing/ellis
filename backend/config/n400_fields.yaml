@@ -2,7 +2,241 @@
 # edition (04/01/24 vs 01/20/25) before mapping to the official fillable PDF's field names. Until then the
 # form filler produces a draft PDF in this order (sections, not official part numbers).
 edition: "UNVERIFIED (04/01/24 vs 01/20/25)"
-pdf_field_names: {}   # official AcroForm field names go here once the edition is verified
+# The fillable N-400 (edition below) mapped to app fields, part by part in document order: the upload parser
+# reads only values, never structure. Field names are the PDF's own (form1/#subform prefixes dropped). A string is
+# a template of {field} values; a list is one item per template (string lists); a mapping is a set of checkboxes,
+# the first checked one gives the value. `section` is the app part shown filling while that part is read.
+# Built from the blank 01/20/25 form's own field names and checkbox states.
+pdf:
+  edition: 01/20/25
+  parts:
+  - part: 1
+    title: Information About Your Eligibility
+    section: eligibility
+    fields: {}
+  - part: 2
+    title: Information About You
+    section: identity
+    fields:
+      a_number: '{Line1_AlienNumber[0]}'
+      name.family: '{P2_Line1_FamilyName[0]}'
+      name.given: '{P2_Line1_GivenName[0]} {P2_Line1_MiddleName[0]}'
+      names.used:
+      - '{Line3_GivenName1[0]} {Line3_MiddleName1[0]} {Line2_FamilyName1[0]}'
+      - '{Line3_GivenName2[0]} {Line3_MiddleName2[0]} {Line2_FamilyName2[0]}'
+      name_change.requested: '{Part2Line4a_GivenName[0]} {Part2Line4a_MiddleName[0]} {Part2Line3_FamilyName[0]}'
+      uscis_account_number: '{P2_Line6_USCISELISAcctNumber[0]}'
+      sex:
+        P2_Line7_Gender[0]: male
+        P2_Line7_Gender[1]: female
+      dob: '{P2_Line8_DateOfBirth[0]}'
+      lpr_since: '{P2_Line9_DateBecamePermanentResident[0]}'
+      country_of_birth: '{P2_Line10_CountryOfBirth[0]}'
+      nationality: '{P2_Line11_CountryOfNationality[0]}'
+      ssn: '{Line12b_SSN[0]}'
+  - part: 3
+    title: Biographic Information
+    section: biographics
+    fields:
+      ethnicity:
+        P7_Line1_Ethnicity[0]: not_hispanic_or_latino
+        P7_Line1_Ethnicity[1]: hispanic_or_latino
+      race:
+        P7_Line2_Race[0]: american_indian_alaska_native
+        P7_Line2_Race[1]: asian
+        P7_Line2_Race[2]: black
+        P7_Line2_Race[3]: native_hawaiian_pacific_islander
+        P7_Line2_Race[4]: white
+      height: '{P7_Line3_HeightFeet[0]} ft {P7_Line3_HeightInches[0]} in'
+      weight: '{P7_Line4_Pounds1[0]}{P7_Line4_Pounds2[0]}{P7_Line4_Pounds3[0]}'
+      eye_color:
+        P7_Line5_Eye[0]: brown
+        P7_Line5_Eye[1]: blue
+        P7_Line5_Eye[2]: green
+        P7_Line5_Eye[3]: hazel
+        P7_Line5_Eye[4]: gray
+        P7_Line5_Eye[5]: black
+        P7_Line5_Eye[6]: pink
+        P7_Line5_Eye[7]: maroon
+        P7_Line5_Eye[8]: unknown
+      hair_color:
+        P7_Line6_Hair[0]: bald
+        P7_Line6_Hair[1]: sandy
+        P7_Line6_Hair[2]: red
+        P7_Line6_Hair[3]: white
+        P7_Line6_Hair[4]: gray
+        P7_Line6_Hair[5]: blond
+        P7_Line6_Hair[6]: brown
+        P7_Line6_Hair[7]: black
+        P7_Line6_Hair[8]: unknown
+  - part: 4
+    title: Information About Your Residence
+    section: addresses
+    fields:
+      addresses[0].street: '{P4_Line1_StreetName[0]} {P4_Line1_Unit[0]}{P4_Line1_Unit[1]}{P4_Line1_Unit[2]} {P4_Line1_Number[0]}'
+      addresses[0].city: '{P4_Line1_City[0]}'
+      addresses[0].state: '{P4_Line1_State[0]}'
+      addresses[0].zip: '{P4_Line1_ZipCode[0]}'
+      addresses[0].from: '{P4_Line1_DatesofResidence[1]}'
+      addresses[1].street: '{P4_Line3_PhysicalAddress1[0]}'
+      addresses[1].city: '{P4_Line3_CityTown1[0]}'
+      addresses[1].state: '{P4_Line3_State1[0]}'
+      addresses[1].zip: '{P4_Line3_ZipCode1[0]}'
+      addresses[1].from: '{P4_Line3_From1[0]}'
+      addresses[2].street: '{P4_Line3_PhysicalAddress2[0]}'
+      addresses[2].city: '{P4_Line3_CityTown2[0]}'
+      addresses[2].state: '{P4_Line3_State2[0]}'
+      addresses[2].zip: '{P4_Line3_ZipCode2[0]}'
+      addresses[2].from: '{P4_Line3_From2[0]}'
+      addresses[3].street: '{P4_Line3_PhysicalAddress3[0]}'
+      addresses[3].city: '{P4_Line3_CityTown3[0]}'
+      addresses[3].state: '{P4_Line3_State3[0]}'
+      addresses[3].zip: '{P4_Line3_ZipCode3[0]}'
+      addresses[3].from: '{P4_Line3_From3[0]}'
+  - part: 5
+    title: Information About Your Marital History
+    section: marital
+    fields:
+      marital.status:
+        P10_Line1_MaritalStatus[0]: divorced
+        P10_Line1_MaritalStatus[1]: single
+        P10_Line1_MaritalStatus[2]: widowed
+        P10_Line1_MaritalStatus[3]: married
+        P10_Line1_MaritalStatus[4]: annulled
+        P10_Line1_MaritalStatus[5]: separated
+      marital.times_married: '{Part9Line3_TimesMarried[0]}'
+      spouse.name: '{P10_Line4a_GivenName[0]} {P10_Line4a_MiddleName[0]} {P10_Line4a_FamilyName[0]}'
+      spouse.dob: '{P10_Line4d_DateofBirth[0]}'
+      spouse.marriage_date: '{P10_Line4e_DateEnterMarriage[0]}'
+      spouse.citizenship_status:
+        P10_Line5a_When[0]: us_citizen
+        P10_Line5a_When[1]: us_citizen
+  - part: 6
+    title: Information About Your Children
+    section: children
+    fields:
+      children.count: '{P11_Line1_TotalChildren[0]}'
+      children[0].name: '{P7_EmployerName1[0]}'
+      children[0].dob: '{P7_From1[0]}'
+      children[0].residence_city: '{P7_OccupationFieldStudy1[0]}'
+      children[0].relationship: '{P7_OccupationFieldStudy1[1]}'
+      children[1].name: '{P7_EmployerName2[0]}'
+      children[1].dob: '{P7_From2[0]}'
+      children[1].residence_city: '{P7_OccupationFieldStudy2[0]}'
+      children[1].relationship: '{P7_OccupationFieldStudy2[1]}'
+      children[2].name: '{P7_EmployerName3[0]}'
+      children[2].dob: '{P7_From3[0]}'
+      children[2].residence_city: '{P7_OccupationFieldStudy3[0]}'
+      children[2].relationship: '{P7_OccupationFieldStudy3[1]}'
+  - part: 7
+    title: Information About Your Employment and Schools You Attended
+    section: employment
+    fields:
+      employment[0].employer: '{P5_EmployerName1[0]}'
+      employment[0].city: '{P7_City1[0]}'
+      employment[0].occupation: '{P7_OccupationFieldStudy1[2]}'
+      employment[0].from: '{P7_From1[1]}'
+      employment[1].employer: '{P5_EmployerName2[0]}'
+      employment[1].city: '{P7_City2[0]}'
+      employment[1].occupation: '{P7_OccupationFieldStudy2[2]}'
+      employment[1].from: '{P7_From2[1]}'
+      employment[2].employer: '{P5_EmployerName3[0]}'
+      employment[2].city: '{P7_City3[0]}'
+      employment[2].occupation: '{P7_OccupationFieldStudy3[2]}'
+      employment[2].from: '{P7_From3[1]}'
+  - part: 8
+    title: Time Outside the United States
+    section: travel
+    fields:
+      trips.any: '{P8_Line1_DateLeft1[0]}{P9_Line1_Countries1[0]}'  # any trip row filled in
+      trips[0].departure: '{P8_Line1_DateLeft1[0]}'
+      trips[0].return: '{P8_Line1_DateReturn1[0]}'
+      trips[0].countries: '{P9_Line1_Countries1[0]}'
+      trips[1].departure: '{P8_Line1_DateLeft2[0]}'
+      trips[1].return: '{P8_Line1_DateReturn2[0]}'
+      trips[1].countries: '{P8_Line1_Countries2[0]}'
+      trips[2].departure: '{P8_Line1_DateLeft3[0]}'
+      trips[2].return: '{P8_Line1_DateReturn3[0]}'
+      trips[2].countries: '{P8_Line1_Countries3[0]}'
+      trips[3].departure: '{P8_Line1_DateLeft4[0]}'
+      trips[3].return: '{P8_Line1_DateReturn4[0]}'
+      trips[3].countries: '{P8_Line1_Countries4[0]}'
+      trips[4].departure: '{P8_Line1_DateLeft5[0]}'
+      trips[4].return: '{P8_Line1_DateReturn5[0]}'
+      trips[4].countries: '{P8_Line1_Countries5[0]}'
+      trips[5].departure: '{P8_Line1_DateLeft6[0]}'
+      trips[5].return: '{P8_Line1_DateReturn6[0]}'
+      trips[5].countries: '{P8_Line1_Countries6[0]}'
+  - part: 9
+    title: Additional Information About You
+    section: background
+    fields:
+      background.claimed_us_citizen:
+        P9_Line1[0]: 'no'
+        P9_Line1[1]: 'yes'
+      background.voted_or_registered:
+        P9_Line2[0]: 'no'
+        P9_Line2[1]: 'yes'
+      background.overdue_taxes:
+        P9_Line3[0]: 'yes'
+        P9_Line3[1]: 'no'
+      background.tax_not_filed:
+        P9_Line4[0]: 'yes'
+        P9_Line4[1]: 'no'
+      background.harmed_or_persecuted:
+        P9_Line10a[0]: 'no'
+        P9_Line10a[1]: 'yes'
+      background.committed_crime_not_arrested:
+        P9_Line15a[0]: 'no'
+        P9_Line15a[1]: 'yes'
+      background.arrested_cited_detained:
+        P9_Line15b[0]: 'no'
+        P9_Line15b[1]: 'yes'
+      background.false_info_to_official:
+        P12_Line18[0]: 'yes'
+        P12_Line18[1]: 'no'
+      background.removal_proceedings:
+        P12_Line20[0]: 'no'
+        P12_Line20[1]: 'yes'
+      background.removed_deported:
+        P12_Line21[0]: 'no'
+        P12_Line21[1]: 'yes'
+      background.selective_service:
+        Pt9_Line22b[0]: 'no'
+        Pt9_Line22b[1]: 'yes'
+      oath.support_constitution:
+        P12_Line31[0]: 'no'
+        P12_Line31[1]: 'yes'
+      oath.understand_oath:
+        P12_Line32[0]: 'yes'
+        P12_Line32[1]: 'no'
+      oath.willing_full_oath:
+        P12_Line34[0]: 'no'
+        P12_Line34[1]: 'yes'
+      oath.bear_arms:
+        P12_Line35[0]: 'yes'
+        P12_Line35[1]: 'no'
+  - part: 10
+    title: Request for a Fee Reduction
+    section: fee
+    fields:
+      fee.household_size: '{P10_Line3_HouseHoldSize[0]}'
+      fee.income: '{P10_Line2_TotalHouseholdIn[0]}'
+  - part: 11
+    title: Applicant's Contact Information, Certification, and Signature
+    section: contact
+    fields:
+      contact.phone: '{P12_Line3_Telephone[0]}'
+      contact.email: '{P12_Line5_Email[0]}'
+  - part: 12
+    title: Interpreter's Contact Information, Certification, and Signature
+    section: null
+    fields: {}
+  - part: 13
+    title: Contact Information, Certification, and Signature of the Person Preparing This Application
+    section: null
+    fields: {}
+
 parts:
   - title: "Information about your eligibility"
     fields: [eligibility_basis, lpr_since]

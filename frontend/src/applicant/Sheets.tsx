@@ -27,23 +27,41 @@ export const DOCS_EN: [string, string][] = [
 export function UploadSheet({ initial, lang = 'en', onClose, onUploaded }: { initial?: string; lang?: Lang; onClose: () => void; onUploaded: (id: string) => void }) {
   const en = lang === 'en'
   const DOCS = en ? DOCS_EN : DOCS_ES
+  const n400 = initial === 'n400' // Form's "Fill from a document": the N-400 only, no type picker
   const [type, setType] = useState<string | null>(initial ?? null)
   const [status, setStatus] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
   const upload = async (f: File) => {
     if (f.size > 10 * 1024 * 1024) { setStatus(en ? 'The file is too large (10 MB max).' : 'El archivo es muy grande (máximo 10 MB).'); return }
     setStatus(en ? 'Uploading…' : 'Subiendo…')
+    setBusy(true)
     const fd = new FormData()
     fd.append('document_type', type!)
     fd.append('file', f)
     try {
       const r = await api('/api/a/documents', { form: fd })
       onUploaded(r.document_id)
+      if (n400) return onClose() // the form's parts view shows the fill as it happens
       setStatus(en ? 'Reviewing… You can keep talking.' : 'Revisando… Puede seguir hablando.')
       setTimeout(onClose, 1200)
     } catch (e) {
       setStatus(e instanceof ApiError ? e.message : (en ? "Couldn't upload it." : 'No se pudo subir.'))
+      setBusy(false)
     }
   }
+  const pick = (files?: FileList | null) => !busy && files?.[0] && upload(files[0])
+  if (n400) return (
+    <Sheet title={en ? 'Upload your N-400' : 'Suba su formulario N-400'} onClose={onClose}>
+      <p className="lead">{en ? "Everything already filled in on your form will be replaced by what's in this N-400. Anything left blank on the N-400 will be cleared here too." : 'Todo lo que ya llenó en su formulario se reemplazará con lo que dice este N-400. Lo que esté en blanco en el N-400 también se borrará aquí.'}</p>
+      <label className="dropzone" onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); pick(e.dataTransfer.files) }}>
+        <Icon name="upload" size={28} />
+        <strong>{en ? 'Choose your N-400 or drop it here' : 'Elija su N-400 o suéltelo aquí'}</strong>
+        <span className="small">{en ? 'The fillable PDF of Form N-400; up to 10 MB.' : 'El PDF llenable del formulario N-400; hasta 10 MB.'}</span>
+        <input type="file" accept="application/pdf" className="sr-only" disabled={busy} onChange={(e) => pick(e.target.files)} />
+      </label>
+      {status && <p className="lead" role="status">{status}</p>}
+    </Sheet>
+  )
   return (
     <Sheet title={en ? 'Which document are you uploading?' : '¿Qué documento va a subir?'} onClose={onClose}>
       {!type ? (
