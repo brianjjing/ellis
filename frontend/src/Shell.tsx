@@ -1,20 +1,18 @@
 import type { ReactNode } from 'react'
 import { daysToFile, fact, useCase } from './applicant/ApplicantApp'
 import { goSignIn } from './auth'
-import { Logo } from './icons'
+import { Icon, Logo } from './icons'
+import { navigate } from './main'
 
 type Section = 'chat' | 'form' | 'interview' | 'reminders' | 'profile'
 const href: Record<Section, string> = { chat: '/', form: '/form', interview: '/interview', reminders: '/reminders', profile: '/profile' }
 
 // The app frame: shared sidebar on the left, the page's <main> beside it (they stack when narrower than 800px).
-// A guest sees the same sidebar with the account pages marked LOG IN.
+// Guests see only the chat item; locked pages are hidden rather than marked "Log in".
 export default function Shell({ active, guest, children }: { active: Section; guest?: boolean; children: ReactNode }) {
   const ctx = useCase()
   const link = (to: Section, className = 'navlink') => ({ href: href[to], 'data-nav': true, className, 'aria-current': to === active ? ('page' as const) : undefined })
   if (guest || !ctx) {
-    const locked = (to: Section, label: string) => (
-      <a href={href[to]} className="navlink" onClick={(e) => { e.preventDefault(); goSignIn(href[to]) }}><span className="grow">{label}</span><span className="badge">LOG IN</span></a>
-    )
     return (
       <div className="page">
         <div className="side">
@@ -22,9 +20,6 @@ export default function Shell({ active, guest, children }: { active: Section; gu
             <a href="/" data-nav className="wordmark"><Logo /></a>
             <div className="nav-list">
               <a {...link('chat')}>Chat with Ellis</a>
-              {locked('form', 'N-400 form')}
-              {locked('interview', 'Interview prep')}
-              {locked('reminders', 'Reminders')}
             </div>
             <div className="nav-list nav-foot">
               <p className="small" style={{ padding: '0 12px' }}>Work at a clinic? <a href="/signin?next=/clinic" data-nav className="link-btn">Staff sign in</a></p>
@@ -32,6 +27,18 @@ export default function Shell({ active, guest, children }: { active: Section; gu
           </nav>
         </div>
         {children}
+        {/* Mobile bottom nav — guest only has chat and sign-up */}
+        <nav aria-label="Ellis" className="bot-nav">
+          <a href="/" data-nav aria-current={active === 'chat' ? 'page' : undefined}>
+            <Icon name="talk" size={20} />Chat
+          </a>
+          <button type="button" onClick={() => navigate('/signup')}>
+            <Icon name="keyboard" size={20} />Sign up
+          </button>
+          <button type="button" onClick={() => goSignIn('/')}>
+            <Icon name="lock" size={20} />Sign in
+          </button>
+        </nav>
       </div>
     )
   }
@@ -44,7 +51,7 @@ export default function Shell({ active, guest, children }: { active: Section; gu
       <div className="side">
         <nav aria-label="Ellis" className="sidebar">
           <a href="/" data-nav className="wordmark"><Logo /></a>
-          {data.clinic.is_demo && <span className="demo-tag" style={{ alignSelf: 'flex-start', margin: '-20px 12px 0' }}>DEMO DATA</span>}
+          {data.clinic.is_demo && <span className="demo-tag" style={{ alignSelf: 'flex-start', margin: '-20px 12px 0' }}>Demo data</span>}
           <div className="nav-list">
             <a {...link('chat')}>Chat with Ellis</a>
             <a {...link('form')}><span className="grow">N-400 form</span><span className="badge">{done} of {data.progress.length}</span></a>
@@ -60,6 +67,24 @@ export default function Shell({ active, guest, children }: { active: Section; gu
         </nav>
       </div>
       {children}
+      {/* Mobile bottom nav */}
+      <nav aria-label="Ellis" className="bot-nav">
+        <a href="/" data-nav aria-current={active === 'chat' ? 'page' : undefined}>
+          <Icon name="talk" size={20} />Chat
+        </a>
+        <a href="/form" data-nav aria-current={active === 'form' ? 'page' : undefined}>
+          <Icon name="keyboard" size={20} />Form
+        </a>
+        <a href="/interview" data-nav aria-current={active === 'interview' ? 'page' : undefined}>
+          <Icon name="check" size={20} />Practice
+        </a>
+        <a href="/reminders" data-nav aria-current={active === 'reminders' ? 'page' : undefined}>
+          <Icon name="send" size={20} />Reminders
+        </a>
+        <a href="/profile" data-nav aria-current={active === 'profile' ? 'page' : undefined}>
+          <Icon name="globe" size={20} />Profile
+        </a>
+      </nav>
     </div>
   )
 }

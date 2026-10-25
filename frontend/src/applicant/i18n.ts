@@ -78,8 +78,8 @@ const STRINGS = {
     chatWithEllis: 'Hablar con Ellis',
     logIn: 'Iniciar sesión',
     signUp: 'Crear cuenta',
-    you: 'USTED',
-    ellis: 'ELLIS',
+    you: 'Usted',
+    ellis: 'Ellis',
     saveAccount: 'Cree una cuenta gratis para guardar esta conversación y empezar su N-400.',
   },
   en: {
@@ -138,8 +138,8 @@ const STRINGS = {
     chatWithEllis: 'Chat with Ellis',
     logIn: 'Log in',
     signUp: 'Sign up',
-    you: 'YOU',
-    ellis: 'ELLIS',
+    you: 'You',
+    ellis: 'Ellis',
     saveAccount: 'Create a free account to save this conversation and start your N-400.',
   },
 } as const

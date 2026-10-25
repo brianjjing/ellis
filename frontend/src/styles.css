@@ -38,7 +38,7 @@ main, .enter, .dialog::backdrop { animation: enter .18s ease-out; }
 /* Helpers */
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 .mono { font-family: var(--mono); }
-.label { font-family: var(--mono); font-size: 13px; font-weight: 700; }
+.label { font-family: var(--sans); font-size: 13px; font-weight: 700; letter-spacing: .01em; }
 .green { color: var(--green); }
 .rust { color: var(--rust); }
 .blue { color: var(--blue); }
@@ -49,7 +49,7 @@ main, .enter, .dialog::backdrop { animation: enter .18s ease-out; }
 .h1 { margin: 0; font-family: var(--serif); font-size: 24px; line-height: 30px; font-weight: 600; }
 .h3 { margin: 0; font-family: var(--serif); font-size: 19px; line-height: 24px; font-weight: 600; }
 .display { margin: 0; font-family: var(--serif); font-size: 36px; line-height: 44px; font-weight: 400; }
-.lead { margin: 0; font-size: 17px; line-height: 28px; }
+.lead { margin: 0; font-size: 18px; line-height: 30px; }
 .pull { margin-top: -8px; }
 .small { margin: 0; font-size: 13px; line-height: 18px; color: var(--ink-soft); }
 .status { font-size: 14px; font-weight: 700; }
@@ -118,7 +118,7 @@ main, .enter, .dialog::backdrop { animation: enter .18s ease-out; }
 .you { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; align-self: flex-end; max-width: 560px; } /* bubble hugs its text */
 .you > .label { text-align: right; }
 .cont { margin-top: -12px; } /* same speaker again: no label, sits close under the one before */
-.bubble { padding: 10px 16px; background: var(--sand); border-radius: 6px; font-size: 17px; line-height: 28px; }
+.bubble { padding: 10px 16px; background: var(--sand); border-radius: 6px; font-size: 18px; line-height: 30px; }
 .diamond { width: 8px; height: 8px; background: var(--rust); transform: rotate(45deg); }
 .draft { padding: 16px 20px; background: var(--white); border: 1.5px solid var(--green); border-radius: 6px; display: flex; flex-direction: column; gap: 12px; }
 /* Permission card (Cursor-style: what Ellis wants to do, then the applicant's call, primary on the right). */
@@ -185,3 +185,13 @@ main, .enter, .dialog::backdrop { animation: enter .18s ease-out; }
 .dialog { margin: 163px auto 16px; width: calc(100% - 32px); max-width: 440px; max-height: calc(100% - 179px); box-sizing: border-box; padding: 28px; background: var(--white); color: var(--ink); border: 2px solid var(--ink); border-radius: 6px; font-family: var(--sans); }
 .dialog[open] { display: flex; flex-direction: column; gap: 14px; }
 .dialog::backdrop { background: rgba(14, 25, 43, 0.55); }
+
+/* Mobile: hide the sidebar and show a bottom nav instead. */
+@media (max-width: 800px) {
+  .side { display: none !important; }
+  .page { padding-bottom: 64px; }
+  .bot-nav { display: flex !important; }
+}
+.bot-nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; height: 64px; background: var(--white); border-top: 1px solid var(--line-strong); z-index: 20; }
+.bot-nav a, .bot-nav button { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border: 0; background: transparent; color: var(--ink-soft); font-size: 11px; font-weight: 700; text-decoration: none; min-height: 44px; cursor: pointer; padding: 0; }
+.bot-nav [aria-current='page'] { color: var(--green); }
