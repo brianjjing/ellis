@@ -21,6 +21,7 @@ button { font-family: inherit; }
 .applicant .btn { min-height: 48px; }
 .bar .btn, .bar .tab { min-height: 0; height: 32px; } /* header controls: half the vertical padding of a regular button */
 .bar .btn.round { width: 32px; height: 32px; }
+.btn.signout { border: 1px solid var(--ink); color: hsl(4 68% 40%); } /* the N-400 badge's red at 1 of 13 */
 
 .roadmap { border-top: 1px solid var(--line); padding-top: 12px; }
 .roadmap-dots { width: 100%; display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; padding: 0; border: 0; background: none; cursor: pointer; color: var(--ink); }

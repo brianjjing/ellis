@@ -109,7 +109,7 @@ export default function Profile() {
             <Setting name="Ellis's voice speed" note={`${data.settings.voice_speed === 'slow' ? 'Slower' : 'Normal'}. To change it, ask Ellis in the chat.`} />
             <div className="btns" style={{ paddingTop: 20 }}>
               {data.packet_ready && <a href="/review" data-nav className="btn md">Download my packet</a>}
-              <button type="button" className="btn md strong" onClick={logOut}>Sign out</button>
+              <button type="button" className="btn md signout" onClick={logOut}>Sign out</button>
             </div>
           </div>
           <h2 id="advanced" className="h3 rule" style={{ marginTop: 28 }}>Advanced</h2>
