@@ -454,3 +454,26 @@ def test_interview_stage_waits_for_every_part():
     assert roadmap_index(SimpleNamespace(state="intake"), [done] * 12 + [partial]) == 1  # 12 of 13: still Eligibility
     assert roadmap_index(SimpleNamespace(state="intake"), [done] * 13) == 2  # all done: Interview
     assert roadmap_index(SimpleNamespace(state="review"), [done] * 12 + [partial]) == 1
+
+
+def test_repeated_reads_are_made_once_and_never_miss_the_sessions_own_writes(seeded):
+    from sqlalchemy import event
+    from ellis.db import Case, engine, session_scope
+    from ellis.services import case_service as cs
+    n = []
+    listen = lambda *a, **k: n.append(1)  # noqa: E731
+    event.listen(engine(), "before_cursor_execute", listen)
+    try:
+        with session_scope() as s:
+            case = s.get(Case, "c_jorge")
+            n.clear()
+            first = cs.cur_view(s, case.id)
+            cs.cur_view(s, case.id), cs.current_facts(s, case.id), cs.latest_derived(s, case.id), cs.latest_derived(s, case.id)
+            assert len(n) == 2  # facts once, derived once
+            f = cs._insert_fact(s, case, "employment[0].employer", "Acme Foods", "confirmed", "voice")  # not flushed
+            assert cs.current_facts(s, case.id)["employment[0].employer"] is f
+            f.status = "superseded"  # dirty, not flushed
+            assert "employment[0].employer" not in cs.cur_view(s, case.id)
+            assert cs.cur_view(s, case.id).keys() == first.keys()
+    finally:
+        event.remove(engine(), "before_cursor_execute", listen)

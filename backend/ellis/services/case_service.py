@@ -10,7 +10,7 @@ import json
 from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import event as sa_event, select
 from sqlalchemy.orm import Session
 
 from ..config import fee_config, rule_config, settings
@@ -25,6 +25,26 @@ from .flags import CATEGORIES, FLAG_CONTINUE, RULE_TRIGGERS, STOP_NOW, category 
 from .values import ValueError_, equal, normalize
 
 READBACK_WINDOW_S = 120
+
+
+# Reads repeated within one session (a chat turn rebuilds the case view from several helpers) are made once: on a
+# hosted database each is a ~100 ms round trip. A flush, commit or rollback drops them, and a session holding
+# unflushed changes reads fresh, so a read always sees the session's own writes.
+def _memo(s: Session, key: tuple, load):
+    if s.new or s.dirty or s.deleted:
+        s.info.pop("reads", None)
+        return load()
+    reads = s.info.setdefault("reads", {})
+    if key not in reads:
+        reads[key] = load()
+    return reads[key]
+
+
+@sa_event.listens_for(Session, "after_flush")
+@sa_event.listens_for(Session, "after_commit")
+@sa_event.listens_for(Session, "after_soft_rollback")
+def _drop_reads(s: Session, *_) -> None:
+    s.info.pop("reads", None)
 
 
 class CaseError(Exception):
@@ -79,7 +99,9 @@ def facts_for(s: Session, case_id: str, field: str | None = None, include_supers
         q = q.where(Fact.field == field)
     if not include_superseded:
         q = q.where(Fact.status != "superseded")
-    return list(s.scalars(q.order_by(Fact.ts, Fact.id)))
+    if field is not None or include_superseded:
+        return list(s.scalars(q.order_by(Fact.ts, Fact.id)))
+    return list(_memo(s, ("facts", case_id), lambda: list(s.scalars(q.order_by(Fact.ts, Fact.id)))))
 
 
 def current_facts(s: Session, case_id: str) -> dict[str, Fact]:
@@ -113,8 +135,9 @@ def fact_values(s: Session, case_id: str, masked: bool = True) -> dict[str, Any]
 
 def consent_given(s: Session, case: Case) -> bool:
     # the latest answer wins, so a "no" from settings withdraws an earlier "yes"
-    ev = s.scalars(select(Event).where(Event.case_id == case.id, Event.kind.in_(("consent.given", "consent.declined")))
-                   .order_by(Event.id.desc()).limit(1)).first()
+    ev = _memo(s, ("consent", case.id), lambda: s.scalars(
+        select(Event).where(Event.case_id == case.id, Event.kind.in_(("consent.given", "consent.declined")))
+        .order_by(Event.id.desc()).limit(1)).first())
     return ev is not None and ev.kind == "consent.given" and ev.payload.get("disclosure_version") == case.disclosure_version
 
 
@@ -656,7 +679,8 @@ def real_value(s: Session, case_id: str, field: str) -> Any:
 # ---------------------------------------------------------------- flags & review items
 
 def all_open_flags(s: Session, case: Case) -> list[Flag]:
-    return list(s.scalars(select(Flag).where(Flag.case_id == case.id, Flag.status == "open").order_by(Flag.ts)))
+    return list(_memo(s, ("open_flags", case.id), lambda: list(
+        s.scalars(select(Flag).where(Flag.case_id == case.id, Flag.status == "open").order_by(Flag.ts)))))
 
 
 def _open_flags(s: Session, case: Case, category: str, field: str | None = None) -> list[Flag]:
@@ -954,8 +978,9 @@ def _layer1(s: Session, case: Case, field: str, value: Any, utterance_text: str 
 # ---------------------------------------------------------------- derived / rules
 
 def latest_derived(s: Session, case_id: str) -> Derived | None:
-    return s.scalars(select(Derived).where(Derived.case_id == case_id).order_by(Derived.ts.desc(), Derived.id.desc())
-                     .limit(1)).first()
+    return _memo(s, ("derived", case_id), lambda: s.scalars(
+        select(Derived).where(Derived.case_id == case_id).order_by(Derived.ts.desc(), Derived.id.desc())
+        .limit(1)).first())
 
 
 def apply_pending_deferrals(s: Session, case: Case) -> list[str]:
@@ -1070,7 +1095,8 @@ def set_state(s: Session, case: Case, to: str, reason: str, actor_type: str = "s
 
 
 def open_gaps(s: Session, case_id: str) -> list[Gap]:
-    return list(s.scalars(select(Gap).where(Gap.case_id == case_id, Gap.status == "open")))
+    return list(_memo(s, ("open_gaps", case_id), lambda: list(
+        s.scalars(select(Gap).where(Gap.case_id == case_id, Gap.status == "open")))))
 
 
 def after_fact_change(s: Session, case: Case) -> None:
@@ -1144,7 +1170,8 @@ def facts_hash(s: Session, case_id: str) -> tuple[list[str], str]:
 # ---------------------------------------------------------------- briefing
 
 def latest_briefing(s: Session, case_id: str) -> Briefing | None:
-    return s.scalars(select(Briefing).where(Briefing.case_id == case_id).order_by(Briefing.version.desc()).limit(1)).first()
+    return _memo(s, ("briefing", case_id), lambda: s.scalars(
+        select(Briefing).where(Briefing.case_id == case_id).order_by(Briefing.version.desc()).limit(1)).first())
 
 
 def latest_briefing_version(s: Session, case_id: str) -> int:
