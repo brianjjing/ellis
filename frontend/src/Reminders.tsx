@@ -14,6 +14,13 @@ export default function Reminders() {
   const f = data.filing_window
   const days = daysToFile(data)
   const date = f && new Date(f.earliest_filing + 'T12:00').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })
+  // The rules engine's window is timing only: until the form is signed, the card shows the next step instead.
+  const left = data.progress.filter((p: any) => p.state !== 'done').length
+  const next = data.state === 'signed' ? null
+    : left > 0 ? { text: `${left} part${left > 1 ? 's' : ''} left on your form`, href: '/form', cta: 'Finish my form' }
+    : data.state === 'ready' ? { text: 'Review and sign your form', href: '/review', cta: 'Review and sign' }
+    : { text: 'Your clinic is checking your form', href: null, cta: null }
+  const ghost = { borderColor: 'var(--on-ink-soft)', background: 'transparent', color: 'var(--white)' }
   const stages: { key: string; label: string }[] = data.roadmap.stages
   const current: number = data.roadmap.current
   // Ranked on the server (views.reminders), the same list Ellis reads from; the filing date has its own card above.
@@ -33,16 +40,18 @@ export default function Reminders() {
           <section aria-label="Next step" className="dark" style={{ padding: 32, flexWrap: 'wrap', gap: 24, alignItems: 'flex-end', justifyContent: 'space-between' }}>
             <div className="stack" style={{ gap: 8 }}>
               <div style={{ fontSize: 14, lineHeight: '20px', color: 'var(--on-ink-soft)', fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase' }}>
-                {!f ? 'Filing date' : days > 0 ? 'You can file your N-400 in' : 'You can file your N-400'}
+                {!f ? 'Filing date' : days > 0 ? 'You can file your N-400 in' : next ? 'Your filing window is open' : 'You can file your N-400'}
               </div>
               <div style={{ fontFamily: 'var(--serif)', fontSize: 40, lineHeight: '48px', letterSpacing: -0.5 }}>
-                {!f ? 'Complete your form to unlock your filing date' : days > 0 ? `${days} days` : 'Now'}
+                {!f ? 'Complete your form to unlock your filing date' : days > 0 ? `${days} days` : next ? next.text : 'Now'}
               </div>
-              {date && <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gold)' }}>{days > 0 ? date : `Since ${date}`}</div>}
+              {date && <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gold)' }}>{days > 0 ? date : `Open since ${date}`}</div>}
+              {f && <div style={{ fontSize: 13, color: 'var(--on-ink-soft)' }}>Your clinic will review this date.</div>}
             </div>
             {f && days > 0 && (
-              <a href={ics(f.earliest_filing, 'You can file your N-400')} download="ellis-filing-date.ics" className="btn md" style={{ borderColor: 'var(--on-ink-soft)', background: 'transparent', color: 'var(--white)' }}>Add to my calendar</a>
+              <a href={ics(f.earliest_filing, 'You can file your N-400')} download="ellis-filing-date.ics" className="btn md" style={ghost}>Add to my calendar</a>
             )}
+            {f && days === 0 && next?.href && <a href={next.href} data-nav className="btn md" style={ghost}>{next.cta}</a>}
           </section>
 
           {/* Roadmap stepper */}

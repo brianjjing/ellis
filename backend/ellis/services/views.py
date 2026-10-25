@@ -40,15 +40,12 @@ STAGE_NAMES = {"consent_pending": "Consent", "intake": "Intake", "evidence": "Ev
                "ready": "Ready for sign-off", "signed": "Signed", "referred_out": "Referred out", "closed": "Closed"}
 
 
-def roadmap_index(s: Session, case: Case) -> int:
+def roadmap_index(case: Case, progress: list[dict[str, Any]]) -> int:
     if case.state == "consent_pending":
         return 0
-    if case.state == "intake":
-        lpr = cs.current_facts(s, case.id).get("lpr_since")
-        return 1 if lpr is None or lpr.status != "confirmed" else 2
-    if case.state == "evidence":
-        return 3
-    return 4
+    if any(p["state"] != "done" for p in progress):
+        return 1  # the interview stage, and everything after it, waits until every part of the form is done
+    return {"intake": 2, "evidence": 3}.get(case.state, 4)
 
 
 CHIP_LABELS = {
@@ -206,16 +203,17 @@ def applicant_case(s: Session, case: Case) -> dict[str, Any]:
         filing = {"earliest_filing": der.data["earliest_filing"], "window_open": der.data.get("window_open"),
                   "rule_config_version": der.rule_config_version}
     b = cs.latest_briefing(s, case.id)
+    progress = section_progress(s, case)
     return {
         "case_id": case.id, "first_name": case.first_name, "state": case.state, "sub_mode": case.sub_mode,
         "language": case.language,
         "clinic": {"name": clinic.name, "phone": (clinic.settings or {}).get("phone"), "is_demo": clinic.is_demo},
         "patient_mode": bool((case.settings or {}).get("patient_mode")),
-        "facts": facts_panel(s, case), "progress": section_progress(s, case), "team": team_cards(s, case),
+        "facts": facts_panel(s, case), "progress": progress, "team": team_cards(s, case),
         "referrals": referral_cards(s, case), "open_review_items": open_items, "gaps": gaps, "documents": docs,
         "reviewer_notes": notes, "case_blocked": blocked, "filing_window": filing,
         "roadmap": {"stages": ROADMAP_EN if case.language.split("-")[0] == "en" else ROADMAP_ES,
-                   "current": roadmap_index(s, case),
+                   "current": roadmap_index(case, progress),
                    "future": FUTURE_EN if case.language.split("-")[0] == "en" else FUTURE_ES},
         "briefing_version": b.version if b else 0,
         "packet_ready": s.scalars(select(Packet).where(Packet.case_id == case.id, Packet.status == "current")).first()
@@ -271,19 +269,28 @@ def reminders(s: Session, case: Case) -> list[dict[str, Any]]:
             continue  # past appointments drop off
         add("appointment", APPOINTMENTS[d.kind], 92 if days <= 3 else 82 if days <= 7 else 60 if days <= 30 else 35,
             d.note or "", on=d.date)
-    for doc in s.scalars(select(Document).where(Document.case_id == case.id)):
+    # ponytail: only the latest upload of each type counts, so a good upload retires an earlier failed one (two
+    # different "other" letters share a type: a failed one is hidden by any later one)
+    latest = {d.document_type: d for d in s.scalars(select(Document).where(Document.case_id == case.id)
+                                                     .order_by(Document.ts))}
+    for doc in latest.values():
         if doc.status == "failed" or (doc.status == "extracted" and doc.quality == "low"):
-            add("retake", f"Retake the photo of your {document_label(doc.document_type, 'en')}", 70,
-                "We couldn't read it clearly.", action={"upload": doc.document_type}, when="when you can")
+            title = ("Upload your N-400 again" if doc.document_type == "n400"
+                     else f"Retake the photo of your {document_label(doc.document_type, 'en')}")
+            add("retake", title, 70, "We couldn't read it clearly.", action={"upload": doc.document_type},
+                when="when you can")
     for g in cs.open_gaps(s, case.id):
         add("upload", f"Upload: {g.label_es or g.reason}", 60, "You need it before you file.",
             action={"upload": g.document_type}, when="before you file")
     der = cs.latest_derived(s, case.id)
     if der and der.data.get("earliest_filing") and case.state not in ("signed", "referred_out", "closed"):
         open_ = der.data.get("window_open")
-        add("filing", "You can file your N-400" if open_ else "Your filing window opens", 30,
-            "By the rules engine; your clinic confirms it.", on=None if open_ else der.data["earliest_filing"],
-            when="now" if open_ else None)
+        # the window is timing only: "you can file" waits for a signed form (this is what Ellis reads out too)
+        title = ("Your filing window opens" if not open_ else "You can file your N-400" if case.state == "signed"
+                 else "Your filing window is open")
+        note = "By the rules engine; your clinic confirms it." + ("" if case.state == "signed" or not open_
+                                                                 else " Finish and sign your form first.")
+        add("filing", title, 30, note, on=None if open_ else der.data["earliest_filing"], when="now" if open_ else None)
     out.sort(key=lambda r: (-r["score"], r["days_left"] if r["days_left"] is not None else 9999))
     return out
 

@@ -13,6 +13,7 @@
   --blue: #1e4fb8;
   --line: #e5e7eb;
   --line-strong: #d1d5db;
+  --gray: #ebedf0; /* "Clear all": --rust text on it is 4.6:1 (on --line it would be 4.4) */
   --segment-idle: #dde1e7;
   --serif: 'Source Serif 4', Georgia, serif;
   --sans: 'Atkinson Hyperlegible Next', 'Atkinson Hyperlegible', system-ui, sans-serif;

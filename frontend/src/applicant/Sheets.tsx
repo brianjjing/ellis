@@ -4,7 +4,7 @@ import { api, ApiError } from '../api'
 import { Icon } from '../icons'
 import type { Lang } from './i18n'
 
-function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+export function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
     <dialog ref={(d) => { if (d && !d.open) d.showModal() }} onClose={onClose} className="dialog sheet enter" aria-label={title}>
       <div className="sheet-head"><h2 className="h1">{title}</h2><button className="btn" onClick={onClose}>Close</button></div>

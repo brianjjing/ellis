@@ -107,6 +107,12 @@ def secure(body: SecureReq, request: Request) -> dict[str, Any]:
         return {"saved": True, "field": body.field, "fact_id": res["fact"]["id"]}
 
 
+@router.post("/clear")
+def clear(request: Request) -> dict[str, Any]:
+    with session_scope() as s:
+        return {"cleared": cs.clear_form(s, applicant_case(request, s))}
+
+
 class BiographicsReq(BaseModel):
     values: dict[str, Any]
 
