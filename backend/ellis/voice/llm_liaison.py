@@ -38,6 +38,9 @@ PAGES = ["/form", "/interview", "/reminders", "/profile", "/review"]
 # what the model gets in place of a stop-list turn, live or on resume: never the topic itself
 STOP_NOTE = ("[the applicant raised a topic only a licensed professional can review; the fixed stop message was "
              "played. Don't refer to it.]")
+# tools that only show a card or sheet: the live case data built before them is still current
+CARD_TOOLS = {"set_focus", "request_secure_entry", "request_upload", "request_biographics", "change_setting",
+              "ask_clinic", "end_call"}
 
 TOOLS = [
     {"name": "set_focus", "description": "Set what the applicant is working on now. Call it whenever their goal "
@@ -117,6 +120,10 @@ class LlmLiaison:
         self.flags: list[dict] = []  # flags raised this turn; they ride on Ellis's reply as a margin note
         self._system = ""
         self._anthropic = None
+        # live case data for this turn: one database read per turn, not one per model round. A tool that writes
+        # (or a new focus) drops it so the next round reads it again.
+        self._ctx: dict[str, Any] | None = None
+        self._ctx_focus: dict[str, Any] | None = None
 
     def _client_(self):
         if self._anthropic is None:
@@ -181,11 +188,15 @@ class LlmLiaison:
 
     def _payload(self) -> list[dict]:
         """System prompt (cached) + the live case data block for the current focus (rebuilt every call)."""
-        try:
-            ctx = self.c.agent_context(self.focus)
-        except Exception:  # noqa: BLE001
-            log.exception("agent_context failed")
-            ctx = {"error": "case data is unavailable right now: don't state any case facts, dates or status"}
+        if self._ctx is None or self._ctx_focus != self.focus:
+            try:
+                self._ctx = self.c.agent_context(self.focus)
+                self._ctx_focus = dict(self.focus)
+            except Exception:  # noqa: BLE001
+                log.exception("agent_context failed")
+                self._ctx = None
+        ctx = dict(self._ctx) if self._ctx is not None else {
+            "error": "case data is unavailable right now: don't state any case facts, dates or status"}
         ctx["focus"] = self.focus
         ctx["waiting_for_permission"] = [p["title"] for p in self.pending.values()]
         return [{"type": "text", "text": self._system, "cache_control": {"type": "ephemeral"}},
@@ -254,6 +265,7 @@ class LlmLiaison:
 
     def _turn_model(self, text: str, uid: str | None, hint: str = "") -> list[Say]:
         self._append("user", f"{text}\n[{hint}]" if hint else text)
+        self._ctx = None  # staff agents may have changed the case since the last turn
         end_call = False
         texts: list[str] = []
         meta: dict[str, Any] = {}
@@ -274,6 +286,8 @@ class LlmLiaison:
             stopped = False
             for call in tool_uses:
                 name, args = call["name"], call.get("input") or {}
+                if name not in CARD_TOOLS:
+                    self._ctx = None
                 if name == "end_call":
                     end_call = True
                     out: Any = "ok"

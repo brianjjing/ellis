@@ -204,3 +204,21 @@ def test_the_model_sees_what_was_withheld_or_unheard(seeded):
     b.start()  # a resume: memory comes from the stored transcript
     texts = [m["content"] for m in b.history if isinstance(m["content"], str)]
     assert not any("STOP:" in t for t in texts) and any(STOP_NOTE in t for t in texts)
+
+
+def test_live_case_data_is_read_once_per_turn_until_a_tool_writes(seeded):
+    a = agent("c_jorge",
+              use("request_upload", document_type="passport"), use("set_focus", task="general", next_step="Hi"),
+              say("Suba su pasaporte."),
+              use("record_fact", field="employment[0].employer", value="Acme Foods"), say("Gracias."))
+    reads = []
+    real = a.c.agent_context
+    a.c.agent_context = lambda focus: reads.append(dict(focus)) or real(focus)
+    a.cfg = {"consent_given": True}
+    a.handle("Tengo mi pasaporte")
+    # three model rounds: a card tool keeps the data, a new focus reads it once more
+    assert len(a._anthropic.calls) == 3 and len(reads) == 2
+    reads.clear()
+    a.handle("Trabajo en Acme Foods")
+    # a new turn reads again; record_fact wrote, so the round after it reads again too
+    assert len(reads) == 2
