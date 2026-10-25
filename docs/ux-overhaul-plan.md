@@ -232,10 +232,11 @@ There is no separate work log. Agent work that becomes an event, a task, a memo,
 
 ## 11. Tests
 
-Backend, from `backend/`:
+Backend, from `backend/` with the repo `.venv` active:
 
 ```bash
-uv run pytest
+source ../.venv/bin/activate
+pytest
 ```
 
 `pyproject.toml` sets `testpaths = ["tests"]` and `addopts = "-q"`. Files: `test_acceptance.py` (AT1–AT20, including consent-first), `test_portal.py` (guest chat, prefill-on-consent, accounts), `test_rules.py`, `test_agent.py`.
@@ -332,7 +333,7 @@ A human with current USCIS access must verify each one before the app is used wi
 # Applicant: http://localhost:5173/a/demo-jorge
 
 # Run all tests
-cd backend && uv run pytest                          # 91 tests
+source .venv/bin/activate && cd backend && pytest
 cd frontend && npm run build                         # type-check + Vite
 cd frontend && npm run screenshots                   # 33 shots, 0 axe violations
 ```

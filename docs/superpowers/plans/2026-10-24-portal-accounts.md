@@ -26,7 +26,7 @@
   - `DRAFT_WARNING` = "Have a clinic or attorney review this before filing"
 - The independent clinic: `id="cl_independent"`, `name="Independent"`, `is_demo=False`, no staff. Create it lazily via `accounts.independent_clinic(s)`.
 - Schema changes rely on dev reseed (`drop_all`/`create_all`). For the one new column on an existing table (`cases.account_id`), also add `ALTER TABLE cases ADD COLUMN IF NOT EXISTS account_id VARCHAR(40)` in the `if is_postgres():` block of `db.create_all`.
-- Every existing test (57 at baseline) keeps passing. Run backend tests from `backend/` with `uv run pytest -q -p no:warnings`, and type-check the frontend from `frontend/` with `npx tsc --noEmit`.
+- Every existing test (57 at baseline) keeps passing. Run backend tests from `backend/`, with the repo `.venv` active, with `pytest -q -p no:warnings`, and type-check the frontend from `frontend/` with `npx tsc --noEmit`.
 - The worktree's dev servers run on API port `8100` and web port `5273` (`ELLIS_API=http://localhost:8100 npx vite --port 5273`), so the Cartesia session's 8000 and 5173 stay untouched.
 
 ## Review Focus
@@ -110,9 +110,9 @@ def is_independent(case: Case) -> bool
   - `test_email_unique_across_staff_and_accounts`: `create_account(..., "dana@valle.demo", ...)` raises `AccountError` with `status == 409`.
   - `test_weak_password_rejected`: `"short"` → `AccountError.code == "weak_password"`.
   - `test_authenticate_both_kinds`: returns an `Account` for the new applicant and a `StaffUser` for `dana@valle.demo`/`ellis-demo`, and `None` for a wrong password.
-- [ ] **Step 2: Run `uv run pytest tests/test_portal.py -q` and confirm it fails** (import error).
+- [ ] **Step 2: Run `pytest tests/test_portal.py -q` and confirm it fails** (import error).
 - [ ] **Step 3: Implement the models, the Postgres ALTER and `accounts.py`.**
-- [ ] **Step 4: Run `uv run pytest -q -p no:warnings` and confirm everything passes** (57 plus the new tests).
+- [ ] **Step 4: Run `pytest -q -p no:warnings` and confirm everything passes** (57 plus the new tests).
 - [ ] **Step 5: Commit** — `git commit -m "feat(accounts): applicant accounts, invitations table, independent clinic"`
 
 ### Task 2: Unified auth routes
@@ -449,7 +449,7 @@ export function safeNext(raw: string | null, fallback: string): string // only s
 
 ### Task 13: Whole-app verification
 
-- [ ] **Step 1:** `cd backend && uv run pytest -q -p no:warnings`. Expected: everything passes.
+- [ ] **Step 1:** `cd backend && pytest -q -p no:warnings`. Expected: everything passes.
 - [ ] **Step 2:** `cd frontend && npx tsc --noEmit`. Expected: no output.
 - [ ] **Step 3: Fresh reseed and full walkthrough in the browser** on 8100/5273, with screenshots:
   - guest chat → sign up → consent → read-back of the guest date → Conversations;

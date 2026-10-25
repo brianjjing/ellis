@@ -26,7 +26,7 @@ Baseline before this work: 57 backend tests passing, `npx tsc --noEmit` clean.
 - **R6:** Clinic sign-up copies the demo clinic's settings shape: `phone` None, retention 90/90, `referral_text` {}, `handles_categories` [arrest, removal, citizenship_claim, fraud, danger].
 
 ## How to run
-- Backend tests, from `backend/`: `uv run pytest -q -p no:warnings`
+- Backend tests, from `backend/` with the repo `.venv` active (`source ../.venv/bin/activate`): `pytest -q -p no:warnings`
 - Frontend type-check, from `frontend/`: `npx tsc --noEmit`
 - `backend/.env` was copied into the worktree. It's gitignored, so never commit it.
 

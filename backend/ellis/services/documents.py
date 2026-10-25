@@ -121,7 +121,7 @@ def run_extraction_subprocess(doc: Document, on_field: Callable[[dict], None] | 
         with storage.local_file(doc.storage_path, _fresh.pop(doc.id, None)) as path:
             proc = subprocess.Popen(
                 # -E -s, not -I: -I also drops the cwd from sys.path, and then `ellis` only imports when it is
-                # pip-installed in a way isolated mode still sees (true of uv's backend/.venv, not the repo .venv)
+                # pip-installed in a way isolated mode still sees (not true of the repo .venv's editable install)
                 [sys.executable, "-E", "-s", "-m", "ellis.extraction.worker", doc.document_type, path, doc.mime,
                  doc.sha256],
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env, cwd=str(BACKEND_DIR))

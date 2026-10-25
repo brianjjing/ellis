@@ -17,7 +17,7 @@ Two sides:
 
 ```bash
 cp backend/.env.example backend/.env   # fill in keys
-./scripts/dev.sh                       # seeds demo data; API :8000, web :5173
+./scripts/dev.sh                       # creates .venv if missing; seeds demo data; API :8000, web :5173
 ```
 
 Demo logins:
@@ -26,15 +26,25 @@ Demo logins:
 
 ## Backend
 
+All Python runs from the repo-root virtualenv `.venv` — never uv, never a global install.
+`scripts/dev.sh` creates it on first run; by hand:
+
 ```bash
-cd backend
-uv run fastapi dev ellis/app.py        # development server
-uv run pytest                          # 87 tests (rules + acceptance + portal + agent)
-uv run --group dev pytest              # same, with dev extras
-ELLIS_TODAY=2026-10-23 uv run python -m evals.flows all -v   # Spanish flow evals
+python3 -m venv .venv                  # repo root, once (Python 3.12+)
+source .venv/bin/activate              # every new terminal
+pip install -e "backend[llm,dev]"      # add ,line for the Cartesia Line agent
 ```
 
-Python 3.12+, [uv](https://docs.astral.sh/uv/).
+With the venv active:
+
+```bash
+cd backend
+uvicorn ellis.api.app:app --reload --port 8000   # development server
+pytest                                           # rules + acceptance + portal + agent
+ELLIS_TODAY=2026-10-23 python -m evals.flows all -v   # Spanish flow evals
+```
+
+`backend/uv.lock` is stale and unused; `pyproject.toml` is the source of truth.
 
 ## Frontend
 
@@ -48,8 +58,8 @@ npm run build        # tsc + Vite build (must pass before committing)
 ## Tests and e2e
 
 ```bash
-# Backend
-cd backend && uv run pytest
+# Backend (venv active)
+source .venv/bin/activate && cd backend && pytest
 
 # Frontend e2e (requires app running via ./scripts/dev.sh)
 cd frontend
@@ -65,7 +75,7 @@ backend/
   ellis/
     api/routes/      FastAPI routes (applicant a.*, clinic clinic.*, guest, voice WS)
     services/        Domain logic: case_service.py, documents.py, guest.py, views.py,
-                     activity.py, catalog.py, accounts.py, views.py
+                     activity.py, catalog.py, accounts.py, storage.py
     rules/           Pure rules engine (dates, presence, fees)
     voice/           LlmLiaison, Cartesia gateway, scripts_<lang>.yaml
     agents/          Staff agents (case_manager, doc_paralegal, docketing_clerk, qa_reviewer)
@@ -113,7 +123,7 @@ docs/
 6. **Keep demo-only controls behind demo mode.** `d.clinic.is_demo` is the gate. Never show demo
    controls to real-clinic users.
 
-7. **Keep existing tests passing.** Add tests for new backend behavior. Run `uv run pytest` before
+7. **Keep existing tests passing.** Add tests for new backend behavior. Run `pytest` (from the `.venv`) before
    committing backend changes; run `npm run build` before committing frontend changes.
 
 8. **Small commits, one per feature item, clear messages. Never push.**
