@@ -115,9 +115,14 @@ def _to_case_bundle(ctx: dict) -> dict:
              "field": t.get("field")} for t in ctx["tasks"]]
     basis = ctx["facts"].get("eligibility_basis", {}).get("value")
     married = ctx["facts"].get("spouse.citizenship_status", {}).get("value") == "us_citizen"
+    # Sent at both the top level and inside "case": the agents' own documented bundle shapes disagree on
+    # where this belongs (paralegal's own test fixture has it as a get_case sibling; nothing we read put
+    # it inside "case" at all), so cover both rather than guess wrong and reproduce the bug we just found.
+    language = ctx.get("language", "es")
     return {"case": {"client_name": ctx["case"].get("first_name"), "stage": ctx["case"]["state"],
                      "eligibility_basis": "3_year" if basis == "3yr" else "5_year",
-                     "married_to_us_citizen": married},
+                     "married_to_us_citizen": married, "client_language": language},
+            "client_language": language,
             "facts": facts, "documents": documents, "tasks": tasks,
             "deadlines": ctx.get("deadlines") or [], "derived": ctx.get("derived") or {}}
 

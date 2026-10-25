@@ -73,6 +73,7 @@ def build_context(s: Session, case: Case, trigger_events: list[int] | None = Non
         "case": {"id": case.id, "state": case.state, "first_name": case.first_name,
                  "patient_mode": bool((case.settings or {}).get("patient_mode")),
                  "material_changed_at": case.material_changed_at.isoformat() if case.material_changed_at else None},
+        "language": cs.case_lang(case),
         "today": cs.today().isoformat(),
         "facts": facts, "open_flags": flags, "documents": docs, "derived": der.data if der else None,
         "derived_id": der.id if der else None, "last_briefing": b.body if b else None, "tasks": tasks,
