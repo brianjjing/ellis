@@ -1,12 +1,18 @@
-// Voice session client for WS /api/a/voice.
-// Voice mode (Cartesia): mic → 16 kHz PCM16 frames → server (Ink-2); server streams Sonic PCM16 24 kHz back.
-// Text mode (Cartesia unreachable): the browser speaks lines (speechSynthesis in the case's locale) and recognizes speech
-// (Web Speech API) or the applicant types. Barge-in: the applicant talking over an interruptible line stops it
-// and the server is told which word was playing; locked lines are never cut.
+// Voice session client for WS /api/a/voice. One session per chat, whatever the input mode: typing and talking
+// share it, so switching never restarts the conversation. Ellis always speaks with Cartesia's voice (Sonic PCM16
+// 24 kHz from the server); with Cartesia unreachable, lines are captions only, never the browser's own voice.
+// Push to talk: the mic streams silence until hold() and real audio until just after release(), through a level gate
+// (gate.ts) that silences what isn't clearly the applicant's voice; the server keeps only what was said while held and
+// submits it on release. Holding also cuts Ellis off at any point in any line.
 import { wsUrl } from '../api'
+import { Gate } from './gate'
+
+// ponytail: people let go a beat before their last word ends, so the mic stays open this much longer (the gate still
+// silences the room). Raise it if last words get clipped.
+const RELEASE_TAIL_MS = 300
 
 export type Line = { id: string; text: string; locked: boolean; kind: string; field: string | null; end_call?: boolean; meta?: any }
-export type Caption = { who: 'ellis' | 'usted'; text: string; locked?: boolean; partial?: boolean }
+export type Caption = { who: 'ellis' | 'usted'; text: string; spoken?: boolean }
 export type VoiceState = 'idle' | 'connecting' | 'speaking' | 'listening' | 'thinking' | 'ended'
 
 type Handlers = {
@@ -32,48 +38,44 @@ export class VoiceClient {
   node: AudioWorkletNode | null = null
   sources: AudioBufferSourceNode[] = []
   nextTime = 0
-  lineStart: Record<string, number> = {}
   current: Line | null = null
+  muted: string | null = null // a line the applicant talked over: its late audio chunks are dropped
   mode: 'voice' | 'text' = 'text'
-  clientTts = false
-  recog: any = null
-  speakingWord: string | null = null
+  talking = false
+  releasing: ReturnType<typeof setTimeout> | null = null
+  soundOn = true // Ellis's voice on/off (the mute button); muted lines still arrive as text
+  voice = true // talking vs. typing, sent with start and on every switch
   pcmBuf: number[] = []
+  energy = 0 // sum of squares of this frame's real samples, button up or down: the gate's level
+  gate = new Gate()
   ended = false
-  patient = false
-  locale = 'en-US'
   h: Handlers
 
   constructor(h: Handlers) {
     this.h = h
   }
 
-  async start(wantVoice: boolean, lang: string = 'en', locale: string = 'en-US') {
-    this.locale = locale
+  async start(lang: string = 'en', locale: string = 'en-US', disclosureShown = false) {
     this.h.onState('connecting')
     // ponytail: request the context at STT's native 16 kHz so the browser's own (band-limited) resampler
-    // does the downsampling. The old code ran the context at the device rate (44.1/48 kHz) and then
-    // decimated by picking every Nth sample with no anti-aliasing filter, which injected noise into every
-    // frame sent to Ink-2 and degraded both transcription accuracy and turn-detection confidence.
+    // does the downsampling instead of naive decimation.
     this.ctx = new AudioContext({ sampleRate: 16000 })
-    if (wantVoice) {
-      // ponytail: getUserMedia can hang forever instead of rejecting (e.g. OS never shows the
-      // permission prompt); without a timeout the session would be stuck on "connecting" with no WS.
-      const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('mic_timeout')), 8000))
-      try {
-        this.stream = await Promise.race([
-          navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1 } }),
-          timeout,
-        ])
-      } catch {
-        this.h.onError('mic_denied')
-        wantVoice = false
-      }
+    // ponytail: getUserMedia can hang forever instead of rejecting (e.g. OS never shows the permission
+    // prompt); without a timeout the session would be stuck on "connecting" with no WS.
+    const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('mic_timeout')), 8000))
+    try {
+      this.stream = await Promise.race([
+        // no autoGainControl: it turns the room up whenever you pause, shrinking the level gap the gate relies on
+        navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: false, channelCount: 1 } }),
+        timeout,
+      ])
+    } catch {
+      this.h.onError('mic_denied') // Ellis still speaks; the applicant types
     }
     if (this.ended) { this.stream?.getTracks().forEach((t) => t.stop()); return }
     const ws = new WebSocket(wsUrl('/api/a/voice'))
     this.ws = ws
-    ws.onopen = () => ws.send(JSON.stringify({ type: 'start', mode: wantVoice ? 'voice' : 'text', language: lang, locale }))
+    ws.onopen = () => ws.send(JSON.stringify({ type: 'start', voice: this.voice, language: lang, locale, disclosure_shown: disclosureShown }))
     ws.onmessage = (e) => this.onMessage(JSON.parse(e.data))
     ws.onclose = () => {
       if (!this.ended) this.h.onError('offline')
@@ -90,76 +92,60 @@ export class VoiceClient {
     const ratio = this.ctx.sampleRate / 16000
     this.node.port.onmessage = (ev) => {
       const f32 = ev.data as Float32Array
-      for (let i = 0; i < f32.length; i += ratio) this.pcmBuf.push(f32[Math.floor(i)])
-      if (this.pcmBuf.length >= 1600) {
-        const n = this.pcmBuf.length
-        const out = new Int16Array(n)
-        for (let i = 0; i < n; i++) out[i] = Math.max(-1, Math.min(1, this.pcmBuf[i])) * 0x7fff
-        this.pcmBuf = []
-        if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(out.buffer)
+      // silence unless the button is held: the STT socket stays fed, but nothing said off-button leaves the browser
+      for (let i = 0; i < f32.length; i += ratio) {
+        const x = f32[Math.floor(i)]
+        this.energy += x * x
+        this.pcmBuf.push(this.talking ? x : 0)
       }
+      if (this.pcmBuf.length >= 1600) this.flush()
     }
     src.connect(this.node)
   }
 
-  private startRecognition() {
-    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-    if (!SR || !this.stream) return
-    const r = new SR()
-    r.lang = this.locale
-    r.continuous = true
-    r.interimResults = true
-    r.onresult = (ev: any) => {
-      for (let i = ev.resultIndex; i < ev.results.length; i++) {
-        const res = ev.results[i]
-        const t = res[0].transcript.trim()
-        if (!t) continue
-        if (res.isFinal) this.sendText(t)
-        else {
-          this.h.onPartial(t)
-          // barge-in: two or more words that are not just our own line echoing back
-          if (this.current && !this.current.locked && t.split(/\s+/).length >= 2 && !this.current.text.toLowerCase().includes(t.toLowerCase())) this.bargeIn()
-        }
-      }
-    }
-    r.onend = () => { if (!this.ended) try { r.start() } catch { /* already started */ } }
-    try { r.start() } catch { /* ignore */ }
-    this.recog = r
+  private flush() {
+    const n = this.pcmBuf.length
+    if (!n) return
+    const db = 10 * Math.log10(this.energy / n + 1e-12)
+    let pcm = this.pcmBuf
+    this.pcmBuf = []
+    this.energy = 0
+    if (this.talking) pcm = this.gate.pass(pcm, db)
+    else this.gate.heard(db, this.sources.length > 0)
+    const out = new Int16Array(pcm.length)
+    for (let i = 0; i < pcm.length; i++) out[i] = Math.max(-1, Math.min(1, pcm[i])) * 0x7fff
+    if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(out.buffer)
   }
 
   private onMessage(m: any) {
     switch (m.type) {
       case 'ready':
         this.mode = m.mode
-        this.clientTts = m.client_tts
-        this.patient = m.patient_mode
         this.h.onReady(m)
         if (this.mode === 'voice') this.startMic()
-        else this.startRecognition()
         break
       case 'line': {
         const l: Line = m
         this.current = l
         this.h.onLine(l)
-        this.h.onCaption({ who: 'ellis', text: l.text, locked: l.locked })
-        if (this.clientTts) this.speakLocally(l)
+        this.h.onCaption({ who: 'ellis', text: l.text })
         break
       }
       case 'audio':
-        this.play(m.line_id, m.data)
+        if (this.soundOn && m.line_id !== this.muted) this.play(m.line_id, m.data)
         break
       case 'line_end':
-        if (this.current?.id === m.line_id && !this.clientTts) this.current = null
+        if (this.current?.id === m.line_id) this.current = null
         break
       case 'stop_audio':
-        this.stopAudio(true)
+        this.stopAudio()
         break
       case 'user_partial':
         this.h.onPartial(m.text)
         break
       case 'user_final':
         this.h.onPartial('')
-        this.h.onCaption({ who: 'usted', text: m.text })
+        this.h.onCaption({ who: 'usted', text: m.text, spoken: m.spoken })
         break
       case 'state':
         this.h.onState(m.state)
@@ -186,67 +172,65 @@ export class VoiceClient {
     src.buffer = buf
     src.connect(this.ctx.destination)
     const t = Math.max(this.ctx.currentTime + 0.03, this.nextTime)
-    if (this.lineStart[lineId] === undefined) this.lineStart[lineId] = t
     src.start(t)
     this.nextTime = t + buf.duration
     this.sources.push(src)
     src.onended = () => { this.sources = this.sources.filter((s) => s !== src) }
   }
 
-  private stopAudio(report: boolean) {
+  private stopAudio() {
     for (const s of this.sources) try { s.stop() } catch { /* ended */ }
     this.sources = []
     if (this.ctx) this.nextTime = this.ctx.currentTime
-    const l = this.current
-    if (report && l && this.ctx && this.lineStart[l.id] !== undefined) {
-      const pos = (this.ctx.currentTime - this.lineStart[l.id]) * 1000
-      this.send({ type: 'interrupt', line_id: l.id, position_ms: Math.max(0, pos) })
-    }
   }
 
-  private speakLocally(l: Line) {
-    const synth = window.speechSynthesis
-    if (!synth) { this.send({ type: 'spoken', line_id: l.id }); return }
-    const u = new SpeechSynthesisUtterance(l.text)
-    u.lang = this.locale
-    u.rate = this.patient ? 0.85 : 1
-    const baseLang = this.locale.split('-')[0]
-    const v = synth.getVoices().find((x) => x.lang === this.locale) || synth.getVoices().find((x) => x.lang.startsWith(baseLang))
-    if (v) u.voice = v
-    u.onboundary = (ev) => {
-      const rest = l.text.slice(ev.charIndex)
-      this.speakingWord = (rest.match(/^[\p{L}\d]+/u) || [null])[0]
+  // Push to talk. Holding cuts Ellis off right away, wherever it is in a line.
+  hold(): boolean {
+    if (!this.stream || !this.ctx) return false
+    if (this.releasing) { // pressed again within the tail: the same turn goes on
+      clearTimeout(this.releasing)
+      this.releasing = null
+      return true
     }
-    let started = false
-    let finished = false
-    const done = () => {
-      if (finished) return
-      finished = true
-      if (this.current?.id === l.id) this.current = null
-      this.send({ type: 'spoken', line_id: l.id })
-    }
-    u.onstart = () => { started = true }
-    u.onend = done
-    u.onerror = done
-    synth.speak(u)
-    // No usable voice (or a headless browser): captions only; do not hold the conversation.
-    setTimeout(() => { if (!started) { synth.cancel(); done() } }, 1500)
+    this.ctx.resume()
+    this.muted = this.current?.id ?? null
+    this.stopAudio()
+    this.talking = true
+    this.send({ type: 'talk', down: true })
+    return true
   }
 
-  bargeIn() {
-    const l = this.current
-    if (!l || l.locked) return
-    if (this.clientTts) {
-      window.speechSynthesis?.cancel()
-      this.send({ type: 'interrupt', line_id: l.id, word: this.speakingWord })
-      this.send({ type: 'speech_start' })
-      this.current = null
-    }
+  release() {
+    if (!this.talking || this.releasing) return
+    this.releasing = setTimeout(() => {
+      this.releasing = null
+      this.flush() // while still held, so the last frame goes through the gate too
+      this.talking = false
+      this.send({ type: 'talk', down: false })
+    }, RELEASE_TAIL_MS)
+  }
+
+  setSound(on: boolean) {
+    this.soundOn = on
+    if (!on) this.stopAudio()
+  }
+
+  // Typing or talking: only tells the server whether silence means "gone" (it doesn't while typing).
+  setVoice(voice: boolean) {
+    this.voice = voice
+    if (!voice) this.release()
+    this.send({ type: 'mode', voice })
   }
 
   sendText(text: string) {
-    if (this.current && !this.current.locked && this.clientTts) this.bargeIn()
+    this.muted = this.current?.id ?? null
+    this.stopAudio()
     this.send({ type: 'text', text })
+  }
+
+  // The applicant's answer to a permission card (a setting change, a question for the clinic).
+  permission(id: string, allow: boolean) {
+    this.send({ type: 'permission', id, allow })
   }
 
   private send(m: any) {
@@ -259,9 +243,7 @@ export class VoiceClient {
 
   stop(notify = true) {
     this.ended = true
-    this.stopAudio(false)
-    window.speechSynthesis?.cancel()
-    try { this.recog?.stop() } catch { /* ignore */ }
+    this.stopAudio()
     this.node?.disconnect()
     this.stream?.getTracks().forEach((t) => t.stop())
     if (this.ws && this.ws.readyState <= 1) this.ws.close()

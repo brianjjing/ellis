@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { daysToFile, fact, useCase } from './applicant/ApplicantApp'
 import { goSignIn } from './auth'
+import { Logo } from './icons'
 
 type Section = 'chat' | 'form' | 'interview' | 'reminders' | 'profile'
 const href: Record<Section, string> = { chat: '/', form: '/form', interview: '/interview', reminders: '/reminders', profile: '/profile' }
@@ -18,7 +19,7 @@ export default function Shell({ active, guest, children }: { active: Section; gu
       <div className="page">
         <div className="side">
           <nav aria-label="Ellis" className="sidebar">
-            <a href="/" data-nav className="wordmark">Ellis</a>
+            <a href="/" data-nav className="wordmark"><Logo /></a>
             <div className="nav-list">
               <a {...link('chat')}>Chat with Ellis</a>
               {locked('form', 'N-400 form')}
@@ -26,7 +27,7 @@ export default function Shell({ active, guest, children }: { active: Section; gu
               {locked('reminders', 'Reminders')}
             </div>
             <div className="nav-list nav-foot">
-              <p className="small" style={{ padding: '0 12px' }}>Work at a clinic? <a href="/signin?next=/clinic" data-nav className="link-btn" style={{ textDecoration: 'underline' }}>Staff sign in</a></p>
+              <p className="small" style={{ padding: '0 12px' }}>Work at a clinic? <a href="/signin?next=/clinic" data-nav className="link-btn">Staff sign in</a></p>
             </div>
           </nav>
         </div>
@@ -42,7 +43,7 @@ export default function Shell({ active, guest, children }: { active: Section; gu
     <div className="page">
       <div className="side">
         <nav aria-label="Ellis" className="sidebar">
-          <a href="/" data-nav className="wordmark">Ellis</a>
+          <a href="/" data-nav className="wordmark"><Logo /></a>
           {data.clinic.is_demo && <span className="demo-tag" style={{ alignSelf: 'flex-start', margin: '-20px 12px 0' }}>DEMO DATA</span>}
           <div className="nav-list">
             <a {...link('chat')}>Chat with Ellis</a>

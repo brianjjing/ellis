@@ -80,7 +80,6 @@ button { font-family: inherit; }
 .card-stack { position: fixed; z-index: 5; left: 0; right: 0; bottom: 0; padding: 12px; display: flex; flex-direction: column; gap: 10px; max-height: 70vh; overflow-y: auto; pointer-events: none; }
 .referral { pointer-events: auto; max-width: 560px; margin: 0 auto; width: 100%; box-sizing: border-box; padding: 16px; background: var(--white); border: 2px solid var(--gold); border-radius: 8px; box-shadow: 0 6px 24px rgba(14, 25, 43, .18); display: flex; flex-direction: column; gap: 8px; }
 .referral.stop { border-color: var(--ink); }
-.referral ul { margin: 0; padding-left: 20px; }
 
 .sheet { margin: auto auto 0; max-width: 560px; border-radius: 10px 10px 0 0; max-height: 90vh; overflow-y: auto; }
 .sheet-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
@@ -144,3 +143,5 @@ button { font-family: inherit; }
 /* Sign-in: "or" divider between the email login and the clinic link/code path (existing tokens only). */
 .or { display: flex; align-items: center; gap: 12px; color: var(--ink-soft); font-size: 15px; }
 .or::before, .or::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+/* A link in small print (guest sidebar foot, guest chat's sign-up line) takes the print's size, as .switch links do. */
+.small .link-btn { font-size: inherit; text-decoration: underline; white-space: nowrap; }

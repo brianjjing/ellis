@@ -19,7 +19,8 @@
   --mono: 'Courier Prime', monospace;
 }
 
-/* Paper behind the page and no rubber-band, so overscroll never shows a seam. */
+/* Paper behind the page and no rubber-band, so overscroll never shows a seam (theme-color in index.html keeps
+   the browser's own top bar / bounce area paper too). */
 html { background: var(--paper); overscroll-behavior-y: none; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; }
 body { margin: 0; }
 :where(a) { color: var(--green); }
@@ -74,9 +75,10 @@ main, .enter, .dialog::backdrop { animation: enter .18s ease-out; }
 .tab[aria-selected='true'] { background: var(--white); color: var(--ink); }
 
 /* Page frame */
-.page { min-height: 100vh; box-sizing: border-box; border-top: 3px solid var(--ink); background: var(--paper); color: var(--ink); font-family: var(--sans); display: flex; flex-wrap: wrap; }
+.page { min-height: 100vh; box-sizing: border-box; background: var(--paper); color: var(--ink); font-family: var(--sans); display: flex; flex-wrap: wrap; }
 .page.col { flex-direction: column; flex-wrap: nowrap; }
-.wordmark { font-family: var(--serif); font-size: 28px; line-height: 32px; font-weight: 700; color: var(--ink); text-decoration: none; }
+.wordmark { display: inline-flex; align-self: flex-start; text-decoration: none; }
+.logo { display: block; height: 32px; width: auto; }
 .main { flex: 999 1 560px; min-width: 0; }
 .bar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding: 18px 24px; border-bottom: 1px solid var(--ink); }
 .content { max-width: 800px; margin: 0 auto; box-sizing: border-box; display: flex; flex-direction: column; }
@@ -106,21 +108,52 @@ main, .enter, .dialog::backdrop { animation: enter .18s ease-out; }
 
 /* Chat */
 .main.chat { display: flex; flex-direction: column; }
+.main.chat > .bar { position: sticky; top: 0; z-index: 4; background: var(--paper); } /* the chat's header stays put */
+.btn.round { width: 44px; height: 44px; padding: 0; border-radius: 50%; }
+.btn.round[aria-pressed='true'] { background: var(--sand); color: var(--ink-soft); }
 .chat-body { flex-grow: 1; display: flex; flex-wrap: wrap; align-items: stretch; }
 .convo { flex: 999 1 520px; min-width: 0; display: flex; flex-direction: column; }
-.thread { flex-grow: 1; width: 100%; max-width: 800px; margin: 0 auto; box-sizing: border-box; padding: 40px 24px 24px; display: flex; flex-direction: column; gap: 32px; }
-.msg { display: flex; flex-direction: column; gap: 12px; }
-.you { display: flex; flex-direction: column; gap: 8px; align-self: flex-end; max-width: 560px; }
+.thread { flex-grow: 1; width: 100%; max-width: 800px; margin: 0 auto; box-sizing: border-box; padding: 28px 24px 20px; display: flex; flex-direction: column; gap: 20px; }
+.msg { display: flex; flex-direction: column; gap: 6px; }
+.you { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; align-self: flex-end; max-width: 560px; } /* bubble hugs its text */
 .you > .label { text-align: right; }
-.bubble { padding: 16px 20px; background: var(--sand); border-radius: 6px; font-size: 17px; line-height: 28px; }
+.cont { margin-top: -12px; } /* same speaker again: no label, sits close under the one before */
+.bubble { padding: 10px 16px; background: var(--sand); border-radius: 6px; font-size: 17px; line-height: 28px; }
 .diamond { width: 8px; height: 8px; background: var(--rust); transform: rotate(45deg); }
-.draft { padding: 20px; background: var(--white); border: 1.5px solid var(--green); border-radius: 6px; display: flex; flex-direction: column; gap: 16px; }
-.flag-link { align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px; border: 1px solid var(--ink); border-radius: 3px; background: var(--white); color: var(--ink); text-decoration: none; font-size: 14px; font-weight: 700; }
+.draft { padding: 16px 20px; background: var(--white); border: 1.5px solid var(--green); border-radius: 6px; display: flex; flex-direction: column; gap: 12px; }
+/* Permission card (Cursor-style: what Ellis wants to do, then the applicant's call, primary on the right). */
+.perm { margin-top: 6px; background: var(--white); border: 1.5px solid var(--ink); border-radius: 6px; overflow: hidden; }
+.perm-head { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: var(--sand); border-bottom: 1px solid var(--line-strong); }
+.perm-body { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; font-size: 17px; line-height: 24px; }
+.perm-quote { margin: 0; padding: 8px 12px; border-left: 3px solid var(--gold); background: var(--paper); font-size: 16px; line-height: 24px; }
+.perm-foot { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--line); }
+/* Next-step bar: the old card's look, one row tall, above the composer. */
+.next-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 6px 6px 6px 14px; min-height: 44px; box-sizing: border-box; background: var(--white); border: 2px solid var(--ink); border-radius: 6px; }
+.next-title { flex: 1 1 200px; font-size: 16px; line-height: 22px; font-weight: 700; }
+/* What a reply sent to the clinic: in the left margin beside it when the column has room, else under it. */
+.msg { position: relative; }
+.margin-notes { align-self: flex-start; display: flex; flex-direction: column; gap: 10px; }
+.margin-note { display: flex; flex-direction: column; gap: 2px; padding: 4px 10px; border-left: 2px solid var(--gold); color: var(--ink); text-decoration: none; font-size: 13px; line-height: 18px; }
+.margin-note:hover strong { text-decoration: underline; }
+.margin-note .label { font-size: 12px; white-space: nowrap; }
+.convo { container-type: inline-size; }
+@container (min-width: 1180px) {
+  .margin-notes { position: absolute; top: 0; right: calc(100% + 20px); width: 176px; }
+  .margin-note { align-items: flex-end; text-align: right; border-left: 0; border-right: 2px solid var(--gold); }
+}
 .composer { position: sticky; bottom: 0; background: var(--paper); border-top: 1px solid var(--line); }
-.composer > div { max-width: 800px; margin: 0 auto; box-sizing: border-box; padding: 16px 24px 24px; display: flex; flex-direction: column; gap: 12px; }
+.composer > div { max-width: 800px; margin: 0 auto; box-sizing: border-box; padding: 12px 24px 20px; display: flex; flex-direction: column; gap: 10px; }
 .ask { display: flex; gap: 8px; align-items: center; padding: 8px; background: var(--white); border: 2px solid var(--ink); border-radius: 6px; }
 .ask input { flex: 1; min-width: 0; height: 48px; border: 0; background: transparent; font-size: 17px; color: var(--ink); }
-.voice { padding: 24px; background: var(--sand); border-radius: 6px; display: flex; flex-wrap: wrap; align-items: center; gap: 20px; }
+.ask .tools { display: flex; flex: 0 0 auto; } /* upload + mode switch sit together, like other chat composers */
+.ask .tools .icon-btn { flex: 0 0 40px; }
+.ask input:focus-visible { outline: none; } /* the bar is the box; it shows focus instead */
+.ask:focus-within { box-shadow: 0 0 0 3px var(--green-tint); }
+.ask input[readonly] { cursor: default; }
+.icon-btn.talk { background: var(--green); color: var(--white); touch-action: none; user-select: none; -webkit-user-select: none; transition: background-color .15s, box-shadow .15s; }
+.icon-btn.talk[aria-pressed='true'] { background: var(--ink); box-shadow: 0 0 0 4px var(--green-tint); }
+.suggest { gap: 6px; }
+.suggest .btn { min-height: 0; height: 30px; padding: 0 10px; font-size: 13px; }
 .history { flex: 1 1 320px; min-width: 0; box-sizing: border-box; padding: 24px; border-left: 1px solid var(--line); background: var(--white); display: flex; flex-direction: column; gap: 14px; }
 .past { display: flex; flex-direction: column; gap: 2px; padding: 12px 0; border-bottom: 1px solid var(--line); color: var(--ink); text-decoration: none; }
 

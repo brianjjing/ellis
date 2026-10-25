@@ -56,20 +56,17 @@ def test_at1_consent_first(client):
 
 
 # AT2 ---------------------------------------------------------------------------------------------------------
-def test_at2_disclosure_is_locked_and_holds_turns(seeded):
+def test_at2_disclosure_first_and_interruptible(seeded):
+    # changed by the product owner: no line is protected from interruption any more, the disclosure included
     lines = Liaison(InProcessClient("c_maria"), today=date(2026, 10, 23)).start()
-    assert lines[0].kind == "disclosure" and lines[0].locked is True
+    assert lines[0].kind == "disclosure"
     from ellis.api.routes.voice import VoiceSession
 
     async def run():
         vs = VoiceSession(ws=None, case_id="c_maria")
-        vs.liaison = Liaison(InProcessClient("c_maria"), today=date(2026, 10, 23))
-        vs.liaison.start()
-        vs.current = {"id": "x", "locked": True, "done": asyncio.Event(), "interrupted": False}
-        await vs.user_started()  # applicant talks over the locked line
-        assert vs.current["interrupted"] is False
-        await vs.turn("Sí")
-        assert vs.held == ["Sí"]
+        vs.current = {"id": "x", "field": None, "timestamps": {}, "interrupted": False}
+        await vs.user_started()  # the applicant talks over the disclosure: it stops right there
+        assert vs.current["interrupted"] is True
         vs.closed = True
     asyncio.run(run())
 

@@ -1,6 +1,6 @@
 # Liaison scripts (draft English, same review status as scripts_es.yaml — needs native review before real
-# use). locked = interruptible=False. Keep keys in sync with scripts_es.yaml; the liaison picks the file by
-# session language.
+# use). locked = fixed legal wording (interruptible=False on the Line agent; the web chat lets any line be
+# interrupted). Keep keys in sync with scripts_es.yaml; the liaison picks the file by session language.
 version: en-1
 disclosure:
   locked: true

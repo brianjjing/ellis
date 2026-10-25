@@ -77,6 +77,19 @@ def set_language(body: LanguageReq, request: Request) -> dict[str, Any]:
         return {"language": case.language}
 
 
+class ConsentReq(BaseModel):
+    agree: bool
+
+
+@router.post("/consent")
+def set_consent(body: ConsentReq, request: Request) -> dict[str, Any]:
+    """The settings button: consent lasts the whole account until the applicant changes it here."""
+    with session_scope() as s:
+        case = applicant_case(request, s)
+        cs.record_fact(s, case, "consent", body.agree, actor="applicant", actor_type="applicant")
+        return {"consent_given": cs.consent_given(s, case)}
+
+
 class SecureReq(BaseModel):
     field: str
     value: Any

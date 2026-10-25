@@ -45,6 +45,35 @@ class InProcessClient:
         from ..services import case_service as cs
         return self._run(lambda s, case: cs.liaison_briefing(s, case))
 
+    def agent_context(self, focus: dict[str, Any]) -> dict[str, Any]:
+        from ..services import views
+        return self._run(lambda s, case: views.agent_context(s, case, focus))
+
+    def call_config(self) -> dict[str, Any]:
+        from ..api.routes.tools import call_config
+        return self._run(call_config)
+
+    def set_setting(self, setting: str, value: str) -> dict[str, Any]:
+        from ..services import case_service as cs
+        return self._run(lambda s, case: cs.set_setting(s, case, setting, value))
+
+    def ask_clinic(self, question: str) -> dict[str, Any]:
+        from ..services import case_service as cs
+        return self._run(lambda s, case: cs.ask_clinic(s, case, question))
+
+    def recent_transcript(self, limit: int = 24) -> list[tuple[str, str, str | None]]:
+        """Last turns (speaker, text, kind) for this case, oldest first -- context for a resumed conversation.
+        kind is the liaison line's Say.kind (e.g. "checkin"), None for the applicant."""
+        from sqlalchemy import select
+
+        from ..db import Utterance
+
+        def f(s, case):
+            rows = s.scalars(select(Utterance).where(Utterance.case_id == case.id)
+                             .order_by(Utterance.ts.desc()).limit(limit)).all()
+            return [(u.speaker, u.text, (u.meta or {}).get("kind")) for u in reversed(rows)]
+        return self._run(f)
+
     def record_fact(self, field: str, value: Any, hedge: bool = False, utterance_id: str | None = None,
                     interrupted_at_word: str | None = None, is_correction: bool = False,
                     utterance_text: str | None = None) -> dict[str, Any]:

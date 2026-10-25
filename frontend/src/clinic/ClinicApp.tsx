@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { debounce, stream } from '../api'
 import { signOut, useAuth } from '../auth'
+import { Logo } from '../icons'
 import CaseDetail from './CaseDetail'
 import CaseList from './CaseList'
 import ReviewQueue from './ReviewQueue'
@@ -30,7 +31,7 @@ export default function ClinicApp({ path }: { path: string }) {
     <div className="page clinic" lang="en">
       <div className="side">
         <nav className="sidebar" aria-label="Clinic">
-          <a href="/clinic" data-nav className="wordmark">Ellis</a>
+          <a href="/clinic" data-nav className="wordmark"><Logo /></a>
           <div className="stack" style={{ padding: '0 12px', gap: 2 }}>
             <strong>{me.clinic.name}</strong>
             {me.clinic.is_demo && <span className="demo-tag">Synthetic demo data</span>}

@@ -35,7 +35,7 @@ Oct 23, 2026, so `ELLIS_TODAY` pins the date (`scripts/dev.sh` sets it).
 |---|---|
 | `CARTESIA_API_KEY` | Voice: Ink-2 streaming STT with turn detection, and Sonic TTS with word timestamps. |
 | `CARTESIA_VOICE_ID` | Spanish (es-MX) Sonic voice. When empty, one is auto-discovered from `/voices`. |
-| `ANTHROPIC_API_KEY` | Optional. Enables the Claude staff agents (`ELLIS_AGENT_BACKEND=anthropic`), vision extraction for real photos, and Claude-assisted answer parsing. |
+| `ANTHROPIC_API_KEY` | Required for the applicant chat: Claude drives the whole conversation (`ELLIS_CONVERSATION_MODEL`). Also enables the Claude staff agents (`ELLIS_AGENT_BACKEND=anthropic`) and vision extraction for real photos. |
 | `DATABASE_URL` | Postgres is recommended (`postgresql+psycopg://…`; NOTIFY trigger and `SKIP LOCKED`). Defaults to SQLite. |
 | `ELLIS_TOOL_SECRET`, `ELLIS_SESSION_SECRET`, `VAULT_KEY` | Liaison tool auth, cookie signing, and AES-GCM for sensitive values. |
 | `ELLIS_AGENT_BACKEND` | `skeleton` (deterministic, no model), `anthropic`, or `creao`. |

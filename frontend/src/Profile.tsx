@@ -2,7 +2,6 @@ import { useEffect, useState, type ReactNode } from 'react'
 import Shell from './Shell'
 import { Flag, Icon } from './icons'
 import { api } from './api'
-import { navigate } from './main'
 import { signOut, useAuth } from './auth'
 import { fact, useCase } from './applicant/ApplicantApp'
 import { LANGUAGES, langOf, type Lang } from './applicant/i18n'
@@ -60,6 +59,7 @@ export default function Profile() {
 
   const decline = async (id: string) => { await api(`/api/a/gaps/${id}/decline`, { body: {} }); reload() }
   const setLanguage = async (locale: string) => { await api('/api/a/language', { body: { locale } }); setPicking(false); reload() }
+  const setConsent = async (agree: boolean) => { await api('/api/a/consent', { body: { agree } }); reload() }
   const { refresh } = useAuth()
   const logOut = () => signOut(refresh)
   // Deep links like /profile?tab=flags land on the Advanced section.
@@ -89,6 +89,11 @@ export default function Profile() {
           </div>
           <h3 className="h3 rule" style={{ marginTop: 12 }}>Privacy</h3>
           <div className="stack" style={{ marginTop: -20 }}>
+            <Setting name="Consent to talk with Ellis" note={data.consent_given
+              ? 'You agreed. Ellis is an AI, not a lawyer. It saves the text of your chats, not the audio.'
+              : "Not given. Ellis is an AI, not a lawyer, and saves the text of your chats, not the audio. It can't save your answers until you agree."}>
+              <button type="button" className={`btn${data.consent_given ? '' : ' primary'}`} onClick={() => setConsent(!data.consent_given)}>{data.consent_given ? 'Withdraw' : 'I agree'}</button>
+            </Setting>
             <Setting name="Sensitive numbers" note="You type them; they are never spoken. The AI only sees a placeholder." />
             <Setting name={<><Icon name="globe" />Language</>} note={`${dialects.find((d) => d.code === data.language)?.label ?? data.language}. Ellis talks with you in this language.`}>
               <button type="button" className="btn" aria-expanded={picking} onClick={() => setPicking(!picking)}>Change</button>
@@ -100,6 +105,8 @@ export default function Profile() {
                 ))}
               </div>
             )}
+            <Setting name="Ellis's replies" note={`${{ short: 'Short', normal: 'Normal', detailed: 'Detailed' }[data.settings.reply_length as string] ?? data.settings.reply_length}. To change it, ask Ellis in the chat.`} />
+            <Setting name="Ellis's voice speed" note={`${data.settings.voice_speed === 'slow' ? 'Slower' : 'Normal'}. To change it, ask Ellis in the chat.`} />
             <div className="btns" style={{ paddingTop: 20 }}>
               {data.packet_ready && <a href="/review" data-nav className="btn md">Download my packet</a>}
               <button type="button" className="btn md strong" onClick={logOut}>Sign out</button>

@@ -51,7 +51,7 @@ export default function ApplicantApp({ children }: { children: ReactNode }) {
       if (m.type === 'open_secure_entry') setOverlay({ kind: 'secure', field: p.field, label: p.label })
       else if (m.type === 'open_upload') setOverlay({ kind: 'upload', documentType: p.document_type })
       else if (m.type === 'open_biographics') setOverlay({ kind: 'biographics' })
-      else if (m.type === 'referral_card') setCards((c) => [...c.filter((x) => x.flag_id !== p.flag_id), p])
+      else if (m.type === 'referral_card' && p.variant === 'stop_now') setCards((c) => [...c.filter((x) => x.flag_id !== p.flag_id), p]) // other flags: a note beside the chat reply
       refresh()
     })
   }, [!!data, reload])

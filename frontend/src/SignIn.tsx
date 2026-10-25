@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Icon } from './icons'
+import { Icon, Logo } from './icons'
 import { api, ApiError } from './api'
 import { navigate } from './main'
 import { landing, useAuth, type Me } from './auth'
@@ -17,15 +17,20 @@ export default function SignIn({ token }: { token?: string }) {
   const [code, setCode] = useState(token ?? '')
   const [err, setErr] = useState<string | null>(null)
   const [busy, setBusy] = useState(!!token)
+  const [lang, setLang] = useState<'en' | 'es' | null>(null)
 
   const fail = (e: unknown) => { setErr(e instanceof ApiError ? e.message : 'Connection lost. Please try again.'); setBusy(false) }
+  // The header's language pick applies to the applicant's case once they're in (staff work in English).
+  const applyLang = async () => { if (lang) await api('/api/a/language', { body: { locale: lang === 'en' ? 'en-US' : 'es-MX' } }).catch(() => undefined) }
 
   const logIn = async () => {
     setBusy(true)
     setErr(null)
     try {
       await api<Me>('/api/auth/login', { body: { email, password: pw } })
-      landing(await refresh(), next)
+      const m = await refresh()
+      if (m.kind === 'applicant') await applyLang()
+      landing(m, next)
     } catch (e) { fail(e) }
   }
 
@@ -38,6 +43,7 @@ export default function SignIn({ token }: { token?: string }) {
       // A logged-in applicant claims the clinic's case into their account; otherwise a link-only session.
       const claim = me?.kind === 'applicant' && me.account
       await api(claim ? '/api/a/link' : '/api/a/session', { body: { token: decodeURIComponent(t) } })
+      await applyLang()
       await refresh()
       navigate('/', true)
     } catch (e) { fail(e) }
@@ -48,7 +54,8 @@ export default function SignIn({ token }: { token?: string }) {
   return (
     <div className="page col">
       <header className="top">
-        <a href="/" data-nav className="wordmark">Ellis</a>
+        <a href="/" data-nav className="wordmark"><Logo /></a>
+        <button type="button" className="btn" onClick={() => setLang(lang === 'es' ? 'en' : 'es')}><Icon name="globe" />{lang === 'es' ? 'Español' : 'English'}</button>
       </header>
 
       <main className="signin">

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Icon } from './icons'
+import { Icon, Logo } from './icons'
 import { api, ApiError } from './api'
 import { landing, useAuth, type Me } from './auth'
 import { guestSnapshot } from './GuestChat'
@@ -43,7 +43,7 @@ export default function SignUp({ token }: { token?: string }) {
   return (
     <div className="page col">
       <header className="top">
-        <a href="/" data-nav className="wordmark">Ellis</a>
+        <a href="/" data-nav className="wordmark"><Logo /></a>
       </header>
 
       <main className="signin">

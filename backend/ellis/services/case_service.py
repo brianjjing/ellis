@@ -111,9 +111,10 @@ def fact_values(s: Session, case_id: str, masked: bool = True) -> dict[str, Any]
 
 
 def consent_given(s: Session, case: Case) -> bool:
-    ev = s.scalars(select(Event).where(Event.case_id == case.id, Event.kind == "consent.given")
+    # the latest answer wins, so a "no" from settings withdraws an earlier "yes"
+    ev = s.scalars(select(Event).where(Event.case_id == case.id, Event.kind.in_(("consent.given", "consent.declined")))
                    .order_by(Event.id.desc()).limit(1)).first()
-    return ev is not None and ev.payload.get("disclosure_version") == case.disclosure_version
+    return ev is not None and ev.kind == "consent.given" and ev.payload.get("disclosure_version") == case.disclosure_version
 
 
 def fact_dict(f: Fact) -> dict[str, Any]:
@@ -824,6 +825,59 @@ def flag_for_review(s: Session, case: Case, category: str, field: str | None = N
     if fl is None:
         fl = _open_flags(s, case, cat, field)[0]
     return {"flag_id": fl.id, "speed": fl.speed}
+
+
+# Settings the applicant may change by asking Ellis (value -> how it reads on screen). The chat only ever
+# asks; set_setting runs once the applicant taps Allow.
+APPLICANT_SETTINGS = {
+    "language": {"en-US": "English (United States)", "en-GB": "English (United Kingdom)",
+                 "es-MX": "Español (México)", "es-US": "Español (Estados Unidos)", "es-ES": "Español (España)"},
+    "reply_length": {"short": "Short", "normal": "Normal", "detailed": "Detailed"},
+    "voice_speed": {"normal": "Normal", "slow": "Slower"},
+}
+SETTING_NAMES = {"language": "Language", "reply_length": "Ellis's replies", "voice_speed": "Ellis's voice speed"}
+
+
+def applicant_settings(case: Case) -> dict[str, str]:
+    st = case.settings or {}
+    return {"language": case.language, "reply_length": st.get("reply_length", "normal"),
+            "voice_speed": st.get("voice_speed", "normal")}
+
+
+def set_setting(s: Session, case: Case, key: str, value: str) -> dict[str, str]:
+    if value not in APPLICANT_SETTINGS.get(key, {}):
+        raise CaseError("invalid_setting", f"{key} can't be {value!r}", key)
+    if key == "language":
+        case.language = value
+        emit(s, case, "case.language_changed", {"language": value}, "applicant", "applicant")
+    else:
+        case.settings = {**(case.settings or {}), key: value}
+        emit(s, case, "case.settings_changed", {key: value}, "applicant", "applicant")
+    return applicant_settings(case)
+
+
+def ask_clinic(s: Session, case: Case, question: str) -> dict[str, Any]:
+    """The applicant tapped Allow on sending a question to their clinic. A person answers it; Ellis never
+    advises. One review item per question (no dedupe: two questions are two answers)."""
+    q = " ".join((question or "").split())[:500]
+    if not q:
+        raise CaseError("empty_question", "no question to send")
+    if keywords.stop_hit(q) or keywords.has_sensitive_number(q):
+        raise CaseError("not_sendable", "that can't be sent as text; the clinic will follow up directly")
+    info = cat_info("applicant_question")
+    fl = Flag(clinic_id=case.clinic_id, case_id=case.id, category="applicant_question", speed=FLAG_CONTINUE,
+              layer=3, detail={}, applicant_label_es=info["label_en"] if case_lang(case) == "en" else info["label_es"],
+              ts=now())
+    s.add(fl)
+    s.flush()
+    ri = ReviewItem(clinic_id=case.clinic_id, case_id=case.id, flag_id=fl.id, category="applicant_question",
+                    speed=FLAG_CONTINUE, blocking=info["blocks"], trigger=f"Applicant asked: {q}",
+                    proposed_by="liaison", ts=now())
+    s.add(ri)
+    s.flush()
+    emit(s, case, "flag.raised", {"flag_id": fl.id, "speed": FLAG_CONTINUE, "category": "applicant_question",
+                                  "layer": 3, "review_item_id": ri.id}, "liaison", "liaison")
+    return {"sent": True, "review_item_id": ri.id}
 
 
 def _layer1(s: Session, case: Case, field: str, value: Any, utterance_text: str | None) -> dict | None:
