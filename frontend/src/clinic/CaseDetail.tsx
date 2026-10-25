@@ -58,7 +58,7 @@ export default function CaseDetail({ id, me, tick }: { id: string; me: Me; tick:
       <div className="detail-body">
         {tab === 'Facts' && <Facts d={d} reveal={reveal} onReveal={doReveal} canReveal={me.role !== 'intake'} />}
         {tab === 'Documents' && <Docs d={d} id={id} reload={load} />}
-        {tab === 'Review' && <ReviewItems d={d} />}
+        {tab === 'Review' && <ReviewItems d={d} id={id} reload={load} />}
         {tab === 'Activity' && <Activity d={d} />}
         {tab === 'Memos' && <Memos d={d} id={id} reload={load} />}
         {tab === 'Transcript' && <Transcript d={d} />}
@@ -291,12 +291,41 @@ const NEXT_STEP: Record<string, string> = {
   informational: 'No action required; close when noted.',
 }
 
-function ReviewItems({ d }: { d: any }) {
-  const open = d.review_items.filter((r: any) => r.status === 'open' || r.status === 'case_blocked')
+function ReviewItems({ d, id, reload }: { d: any; id: string; reload: () => void }) {
+  const [active, setActive] = useState<{ itemId: string; action: 'resolve' | 'question' | 'memo' } | null>(null)
+  const [note, setNote] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+
+  const openItems = d.review_items.filter((r: any) => r.status === 'open' || r.status === 'case_blocked')
   const closed = d.review_items.filter((r: any) => r.status !== 'open' && r.status !== 'case_blocked')
-  const renderItem = (r: any) => {
+
+  const commit = async () => {
+    if (!active || !note.trim()) return
+    setBusy(true)
+    setErr(null)
+    try {
+      if (active.action === 'resolve') {
+        await api(`/api/clinic/review/${active.itemId}/decision`, { body: { decision: 'clear', note } })
+      } else if (active.action === 'question') {
+        await api(`/api/clinic/review/${active.itemId}/decision`, { body: { decision: 'needs_more_info', note } })
+      } else {
+        await api(`/api/clinic/cases/${id}/notes`, { body: { body: note } })
+      }
+      setActive(null)
+      setNote('')
+      reload()
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.message : 'failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const renderItem = (r: any, isOpenItem: boolean) => {
     const speed = r.speed === 'stop_now' ? 'stop_now' : r.blocking ? 'blocking' : r.speed ?? 'normal'
     const meta = SEVERITY_META[speed] ?? SEVERITY_META.normal
+    const isActive = active?.itemId === r.id
     return (
       <div key={r.id} className={`panel ${r.speed === 'stop_now' ? 'warn' : ''}`} style={{ flexDirection: 'column', gap: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -322,22 +351,46 @@ function ReviewItems({ d }: { d: any }) {
             ))}
           </div>
         )}
-        {r.status === 'open' && !r.decision && (
-          <p className="small" style={{ margin: 0, fontWeight: 700 }}>Next step: {NEXT_STEP[speed] ?? NEXT_STEP.normal}</p>
+        {isOpenItem && !r.decision && (
+          <>
+            <p className="small" style={{ margin: 0, fontWeight: 700 }}>Next step: {NEXT_STEP[speed] ?? NEXT_STEP.normal}</p>
+            {isActive && active ? (
+              <div className="stack" style={{ gap: 8, marginTop: 4 }}>
+                <label className="small soft" htmlFor={`note-${r.id}`}>
+                  {active.action === 'resolve' ? 'Resolution note (required)' : active.action === 'question' ? 'Question to send to client (required)' : 'Internal memo (required)'}
+                </label>
+                <textarea id={`note-${r.id}`} className="input area" rows={2} value={note} onChange={(e) => setNote(e.target.value)} />
+                <div className="btns">
+                  <button className="btn sm primary" disabled={!note.trim() || busy} onClick={commit}>
+                    {active.action === 'resolve' ? 'Confirm resolve' : active.action === 'question' ? 'Send question' : 'Add memo'}
+                  </button>
+                  <button className="btn sm" onClick={() => { setActive(null); setNote('') }}>Cancel</button>
+                </div>
+                {err && <p className="rust small" style={{ margin: 0 }}>{err}</p>}
+              </div>
+            ) : (
+              <div className="btns" style={{ marginTop: 4 }}>
+                <button className="btn sm" onClick={() => { setActive({ itemId: r.id, action: 'resolve' }); setNote('') }}>Resolve</button>
+                <button className="btn sm" onClick={() => { setActive({ itemId: r.id, action: 'question' }); setNote('') }}>Send to client as a question</button>
+                <button className="btn sm" onClick={() => { setActive({ itemId: r.id, action: 'memo' }); setNote('') }}>Write memo</button>
+              </div>
+            )}
+          </>
         )}
         {r.decision && <p className="small soft" style={{ margin: 0 }}>Decision: {r.decision} — {r.decision_note}</p>}
       </div>
     )
   }
+
   return (
     <div className="stack" style={{ gap: 12 }}>
       <a className="btn md" href="/clinic/review" data-nav style={{ alignSelf: 'flex-start' }}>Open review queue</a>
-      {open.length === 0 && <p className="soft">No open review items.</p>}
-      {open.map(renderItem)}
+      {openItems.length === 0 && <p className="soft">No open review items.</p>}
+      {openItems.map((r: any) => renderItem(r, true))}
       {closed.length > 0 && (
         <details>
           <summary className="small link-btn">{closed.length} closed item{closed.length > 1 ? 's' : ''}</summary>
-          <div className="stack" style={{ gap: 10, marginTop: 8 }}>{closed.map(renderItem)}</div>
+          <div className="stack" style={{ gap: 10, marginTop: 8 }}>{closed.map((r: any) => renderItem(r, false))}</div>
         </details>
       )}
     </div>
