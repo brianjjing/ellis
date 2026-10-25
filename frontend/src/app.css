@@ -19,6 +19,8 @@ button { font-family: inherit; }
 .a-num { flex: 0 0 36px; height: 36px; border-radius: 999px; background: var(--green); color: var(--white); display: flex; align-items: center; justify-content: center; font-weight: 700; }
 .btn, .tile, .tab { min-height: 44px; }
 .applicant .btn { min-height: 48px; }
+.bar .btn, .bar .tab { min-height: 0; height: 32px; } /* header controls: half the vertical padding of a regular button */
+.bar .btn.round { width: 32px; height: 32px; }
 
 .roadmap { border-top: 1px solid var(--line); padding-top: 12px; }
 .roadmap-dots { width: 100%; display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; padding: 0; border: 0; background: none; cursor: pointer; color: var(--ink); }
