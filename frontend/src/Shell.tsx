@@ -68,7 +68,7 @@ export default function Shell({ active, guest, children }: { active: Section; gu
   const { data } = ctx
   const done = data.progress.filter((p: any) => p.state === 'done').length
   const days = daysToFile(data)
-  const name = [fact(data, 'name.given') ?? data.first_name, fact(data, 'name.family')].filter(Boolean).join(' ')
+  const name = String(fact(data, 'name.given') ?? data.first_name ?? '').trim().split(/\s+/)[0]
   return (
     <div className="page">
       <div className="side">
