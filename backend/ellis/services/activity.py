@@ -55,6 +55,7 @@ def describe(s: Session, event: Event, lang: str = "en") -> str:
         "session.third_party": f"{who} noted someone else is with the client.",
         "stop.spoken": f"{who} paused for a sensitive topic.",
         "utterance.redacted": f"{who} hid a sensitive number from the transcript.",
+        "chat.cleared": "Client deleted their chat history.",
         "readback.started": f"{who} read back {field}." if field else f"{who} started a read-back.",
         "readback.closed": f"{who} finished the read-back of {field}." if field else f"{who} finished a read-back.",
         "consent.given": "Client agreed to continue.",

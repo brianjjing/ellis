@@ -529,3 +529,15 @@ def test_a_flush_drops_only_the_reads_of_the_tables_it_wrote(seeded):
             assert cs.review_items(s, case.id) == cs.review_items(s, case.id)
         finally:
             event.remove(engine(), "before_cursor_execute", listen)
+
+
+def test_applicant_deletes_all_chat_history(client):
+    client.post("/api/a/session", json={"token": "demo-maria"})
+    client.post("/api/a/consent", json={"agree": True})
+    tool(client, "c_maria", "record_fact", {"field": "names.used", "value": "Mary Lopez", "utterance_text": "Mary Lopez"})
+    with session_scope() as s:
+        assert s.scalars(select(Utterance).where(Utterance.case_id == "c_maria")).first()
+    assert client.post("/api/a/clear-chats", json={}).json()["deleted"] > 0
+    with session_scope() as s:
+        assert not s.scalars(select(Utterance).where(Utterance.case_id == "c_maria")).first()
+        assert s.scalars(select(Fact).where(Fact.case_id == "c_maria", Fact.field == "names.used")).first()  # answers stay

@@ -210,6 +210,12 @@ def clear(request: Request) -> dict[str, Any]:
         return {"cleared": cs.clear_form(s, applicant_case(request, s))}
 
 
+@router.post("/clear-chats")
+def clear_chats(request: Request) -> dict[str, Any]:
+    with session_scope() as s:
+        return {"deleted": cs.clear_chats(s, applicant_case(request, s))}
+
+
 class BiographicsReq(BaseModel):
     values: dict[str, Any]
 

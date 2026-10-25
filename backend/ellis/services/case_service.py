@@ -10,7 +10,7 @@ import json
 from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
-from sqlalchemy import event as sa_event, select
+from sqlalchemy import delete, event as sa_event, select
 from sqlalchemy.orm import Session
 
 from ..config import fee_config, rule_config, settings
@@ -694,6 +694,14 @@ def clear_form(s: Session, case: Case) -> int:
     evaluate_rules(s, case)
     after_fact_change(s, case)
     return len(cleared)
+
+
+def clear_chats(s: Session, case: Case) -> int:
+    """The applicant's "Delete all chats": every saved conversation turn goes, for the clinic's transcript too.
+    Answers, flags and the event trail stay."""
+    n = s.execute(delete(Utterance).where(Utterance.case_id == case.id)).rowcount
+    emit(s, case, "chat.cleared", {"count": n}, "applicant", "applicant")
+    return n
 
 
 def vault_lookup(s: Session, fact_id: str) -> str | None:
