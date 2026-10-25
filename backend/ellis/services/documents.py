@@ -6,12 +6,13 @@ import hashlib
 import io
 import json
 import os
+import re
 import subprocess
 import sys
 import threading
 from datetime import date
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -21,7 +22,7 @@ from ..db import Case, Document, Extraction, Fact, Flag, VaultValue, now, sessio
 from ..extraction.schemas import IDENTIFIERS, LABELS_EN, LABELS_ES, SCHEMAS
 from . import case_service as cs
 from . import catalog, keywords, storage, vault
-from .values import equal
+from .values import ValueError_, equal, normalize
 
 MAX_BYTES = 10 * 1024 * 1024
 MAX_PAGES = 5
@@ -102,10 +103,11 @@ def store_upload(s: Session, case: Case, document_type: str, filename: str, data
     return doc
 
 
-def run_extraction_subprocess(doc: Document) -> dict[str, Any]:
+def run_extraction_subprocess(doc: Document, on_field: Callable[[dict], None] | None = None) -> dict[str, Any]:
     """Sandbox: separate process, no DB or storage credentials, 60 s timeout. (Container hardening is deploy config.)
 
-    The parent fetches the file and hands the worker a local path.
+    The parent fetches the file and hands the worker a local path. The last line is the result; any line before it
+    is a field an n400 sweep has just passed, handed to on_field as it arrives.
     """
     env = {k: v for k, v in os.environ.items() if k in ("PATH", "HOME", "LANG", "ANTHROPIC_API_KEY",
                                                          "ELLIS_EXTRACTION_MODEL", "SSL_CERT_FILE",
@@ -113,17 +115,29 @@ def run_extraction_subprocess(doc: Document) -> dict[str, Any]:
                                                          "REQUESTS_CA_BUNDLE")}
     try:
         with storage.local_file(doc.storage_path) as path:
-            proc = subprocess.run(
+            proc = subprocess.Popen(
                 # -E -s, not -I: -I also drops the cwd from sys.path, and then `ellis` only imports when it is
                 # pip-installed in a way isolated mode still sees (true of uv's backend/.venv, not the repo .venv)
                 [sys.executable, "-E", "-s", "-m", "ellis.extraction.worker", doc.document_type, path, doc.mime,
                  doc.sha256],
-                capture_output=True, text=True, timeout=180 if doc.document_type == "n400" else 60, env=env,
-                cwd=str(BACKEND_DIR))
-        out = proc.stdout.strip().splitlines()
-        return json.loads(out[-1]) if out else {"ok": False, "error": proc.stderr[-500:] or "no output"}
-    except subprocess.TimeoutExpired:
-        return {"ok": False, "error": "timeout"}
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env, cwd=str(BACKEND_DIR))
+            timer = threading.Timer(60, proc.kill)
+            timer.start()
+            last = None
+            try:
+                for line in proc.stdout:
+                    msg = json.loads(line)
+                    if "field" in msg and on_field is not None:
+                        on_field(msg)
+                    else:
+                        last = msg
+                err = proc.stderr.read()
+                proc.wait()
+            finally:
+                timer.cancel()
+        if proc.returncode == -9:
+            return {"ok": False, "error": "timeout"}
+        return last or {"ok": False, "error": err[-500:] or "no output"}
     except Exception as e:  # noqa: BLE001
         return {"ok": False, "error": str(e)}
 
@@ -134,6 +148,8 @@ def extract_async(doc_id: str) -> None:
             doc = s.get(Document, doc_id)
             snapshot = Document(id=doc.id, document_type=doc.document_type, storage_path=doc.storage_path,
                                 mime=doc.mime, sha256=doc.sha256)
+        if snapshot.document_type == "n400":
+            return fill_n400(doc_id)
         result = run_extraction_subprocess(snapshot)
         with session_scope() as s:
             doc = s.get(Document, doc_id)
@@ -171,11 +187,6 @@ def apply_extraction(s: Session, case: Case, doc: Document, result: dict[str, An
         if data.get(k):
             vaulted[k] = str(data[k])
             data[k] = token
-    answers = data.get("answers") or {}  # n400
-    for k, v in answers.items():
-        if v and catalog.is_masked(k):
-            vaulted[k] = str(v)
-            answers[k] = catalog.mask_token(k)
     quality = data.get("quality", "low")
     x = Extraction(clinic_id=case.clinic_id, case_id=case.id, document_id=doc.id, data=data, quality=quality,
                    quality_reasons=data.get("quality_reasons", []), extractor=result.get("extractor", "?"), ts=now())
@@ -234,8 +245,6 @@ def _belongs_to_applicant(s: Session, case: Case, doc: Document, data: dict) -> 
 
 def _apply_fields(s: Session, case: Case, doc: Document, data: dict, vaulted: dict, quality: str) -> list[str]:
     t = doc.document_type
-    if t == "n400":
-        return _apply_n400(s, case, doc, data, vaulted)
     m: dict[str, Any] = {}
     if t == "green_card":
         m = {"lpr_since": _iso(data.get("resident_since")), "dob": _iso(data.get("dob")),
@@ -267,25 +276,121 @@ def _apply_fields(s: Session, case: Case, doc: Document, data: dict, vaulted: di
     return applied
 
 
-def _apply_n400(s: Session, case: Case, doc: Document, data: dict, vaulted: dict) -> list[str]:
-    """The applicant's own N-400: every answer on it replaces the current value; a blank leaves it alone."""
-    applied = []
-    for field, value in (data.get("answers") or {}).items():
-        value = vaulted.get(field, value)
-        if value in (None, "", []) or catalog.field_def(field) is None:
-            continue
-        if not cs.consent_given(s, case):
-            from .accounts import stash_extracted
-            stash_extracted(s, case, field, value, document_id=doc.id)
-            applied.append(field)
-            continue
-        try:
-            cs.record_fact(s, case, field, value, source="document", is_correction=True, actor="extraction",
-                           actor_type="system", provenance={"document_id": doc.id, "document_type": "n400"})
-        except cs.CaseError:
-            continue  # unknown key, value that doesn't validate, or a section deferred to the clinic
-        applied.append(field)
-    return applied
+def schema_problem() -> str | None:
+    """Checked before an N-400 fills anything: every table and column the models expect exists in the live database."""
+    from sqlalchemy import inspect
+    from ..db import Base, engine
+    insp = inspect(engine())
+    live = set(insp.get_table_names())
+    for table in Base.metadata.sorted_tables:
+        if table.name not in live:
+            return f"table {table.name} is missing"
+        cols = {c["name"] for c in insp.get_columns(table.name)}
+        if missing := [c.name for c in table.columns if c.name not in cols]:
+            return f"{table.name} is missing {', '.join(missing)}"
+    return None
+
+
+def fill_n400(doc_id: str) -> None:
+    """An uploaded N-400 fills the form in one sweep: the worker reads the file once and streams each app field as it
+    passes it; each is written (or cleared) and committed at once, so the parts view fills as the sweep moves."""
+    with session_scope() as s:
+        doc = s.get(Document, doc_id)
+        case = s.get(Case, doc.case_id)
+        problem = schema_problem()
+        if problem:
+            return apply_extraction(s, case, doc, {"ok": False, "error": f"database check failed: {problem}"})
+        answers: dict[str, Any] = {}
+        applied: list[str] = []
+        state = {"section": None, "owner_ok": True}
+
+        def on_field(m: dict) -> None:
+            field, value = m["field"], m["value"]
+            if m["section"] != state["section"]:
+                state["section"] = m["section"]
+                cs.push(s, case, "n400.fill", {"document_id": doc.id, "section": m["section"]})
+            if field == "name.given" and value:  # fills either way; someone else's name is flagged for the clinic
+                state["owner_ok"] = _belongs_to_applicant(s, case, doc, {"answers": {field: value}})
+            if _set_n400_field(s, case, doc, field, value):
+                applied.append(field)
+            answers[field] = catalog.mask_token(field) if value and catalog.is_masked(field) else value
+            s.commit()
+
+        result = run_extraction_subprocess(doc, on_field)
+        if not result.get("ok"):
+            s.rollback()
+            cs.push(s, case, "n400.fill", {"document_id": doc.id, "section": None})
+            return apply_extraction(s, case, doc, result)
+        s.add(Extraction(clinic_id=case.clinic_id, case_id=case.id, document_id=doc.id, quality="high",
+                         data={"quality": "high", "quality_reasons": [], "answers": answers},
+                         extractor=result["extractor"], ts=now()))
+        doc.quality, doc.status = "high", "extracted"
+        doc.checks = {**(doc.checks or {}), "legible": True, "belongs_to_applicant": state["owner_ok"],
+                      "applied_fields": applied}
+        cs.emit(s, case, "doc.extracted", {"document_id": doc.id, "document_type": "n400", "quality": "high",
+                                           "applied_fields": applied}, "system", "extraction_worker")
+        cs.push(s, case, "n400.fill", {"document_id": doc.id, "section": None})
+        cs.push(s, case, "document.status", {"document_id": doc.id, "status": "extracted", "quality": "high",
+                                             "document_type": "n400"})
+        check_names(s, case)
+        cs.evaluate_rules(s, case)
+        cs.after_fact_change(s, case)
+
+
+def _coerce(field: str, value: Any) -> Any:
+    """The N-400's spellings into the catalog's: mm/dd/yyyy, "$72,000", "biological daughter"."""
+    d = catalog.field_def(field) or {}
+    if not isinstance(value, str):
+        return value
+    if catalog.is_date_field(field) and (m := re.fullmatch(r"(\d{2})/(\d{2})/(\d{4})", value)):
+        return f"{m[3]}-{m[1]}-{m[2]}"
+    if d.get("type") == "int":
+        return re.sub(r"\D", "", value) or value
+    if d.get("type") == "bool":  # a yes/no the form implies, e.g. trips.any from a filled trip row
+        return keywords.fold(value) not in ("n", "no")
+    if d.get("type") == "enum":
+        folded = keywords.fold(value).replace(" ", "_")
+        return next((o for o in d.get("options", []) if o in folded), value)
+    return value
+
+
+def _set_n400_field(s: Session, case: Case, doc: Document, field: str, value: Any) -> bool:
+    """The upload overrides the online form: its value replaces the answer; a blank or unreadable one clears it."""
+    if not cs.consent_given(s, case):  # no fact rows before consent: the value waits in the prefill bag
+        if value in (None, "", []):
+            return False
+        from .accounts import stash_extracted
+        stash_extracted(s, case, field, value, document_id=doc.id)
+        return True
+    cur = cs.current_facts(s, case.id).get(field)
+    if cur is not None and cur.value == catalog.DEFERRED:
+        return False  # deferred to a licensed professional: not the upload's to undo
+    try:
+        value = None if value in (None, "", []) else normalize(field, _coerce(field, value))
+    except ValueError_:
+        value = None  # can't tell what the form says: fill it with nothing
+    others = cs.facts_for(s, case.id, field)
+    if value is None:
+        if others:
+            cs._supersede(others, None, "cleared by N-400 upload")
+            cs.emit(s, case, "fact.cleared", {"field": field, "document_id": doc.id}, "system", "extraction_worker")
+        return False
+    masked = catalog.is_masked(field)
+    if cur is not None and cur.status == "confirmed" and (
+            cs.vault_lookup(s, cur.id) == str(value) if masked else equal(field, cur.value, value)):
+        return True
+    f = cs._insert_fact(s, case, field, catalog.mask_token(field) if masked else value, "confirmed", "document",
+                        provenance={"document_id": doc.id, "document_type": "n400"}, proposed_by="extraction",
+                        supersedes=cur.id if cur else None, confidence="high")
+    cs._supersede(others, f, "replaced by N-400 upload")
+    if masked:
+        s.add(VaultValue(fact_id=f.id, clinic_id=case.clinic_id, case_id=case.id, field=field,
+                         ciphertext=vault.encrypt(str(value)), last4=str(value)[-4:]))
+    cs.emit(s, case, "fact.recorded", {"field": field, "fact_id": f.id, "source": "document", "status": "confirmed",
+                                       "masked": masked}, "system", "extraction_worker")
+    cs._mark_material(case, field)
+    cs._layer1(s, case, field, value, None)  # a "yes" on a background question raises its flag, as when spoken
+    return True
 
 
 def _title(v: Any) -> str | None:

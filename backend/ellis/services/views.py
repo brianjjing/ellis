@@ -192,9 +192,7 @@ def applicant_case(s: Session, case: Case) -> dict[str, Any]:
     gaps = [{"id": g.id, "document_type": g.document_type, "label": g.label_es or g.reason}
             for g in s.scalars(select(Gap).where(Gap.case_id == case.id, Gap.status == "open"))]
     docs = [{"id": d.id, "document_type": d.document_type, "status": d.status, "quality": d.quality,
-             "filename": d.filename, "ts": d.ts.isoformat(),
-             "applied": len((d.checks or {}).get("applied_fields") or []),
-             "owner_ok": (d.checks or {}).get("belongs_to_applicant") is not False}
+             "filename": d.filename, "ts": d.ts.isoformat()}
             for d in s.scalars(select(Document).where(Document.case_id == case.id).order_by(Document.ts))]
     notes = [{"id": r.id, "note": r.decision_note, "label": (s.get(Flag, r.flag_id).applicant_label_es
                                                               if r.flag_id and s.get(Flag, r.flag_id) else None)}
