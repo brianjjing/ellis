@@ -51,10 +51,11 @@ export default function Chat() {
   const [search, setSearch] = useState('')
   const [viewing, setViewing] = useState<Thread | null>(null)
   const [typed, setTyped] = useState('')
-  const [holding, setHolding] = useState(false)
+  const [holding, setHolding] = useState(false) // the applicant's mic is open (not muted)
   const [consentLater, setConsentLater] = useState(false)
   const [started, setStarted] = useState(live.length > 0)
   const [sound, setSound] = useState(soundOn)
+  const shownState = state === 'listening' && !holding ? 'idle' : state // "Listening" only while the mic is open
   const vc = useRef<VoiceClient | null>(null)
   const voiceRef = useRef(true)
   const queued = useRef<string | null>(null)
@@ -260,10 +261,10 @@ export default function Chat() {
                 </div>
               ))}
               {/* Ellis's pending turn. No dots while speaking: the line's text is already shown. Screen readers get the state from the status line below. */}
-              {!viewing && composerOn && (state === 'connecting' || state === 'thinking' || (voice && state === 'listening')) && (
+              {!viewing && composerOn && (state === 'connecting' || state === 'thinking' || (voice && shownState === 'listening')) && (
                 <div className={`msg${shown.at(-1)?.who === 'ellis' ? ' cont' : ''}`} aria-hidden="true">
                   {shown.at(-1)?.who !== 'ellis' && <div className="label green">{t(lang, 'ellis')}</div>}
-                  {state === 'listening' ? <p className="lead soft">{t(lang, 'listening').replace(/…$/, '')}<Dots sm /></p> : <Dots />}
+                  {shownState === 'listening' ? <p className="lead soft">{t(lang, 'listening').replace(/…$/, '')}<Dots sm /></p> : <Dots />}
                 </div>
               )}
             </div>
@@ -286,7 +287,7 @@ export default function Chat() {
                   </div>
                 )}
                 {/* the box shows the state; this keeps it announced to screen readers */}
-                {!showGuide && <p className="sr-only" aria-live="polite">{voice ? t(lang, VOICE_KEY[state]) : t(lang, 'paused')}</p>}
+                {!showGuide && <p className="sr-only" aria-live="polite">{voice ? t(lang, VOICE_KEY[shownState]) : t(lang, 'paused')}</p>}
                 <form className="ask" onSubmit={(e) => { e.preventDefault(); send() }}>
                   <span className="tools">
                     <button type="button" aria-label={t(lang, 'uploadDoc')} className="icon-btn" onClick={() => upload()}><Icon name="clip" size={20} /></button>
@@ -294,13 +295,13 @@ export default function Chat() {
                   </span>
                   <label htmlFor="msg" className="sr-only">{voice ? t(lang, 'listening') : 'Message Ellis'}</label>
                   <input id="msg" type="text" autoComplete="off" readOnly={voice} value={voice ? partial : typed} onChange={(e) => setTyped(e.target.value)}
-                    placeholder={!voice ? 'Ask anything, in any language' : showGuide || state === 'idle' ? t(lang, 'micHint') : t(lang, VOICE_KEY[state])} />
+                    placeholder={!voice ? 'Ask anything, in any language' : showGuide || shownState === 'idle' ? t(lang, 'micHint') : t(lang, VOICE_KEY[shownState])} />
                   {voice ? (
                     // On the start screen the first tap starts the voice session, like "Start talking" did; after that it toggles the mic.
-                    <button type="button" aria-label={holding || state === 'speaking' ? t(lang, 'stop') : t(lang, 'talk')} aria-pressed={holding || state === 'listening'}
-                      className={`icon-btn mic${state === 'listening' || state === 'speaking' ? ' pulse' : ''}`}
+                    <button type="button" aria-label={holding || state === 'speaking' ? t(lang, 'stop') : t(lang, 'talk')} aria-pressed={holding}
+                      className={`icon-btn mic${holding || state === 'speaking' ? ' pulse' : ''}`}
                       onClick={showGuide ? () => setStarted(true) : tap}>
-                      <Icon name={holding || state === 'listening' ? 'mic' : 'micOff'} size={22} />
+                      <Icon name={holding ? 'mic' : 'micOff'} size={22} />
                     </button>
                   ) : (
                     <button type="submit" aria-label="Send" className="icon-btn" style={{ background: 'var(--ink)', color: 'var(--white)' }}><Icon name="send" size={20} /></button>
