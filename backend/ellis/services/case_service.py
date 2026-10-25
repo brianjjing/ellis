@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 from ..config import fee_config, rule_config, settings
 from ..db import (
     Briefing, CallSession, Case, Derived, Document, Event, Extraction, Fact, Flag, Gap, Memo, Packet, ReviewItem,
-    Signoff, Task, Utterance, VaultValue, now,
+    Signoff, Task, TravelCandidate, Utterance, VaultValue, now,
 )
 from ..rules import engine as rules
 from . import catalog, keywords, vault
@@ -1178,6 +1178,12 @@ def pending_item(view: dict[str, dict], item: dict[str, Any]) -> bool:
         return v is not None and catalog.needs_confirmation(f, v)
     if kind == "request_secure_entry" and f:
         return f not in view
+    if kind == "read_back_candidate":
+        trip_index = item.get("trip_index")
+        if trip_index is None:
+            return False
+        dep = view.get(f"trips[{trip_index}].departure")
+        return dep is None or dep.get("status") != "confirmed"
     return True
 
 
@@ -1187,6 +1193,23 @@ def get_briefing(s: Session, case: Case) -> dict[str, Any]:
     der = latest_derived(s, case.id)
     body = dict(b.body) if b else {"version": 0, "queue": []}
     body["queue"] = [it for it in body.get("queue", []) if pending_item(view, it)]
+    # Append unconfirmed travel candidates as read_back_candidate queue items.
+    for tc in s.scalars(select(TravelCandidate).where(TravelCandidate.case_id == case.id,
+                                                       TravelCandidate.status == "pending")):
+        dep_key = f"trips[{tc.trip_index}].departure"
+        dep = view.get(dep_key)
+        if dep is None or dep.get("status") != "confirmed":
+            body["queue"].append({
+                "kind": "read_back_candidate",
+                "travel_candidate_id": tc.id,
+                "trip_index": tc.trip_index,
+                "departure_date": tc.departure_date,
+                "return_date": tc.return_date,
+                "departure_source": tc.departure_source,
+                "return_source": tc.return_source,
+                "source_document_ids": tc.source_document_ids,
+                "is_candidate": True,
+            })
     body["fallback"] = catalog.fallback_queue(view, der.data if der else None, today(), deferred_sections(s, case))
     body["stale"] = b is None or (now() - _aware(b.ts)).total_seconds() > 60 and _aware(b.ts) < _aware(case.last_event_at)
     body["case_state"] = case.state
