@@ -22,6 +22,7 @@ from __future__ import annotations
 import json
 import logging
 import uuid
+from concurrent.futures import Future, ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
 
@@ -39,6 +40,8 @@ PAGES = ["/form", "/interview", "/reminders", "/profile", "/review"]
 STOP_NOTE = ("[the applicant raised a topic only a licensed professional can review; the fixed stop message was "
              "played. Don't refer to it.]")
 # tools that only show a card or sheet: the live case data built before them is still current
+# builds the next turn's live case data off the reply path; shared, so a session leaves no thread behind
+_PREFETCH = ThreadPoolExecutor(max_workers=4, thread_name_prefix="liaison-ctx")
 CARD_TOOLS = {"set_focus", "request_secure_entry", "request_upload", "request_biographics", "change_setting",
               "ask_clinic", "end_call"}
 
@@ -120,10 +123,14 @@ class LlmLiaison:
         self.flags: list[dict] = []  # flags raised this turn; they ride on Ellis's reply as a margin note
         self._system = ""
         self._anthropic = None
-        # live case data for this turn: one database read per turn, not one per model round. A tool that writes
-        # (or a new focus) drops it so the next round reads it again.
+        # Live case data, built while the applicant listens and talks (after each reply), so a turn starts with
+        # one query -- the case's latest event id -- instead of a full rebuild. Every change to a case appends an
+        # event, so the same id means the same data. A tool that writes, or a new focus, rebuilds it.
         self._ctx: dict[str, Any] | None = None
         self._ctx_focus: dict[str, Any] | None = None
+        self._ctx_event: int | None = None
+        self._ctx_checked = False  # checked against the latest event id this turn
+        self._prefetch: Future | None = None
 
     def _client_(self):
         if self._anthropic is None:
@@ -188,20 +195,38 @@ class LlmLiaison:
 
     def _payload(self) -> list[dict]:
         """System prompt (cached) + the live case data block for the current focus (rebuilt every call)."""
-        if self._ctx is None or self._ctx_focus != self.focus:
-            try:
-                self._ctx = self.c.agent_context(self.focus)
-                self._ctx_focus = dict(self.focus)
-            except Exception:  # noqa: BLE001
-                log.exception("agent_context failed")
-                self._ctx = None
-        ctx = dict(self._ctx) if self._ctx is not None else {
+        try:
+            live = self._live_context()
+        except Exception:  # noqa: BLE001
+            log.exception("agent_context failed")
+            self._ctx, live = None, None
+        ctx = dict(live) if live is not None else {
             "error": "case data is unavailable right now: don't state any case facts, dates or status"}
         ctx["focus"] = self.focus
         ctx["waiting_for_permission"] = [p["title"] for p in self.pending.values()]
         return [{"type": "text", "text": self._system, "cache_control": {"type": "ephemeral"}},
                 {"type": "text", "text": "## Live case data (rebuilt for this call; the only source of truth)\n"
                  + json.dumps(_jsonable(ctx), ensure_ascii=False)}]
+
+    def _live_context(self) -> dict[str, Any]:
+        fut, self._prefetch = self._prefetch, None
+        if fut is not None:
+            try:
+                self._ctx_focus, (self._ctx_event, self._ctx) = fut.result()
+            except Exception:  # noqa: BLE001 - built again below
+                log.exception("context prefetch failed")
+        if self._ctx is not None and self._ctx_focus == self.focus:
+            if self._ctx_checked or self.c.latest_event_id() == self._ctx_event:
+                self._ctx_checked = True
+                return self._ctx
+        self._ctx_event, self._ctx = self.c.case_context(self.focus)
+        self._ctx_focus, self._ctx_checked = dict(self.focus), True
+        return self._ctx
+
+    def _prefetch_context(self) -> None:
+        """Build the next turn's live case data now, off the reply path."""
+        focus = dict(self.focus)
+        self._prefetch = _PREFETCH.submit(lambda: (focus, self.c.case_context(focus)))
 
     # ------------------------------------------------------------ turns
 
@@ -265,7 +290,7 @@ class LlmLiaison:
 
     def _turn_model(self, text: str, uid: str | None, hint: str = "") -> list[Say]:
         self._append("user", f"{text}\n[{hint}]" if hint else text)
-        self._ctx = None  # staff agents may have changed the case since the last turn
+        self._ctx_checked = False  # staff agents may have changed the case since the last turn
         end_call = False
         texts: list[str] = []
         meta: dict[str, Any] = {}
@@ -315,6 +340,8 @@ class LlmLiaison:
                   kind="readback" if rb else "llm", field=rb, end_call=end_call, meta=meta)
         if end_call:
             self.ended = True
+        else:
+            self._prefetch_context()
         return [line]
 
     def _flag_notes(self) -> list[dict]:

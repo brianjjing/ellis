@@ -206,19 +206,33 @@ def test_the_model_sees_what_was_withheld_or_unheard(seeded):
     assert not any("STOP:" in t for t in texts) and any(STOP_NOTE in t for t in texts)
 
 
-def test_live_case_data_is_read_once_per_turn_until_a_tool_writes(seeded):
+def test_live_case_data_is_built_between_turns_and_checked_with_one_query(seeded):
     a = agent("c_jorge",
               use("request_upload", document_type="passport"), use("set_focus", task="general", next_step="Hi"),
               say("Suba su pasaporte."),
-              use("record_fact", field="employment[0].employer", value="Acme Foods"), say("Gracias."))
-    reads = []
-    real = a.c.agent_context
-    a.c.agent_context = lambda focus: reads.append(dict(focus)) or real(focus)
+              use("record_fact", field="employment[0].employer", value="Acme Foods"), say("Gracias."),
+              say("Su clínica agregó una nota."))
+    builds, checks = [], []
+    real_build, real_check = a.c.case_context, a.c.latest_event_id
+    a.c.case_context = lambda focus: builds.append(dict(focus)) or real_build(focus)
+    a.c.latest_event_id = lambda: checks.append(1) or real_check()
     a.cfg = {"consent_given": True}
+
     a.handle("Tengo mi pasaporte")
-    # three model rounds: a card tool keeps the data, a new focus reads it once more
-    assert len(a._anthropic.calls) == 3 and len(reads) == 2
-    reads.clear()
+    # three model rounds, two builds: a card tool keeps the data, the new focus needs it again;
+    # then the next turn's data is built after the reply
+    assert len(a._anthropic.calls) == 3
+    a._prefetch.result()
+    assert len(builds) == 3 and builds[-1]["task"] == "general" and checks == []
+
     a.handle("Trabajo en Acme Foods")
-    # a new turn reads again; record_fact wrote, so the round after it reads again too
-    assert len(reads) == 2
+    # the turn starts with one check (nothing changed: the prefetched data is used); record_fact wrote, so the
+    # round after it builds again; then the next turn's data is prefetched
+    a._prefetch.result()
+    assert len(checks) == 1 and len(builds) == 5
+
+    with session_scope() as s:  # someone else changes the case between turns
+        cs.emit(s, s.get(Case, "c_jorge"), "note.added", {"memo_id": "m_x"}, "staff", "u_x")
+    a.handle("¿Hay algo nuevo?")
+    a._prefetch.result()
+    assert len(checks) == 2 and len(builds) == 7  # the check saw the new event: built again (+ the prefetch)
