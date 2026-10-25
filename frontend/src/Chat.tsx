@@ -56,11 +56,19 @@ export default function Chat() {
   const [started, setStarted] = useState(live.length > 0)
   const [sound, setSound] = useState(soundOn)
   const vc = useRef<VoiceClient | null>(null)
+  const voiceRef = useRef(true)
+  const queued = useRef<string | null>(null)
   const add = (m: Msg) => setMsgs((ms) => (live = [...ms, m]))
   const toggleHistory = () => setHistory(!history)
 
-  // One liaison session per mount; only "New chat" starts a fresh one. Typing vs. talking shares it.
+  const showConsent = !viewing && !data.consent_given
+  const showGuide = !viewing && !!data.consent_given && !started && msgs.length === 0
+  // The liaison waits until they leave the consent screen and the start screen. A chip can be typed before the socket opens.
+  const composerOn = !showConsent && !showGuide
+
+  // One liaison session per chat; only "New chat" starts a fresh one. Typing vs. talking shares it.
   useEffect(() => {
+    if (!composerOn) return
     setNotice(null)
     setSince(live.length)
     const c: VoiceClient = new VoiceClient({
@@ -72,6 +80,8 @@ export default function Chat() {
         if (info.talk_unavailable) setMode(false)
         if (info.voice_unavailable) setNotice("Ellis's voice isn't available right now; replies show here as text.")
         else if (info.talk_unavailable) setNotice("Talking isn't available right now. You can type.")
+        const q = queued.current
+        if (q) { queued.current = null; c.sendText(q) }
       },
       onLine: (l) => {
         if (l.meta?.focus) setFocus((liveFocus = l.meta.focus))
@@ -85,10 +95,11 @@ export default function Chat() {
     })
     vc.current = c
     c.soundOn = soundOn
+    c.voice = voiceRef.current
     // the disclosure is only said again on a fresh chat ("New chat" or a reload); the server knows if they agreed
     c.start(lang, data.language ?? 'en-US', live.some((m) => m.kind === 'disclosure'))
     return () => c.stop(false)
-  }, [session])
+  }, [session, composerOn])
 
   // Newest message in view, like a coding agent's transcript. The page scrolls (the composer is sticky over
   // its bottom), so go to the page's end: scrolling an element at the thread's end into view tucks it behind
@@ -96,6 +107,7 @@ export default function Chat() {
   useEffect(() => { if (msgs.length) scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' }) }, [msgs.length])
 
   const setMode = (v: boolean) => {
+    voiceRef.current = v
     setVoice(v)
     setHolding(false)
     vc.current?.setVoice(v)
@@ -115,7 +127,8 @@ export default function Chat() {
     if (!text) return
     setViewing(null)
     if (state === 'ended') return setSession((s) => s + 1) // reconnect first; the typed text stays to send again
-    vc.current?.sendText(text)
+    if (vc.current?.ws?.readyState === WebSocket.OPEN) vc.current.sendText(text)
+    else queued.current = text
     setTyped('')
   }
   const answer = (i: number, yes: boolean) => {
@@ -133,6 +146,9 @@ export default function Chat() {
     setFocus(null)
     setMsgs([])
     setViewing(null)
+    queued.current = null
+    setStarted(false)
+    setMode(true)
     setSession((s) => s + 1)
   }
 
@@ -162,7 +178,7 @@ export default function Chat() {
             <div className="thread" aria-live="polite">
               {/* the page's greeting, not something Ellis said */}
               {!viewing && <p className="lead" style={{ fontFamily: 'var(--serif)', fontSize: 32, lineHeight: '40px' }}>{greeting()}, {data.first_name}.{canFile}</p>}
-              {!viewing && !data.consent_given && (
+              {showConsent && (
                 <section className="panel" aria-label={t(lang, 'iAgree')}>
                   <p className="lead">{data.disclosure}</p>
                   {consentLater ? <p>{t(lang, 'consentLater')}</p> : (
@@ -173,10 +189,10 @@ export default function Chat() {
                   )}
                 </section>
               )}
-              {!viewing && data.consent_given && !started && msgs.length === 0 && (
+              {showGuide && (
                 <GuideStart lang={lang} onLocale={async (code) => { await api('/api/a/language', { body: { locale: code } }); await reload() }}
-                  onTalk={() => { setStarted(true); setMode(true) }} onType={() => { setStarted(true); setMode(false) }}
-                  onChip={(text) => { setStarted(true); send(text) }} />
+                  onTalk={() => { setMode(true); setStarted(true) }} onType={() => { setMode(false); setStarted(true) }}
+                  onChip={(text) => { setMode(false); queued.current = text; setStarted(true) }} />
               )}
 
               {shown.map((m, i) => m.who === 'you' ? (
@@ -249,7 +265,7 @@ export default function Chat() {
               ))}
             </div>
 
-            <div className="composer">
+            {composerOn && <div className="composer">
               <div>
                 {notice && <p className="small rust" role="status">{notice}</p>}
                 {focus?.next_step && !viewing && (
@@ -292,7 +308,7 @@ export default function Chat() {
                   <button type="button" className="btn" onClick={() => upload()}>Read a document for me</button>
                 </div>
               </div>
-            </div>
+            </div>}
           </section>
 
           {history && (
