@@ -95,7 +95,7 @@ export default function Interview() {
         <div key={tab} className="content enter" style={{ padding: '48px 24px', gap: 24 }}>
           {tab === 'interview' && <>
             <div className="label">Practice interview · question {(n % officer.length) + 1} of {officer.length}</div>
-            <section aria-label="Officer" className="card" style={{ padding: '9px 32px 41px', gap: 12 }}>
+            <section aria-label="Officer" className="card" style={{ padding: '18.5px 32px 41px', gap: 12 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                 <span className="label">The officer asks</span>
                 <button type="button" className="btn" style={{ gap: 6, minHeight: 0, height: 32 }} onClick={() => say(q)}><Icon name="speaker" />Hear it again</button>
