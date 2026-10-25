@@ -2,15 +2,18 @@
 
 - skeleton:  deterministic Python (no model, no credits) — the default until keys/agents exist
 - anthropic: prompts/<agent>.md + context → Claude → JSON envelope
-- creao:     POST /v1/runs to a saved Creao agent; results arrive at /webhooks/creao (deduped by run id)
+- creao:     POST to the agent's own Creao app, poll to completion, translate its real output into
+  our proposal envelope. See docs/superpowers/specs/2026-10-24-creao-canonical-fields-design.md.
 """
 
 from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
+import time
 from typing import Any
 
 import httpx
@@ -77,32 +80,162 @@ class AnthropicBackend:
         return json.loads(text[start:end + 1])
 
 
-class CreaoBackend:
-    """Dispatch to a saved Creao agent. The agent reads the case through our MCP tools (scoped by role token)
-    and posts its envelope to our webhook; the webhook handler applies it through the same validation path.
+# The three Creao engines (case_master.py, docket_engine.py, qa_review.py) each look up a different
+# set of canonical field names; our own field keys (config/fields.yaml) match none of them exactly.
+# Two live runs (case_manager run_live_test_1, qa_reviewer run_live_qa_1, both 2026-10-24) scored false
+# criticals until these were aliased -- both agents self-diagnosed the mismatch and named the canonical
+# keys they needed, rather than silently failing.
+_CANONICAL_ALIASES = {
+    "lpr_since": ["date_lpr", "date_became_lpr"],
+    "dob": ["date_of_birth"],
+    "a_number": ["alien_number"],
+    "sex": ["gender"],
+    "marital.status": ["marital_status"],
+}
 
-    Config: CREAO_API_KEY (cr_sk_…), CREAO_BASE_URL, CREAO_AGENT_<AGENT>=agent id, ELLIS_PUBLIC_API_URL.
-    TODO(open-question-7): confirm the /v1/runs request/response fields against Creao's current API.
+
+def _to_case_bundle(ctx: dict) -> dict:
+    """Reshape our internal context into the "tolerant" bundle shape the Creao playbooks expect
+    (CASE_PACKET_CONTRACT.md / DOCKET_CONTRACT.md: every section optional). Minimal, not exhaustive --
+    just enough for a real run against live case data instead of a synthetic fixture."""
+    facts = []
+    for k, v in ctx["facts"].items():
+        row = {"field": k, "value": v["value"], "source": {"type": v.get("source") or "voice"},
+              "status": v.get("status"), "hedged": bool(v.get("hedge"))}
+        facts.append(row)
+        for alias in _CANONICAL_ALIASES.get(k, []):
+            facts.append({**row, "field": alias})
+    given, family = ctx["facts"].get("name.given"), ctx["facts"].get("name.family")
+    if given and family:
+        facts.append({"field": "legal_name", "value": f"{given['value']} {family['value']}",
+                     "source": {"type": given.get("source") or "voice"}, "status": given.get("status")})
+    documents = [{"id": d["id"], "name": d.get("document_type"), "type": d.get("document_type"),
+                 "extracted_text": json.dumps(d.get("extraction") or {})} for d in ctx["documents"]]
+    tasks = [{"id": t["id"], "title": t["title"], "status": t["status"], "owner": t["agent"],
+             "field": t.get("field")} for t in ctx["tasks"]]
+    basis = ctx["facts"].get("eligibility_basis", {}).get("value")
+    married = ctx["facts"].get("spouse.citizenship_status", {}).get("value") == "us_citizen"
+    return {"case": {"client_name": ctx["case"].get("first_name"), "stage": ctx["case"]["state"],
+                     "eligibility_basis": "3_year" if basis == "3yr" else "5_year",
+                     "married_to_us_citizen": married},
+            "facts": facts, "documents": documents, "tasks": tasks,
+            "deadlines": ctx.get("deadlines") or [], "derived": ctx.get("derived") or {}}
+
+
+POLL_INTERVAL_S = 4
+POLL_TIMEOUT_S = 90
+_VALID_ITEM_TYPES = {"briefing", "task", "review_item", "gap", "gap_close", "memo", "deadline", "evidence",
+                    "doc_checks", "review_note"}
+
+
+def _fetch_json(headers: dict, url: str) -> dict:
+    r = httpx.get(url, headers=headers, timeout=30, follow_redirects=True)
+    r.raise_for_status()
+    return r.json()
+
+
+def _artifact_url(result: dict, title: str) -> str | None:
+    for a in result.get("artifacts", []):
+        if a["title"] == title:
+            return a["url"]
+    return None
+
+
+def _findings_to_tasks(findings: list[dict]) -> list[dict]:
+    """Generic translation for the docket_clerk/qa_reviewer engines' findings[] arrays -- not a full
+    mapping of every field, just enough to get real findings into the case for review."""
+    items = []
+    for f in findings:
+        title = f.get("message") or f.get("title") or f.get("detail") or f.get("code") or "finding"
+        sev = (f.get("severity") or "").title()
+        items.append({"type": "task", "payload": {"kind": "finding",
+                      "title": f"[{sev}] {title}" if sev else title, "field": f.get("field")}})
+    return items
+
+
+def _translate(agent: str, result: dict, headers: dict, language: str) -> list[dict]:
+    """Each Creao engine returns its own native shape (see the design doc). Map the parts we can into
+    our proposal envelope's item list; anything not mapped here is simply not written back yet."""
+    if agent == "doc_paralegal":
+        m = re.search(r"```json\s*(.*?)\s*```", result.get("chatText", ""), re.S)
+        if not m:
+            return []
+        obj = json.loads(m.group(1))
+        out = []
+        for it in obj.get("items", []):
+            if it.get("type") not in _VALID_ITEM_TYPES:
+                continue
+            payload = {k: v for k, v in it.items() if k != "type"}
+            if "exhibit" in payload and payload["exhibit"] is not None:
+                payload["exhibit"] = str(payload["exhibit"])
+            out.append({"type": it["type"], "payload": payload})
+        return out
+    if agent == "docketing_clerk":
+        url = _artifact_url(result, "docket.json")
+        if not url:
+            return []
+        return _findings_to_tasks(_fetch_json(headers, url).get("findings", []))
+    if agent == "qa_reviewer":
+        url = _artifact_url(result, "qa_findings.json")
+        if not url:
+            return []
+        return _findings_to_tasks(_fetch_json(headers, url).get("findings", []))
+    if agent == "case_manager":
+        url = _artifact_url(result, "question_queue.json")
+        if not url:
+            return []
+        qkey = f"question_{language}"
+        queue = [{"kind": "ask", "field": q.get("field"), qkey: q.get("text"), "reason": q.get("why")}
+                for q in _fetch_json(headers, url).get("questions", [])]
+        return [{"type": "briefing", "payload": {"queue": queue}}]
+    return []
+
+
+class CreaoBackend:
+    """Calls each agent's own Creao app directly -- one (api_key, app_id) pair per agent, set as
+    <AGENT>_API_KEY / <AGENT>_APP_ID (e.g. CASE_MANAGER_API_KEY, CASE_MANAGER_APP_ID). The case bundle
+    is sent inline as `inputs.case_bundle`; the runner already has this data (same build_context() the
+    skeleton backend uses), so the agent needs no live MCP/tool connection back to us for a read.
+
+    POST {CREAO_BASE_URL}/api/v1/apps/<app_id>/runs, Authorization: Bearer <api_key>, body {"inputs":
+    {...}}; returns a pending run id. Polled via GET .../runs/<id> until status leaves pending/running
+    (confirmed live against all four agents, 2026-10-24). Only doc_paralegal returns its envelope-shaped
+    output inline (a fenced JSON block in result.chatText); the other three return a summary inline and
+    their real structured output as a downloadable artifact file -- _translate() fetches and maps those.
     """
     name = "creao"
     model = None
-    asynchronous = True
 
-    def dispatch(self, agent: str, case_id: str, reason: str, run_id: str) -> dict:
-        key = os.environ.get("CREAO_API_KEY")
-        agent_id = os.environ.get(f"CREAO_AGENT_{agent.upper()}")
-        if not key or not agent_id:
-            raise BackendError("Creao is not configured (CREAO_API_KEY / CREAO_AGENT_<AGENT>)")
-        base = os.environ.get("CREAO_BASE_URL", "https://api.creao.ai")
-        hook = os.environ.get("ELLIS_PUBLIC_API_URL", "http://localhost:8000") + "/webhooks/creao"
-        r = httpx.post(f"{base}/v1/runs", headers={"Authorization": f"Bearer {key}"}, timeout=10, json={
-            "agent_id": agent_id, "input": {"case_id": case_id, "reason": reason, "run_id": run_id},
-            "webhook_url": hook})
+    def run(self, agent: str, ctx: dict, run_id: str, error: str | None = None) -> dict:
+        prefix = agent.upper()
+        key = os.environ.get(f"{prefix}_API_KEY")
+        app_id = os.environ.get(f"{prefix}_APP_ID")
+        if not key or not app_id:
+            raise BackendError(f"Creao not configured for {agent} ({prefix}_API_KEY / {prefix}_APP_ID)")
+        base = os.environ.get("CREAO_BASE_URL", "https://agent.creao.ai")
+        headers = {"Authorization": f"Bearer {key}"}
+        r = httpx.post(f"{base}/api/v1/apps/{app_id}/runs", headers=headers, timeout=30,
+                       json={"inputs": {"case_id": ctx["case"]["id"], "trigger": "staff_round_done",
+                                        "case_bundle": _to_case_bundle(ctx)}})
         r.raise_for_status()
-        return r.json()
-
-    def run(self, agent: str, ctx: dict, run_id: str, error: str | None = None) -> dict:  # pragma: no cover
-        raise BackendError("Creao runs are asynchronous; use dispatch()")
+        creao_run_id = r.json()["id"]
+        deadline = time.time() + POLL_TIMEOUT_S
+        result = None
+        while time.time() < deadline:
+            time.sleep(POLL_INTERVAL_S)
+            rr = httpx.get(f"{base}/api/v1/apps/{app_id}/runs/{creao_run_id}", headers=headers, timeout=30)
+            rr.raise_for_status()
+            d = rr.json()
+            if d["status"] not in ("pending", "running"):
+                result = d
+                break
+        if result is None:
+            raise BackendError(f"Creao run {creao_run_id} ({agent}) timed out after {POLL_TIMEOUT_S}s")
+        if result["status"] != "completed":
+            raise BackendError(f"Creao run {creao_run_id} ({agent}) ended with status {result['status']}")
+        items = _translate(agent, result["result"], headers, ctx.get("language", "es"))
+        return {"agent": agent, "run_id": run_id, "case_id": ctx["case"]["id"],
+                "based_on_event_id": ctx.get("latest_event_id"), "items": items}
 
 
 class FakeBackend:

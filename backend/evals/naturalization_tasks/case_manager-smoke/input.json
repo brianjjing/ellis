@@ -1,0 +1,33 @@
+{
+  "instructions": "TEST RUN. The case tools are not connected yet, so use this data as if get_case, list_documents, and list_tasks returned it. Produce the liaison queue and the session-close summary for this session.",
+  "get_case": {
+    "case_id": "case_test_101",
+    "client_language": "es",
+    "case_state": "evidence",
+    "stop_now_sections": ["criminal_history_detail"],
+    "deferred_sections": ["criminal_history_detail"],
+    "missing_required_fields": ["employment[0].employer", "employment[0].from"],
+    "facts": [
+      {"field": "trips[1].return", "value": "2023-05-20", "source": "voice", "confidence": "medium", "hedged": true},
+      {"field": "full_name", "value": "[NAME_1]", "source": "voice"},
+      {"field": "a_number", "value": "[ANUM_1]", "source": "voice"}
+    ],
+    "open_flags": [
+      {"key": "flag:document_conflict:trips[1].return", "type": "document_conflict", "field": "trips[1].return",
+       "note": "Stated return date conflicts with a passport entry stamp"}
+    ],
+    "sections_done_this_session": ["eligibility", "identity"],
+    "gate_missing": ["employment[0].employer", "employment[0].from", "trips[1].return (unconfirmed)"]
+  },
+  "list_documents": [
+    {"document_id": "doc_green_card", "type": "permanent_resident_card", "quality": "low",
+     "quality_reasons": ["glare across the card number"]}
+  ],
+  "list_tasks": [
+    {"agent": "doc_paralegal", "kind": "review_item", "status": "open", "category": "name_mismatch",
+     "field": "full_name",
+     "note": "Passport holder_name [NAME_1] vs green card holder_name [NAME_2]; needs the client's legal-spelling document, but first needs to ask which name is current."},
+    {"agent": "qa_reviewer", "kind": "challenge", "status": "open", "round": 1, "field": "trips[1].return",
+     "question": "Su pasaporte muestra que regresó el 2 de junio de 2023, pero usted dijo el 20 de mayo. ¿Cuál es la fecha correcta?"}
+  ]
+}

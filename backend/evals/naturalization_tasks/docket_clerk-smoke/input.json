@@ -1,0 +1,23 @@
+{
+  "instructions": "TEST RUN. The case tools are not connected yet, so use this data as if get_case and get_derived returned it. get_derived is the output of the firm's own rules engine -- treat every date and day-count in it as already correct and final; you only ever copy values from it, you never compute one yourself.",
+  "get_case": {
+    "case_id": "case_test_201",
+    "case_state": "evidence",
+    "existing_deadlines": []
+  },
+  "get_derived": {
+    "earliest_filing": "2024-01-15",
+    "rule_id": "R-ELIG-EARLY",
+    "five_year_anniversary": "2024-04-10",
+    "anniversary_rule_id": "R-ANNIV"
+  },
+  "recent_events": [
+    {"kind": "fact.corrected", "field": "lpr_since", "old": "2019-04-10", "new": "2019-04-10",
+     "note": "applicant confirmed the same date during read-back; derived re-ran and earliest_filing did not change"}
+  ],
+  "draft": {
+    "form_edition_printed": "04/01/24",
+    "fee_checklist_line": "$640",
+    "payment_record_amount": "$760"
+  }
+}
