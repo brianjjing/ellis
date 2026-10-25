@@ -5,6 +5,7 @@ import './app.css'
 import SignIn from './SignIn'
 import SignUp from './SignUp'
 import GuestChat from './GuestChat'
+import GuestLocked, { locked } from './GuestLocked'
 import { AuthProvider, goSignIn, useAuth } from './auth'
 import Chat from './Chat'
 import Form from './Form'
@@ -57,11 +58,10 @@ function App() {
   const kind = me?.kind
   const m = path.match(/^\/a\/([^/]+)/)
   const clinic = path.startsWith('/clinic')
-  // Redirects run after render; a guest on an account page goes to sign-in, staff off /clinic go home to it.
+  // Redirects run after render; staff off /clinic go home to it. Guests may open every applicant page (account ones show locked).
   useEffect(() => {
     if (kind === 'staff' && !clinic && path !== '/signin' && path !== '/signup' && !m) navigate('/clinic', true)
     else if (kind && kind !== 'staff' && clinic) goSignIn(path)
-    else if (kind === 'guest' && path in pages && path !== '/') goSignIn(path)
   }, [kind, path])
 
   if (m) return !me ? <div className="page" /> : me.kind === 'guest' ? <SignUp token={decodeURIComponent(m[1])} /> : <SignIn token={decodeURIComponent(m[1])} />
@@ -69,7 +69,7 @@ function App() {
   if (path === '/signup') return <SignUp />
   if (!me) return <div className="page" />
   if (clinic) return me.kind === 'staff' ? <ClinicApp path={path} /> : <div className="page" />
-  if (me.kind === 'guest') return path === '/' || !(path in pages) ? <GuestChat /> : <div className="page" />
+  if (me.kind === 'guest') return path === '/interview' ? <Interview /> : path in locked ? <GuestLocked path={path} /> : <GuestChat />
   if (me.kind === 'staff') return <div className="page" />
   return <ApplicantApp><Page key={url} /></ApplicantApp>
 }

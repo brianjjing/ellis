@@ -166,6 +166,12 @@ button { font-family: inherit; }
 .guide-foot { margin-top: auto; display: grid; grid-template-columns: 1fr minmax(0, 640px) 1fr; align-items: center; gap: 8px; padding: 16px 20px; }
 .guide-foot .small { grid-column: 2; text-align: center; }
 .guide-foot .lang-menu { justify-self: end; }
+/* Guest view of an account page: real headings over blocked-off rows */
+.ghost { opacity: .55; }
+.ghost-row { padding: 20px 0; }
+.ghost-row span { height: 14px; border-radius: 4px; background: var(--line-strong); }
+.ghost-row span:first-child { flex: 0 1 45%; }
+.ghost-row span:last-child { flex: 0 1 18%; margin-left: auto; }
 .lang-menu .more-menu-body { top: auto; bottom: calc(100% + 4px); }
 @media (max-width: 800px) { .guide-foot { grid-template-columns: 1fr; } .guide-foot .small { grid-column: auto; } }
 
