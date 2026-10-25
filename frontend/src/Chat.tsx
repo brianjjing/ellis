@@ -280,7 +280,8 @@ export default function Chat() {
                     )}
                   </div>
                 )}
-                {!showGuide && <p className="voice-state" aria-live="polite">{voice ? t(lang, VOICE_KEY[state]) : t(lang, 'paused')}</p>}
+                {/* the box shows the state; this keeps it announced to screen readers */}
+                {!showGuide && <p className="sr-only" aria-live="polite">{voice ? t(lang, VOICE_KEY[state]) : t(lang, 'paused')}</p>}
                 <form className="ask" onSubmit={(e) => { e.preventDefault(); send() }}>
                   <span className="tools">
                     <button type="button" aria-label={t(lang, 'uploadDoc')} className="icon-btn" onClick={() => upload()}><Icon name="clip" size={20} /></button>

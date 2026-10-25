@@ -171,8 +171,6 @@ main, .enter, .dialog::backdrop { animation: enter .18s ease-out; }
 .talk-btn { min-height: 56px; padding: 0 18px; gap: 8px; font-size: 16px; }
 .talk-btn.pulse { animation: ellis-pulse 1.4s ease-in-out infinite; }
 @keyframes ellis-pulse { 50% { box-shadow: 0 0 0 6px var(--green-tint); } }
-.voice-state { margin: 0; font-weight: 700; }
-.guide { display: flex; flex-direction: column; gap: 12px; margin: 8px 0 16px; }
 .demo-tools { display: flex; flex-direction: column; gap: 8px; }
 .demo-tools summary { list-style: none; cursor: pointer; }
 .demo-tools summary::-webkit-details-marker { display: none; }
