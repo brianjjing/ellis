@@ -121,6 +121,40 @@ def test_push_to_talk_sends_what_was_held_as_soon_as_the_turn_closes(monkeypatch
     assert asyncio.run(run([], [start, {"type": "turn.eager_end", "transcript": "Yes."}])) == [("Yes.", True)]
 
 
+def test_tap_to_talk_waits_out_a_long_pause(monkeypatch):
+    from ellis.api.routes import voice
+    monkeypatch.setattr(voice, "TAP_SILENCE_S", 0.5)
+
+    async def run():
+        vs = voice.VoiceSession(ws=None, case_id="c_maria")
+        got, events = [], asyncio.Queue()
+
+        async def turn(text, uncertain=False, spoken=False):
+            got.append(text)
+        vs.turn = turn
+
+        class STT:
+            async def events(self):
+                while True:
+                    yield await events.get()
+        vs.stt = STT()
+        loop = asyncio.create_task(vs.stt_loop())
+        await vs.on_client({"type": "talk", "down": True, "mode": "tap"})
+        await events.put({"type": "turn.start"})
+        await events.put({"type": "turn.end", "transcript": "I was born in"})  # Ink-2 calls the turn over
+        await asyncio.sleep(0.3)
+        assert got == []  # still thinking
+        await events.put({"type": "turn.start"})
+        await events.put({"type": "turn.eager_end", "transcript": "Oaxaca."})
+        await asyncio.sleep(0.3)
+        assert got == []  # the new word started the wait over
+        await asyncio.wait_for(vs.tasks[-1], 1)
+        loop.cancel()
+        return got
+
+    assert asyncio.run(run()) == ["I was born in Oaxaca."]
+
+
 def test_check_ins_stop_after_the_last_one():
     from ellis.api.routes.voice import VoiceSession
     said = []
