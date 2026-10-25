@@ -914,12 +914,27 @@ def applicant_settings(case: Case) -> dict[str, str]:
             "voice_speed": st.get("voice_speed", "normal")}
 
 
+def set_language(s: Session, case: Case, locale: str, actor_type: str = "applicant", actor: str = "applicant") -> None:
+    """A new language or accent. A chosen voice was chosen for the old one, so Ellis picks again."""
+    case.language = locale
+    st = dict(case.settings or {})
+    st.pop("voice_id", None)
+    case.settings = st
+    emit(s, case, "case.language_changed", {"language": locale}, actor_type, actor)
+
+
+def set_voice(s: Session, case: Case, voice_id: str | None) -> None:
+    """The Sonic voice the applicant chose for Ellis (None: Ellis picks one for their accent)."""
+    st = {k: v for k, v in (case.settings or {}).items() if k != "voice_id"}
+    case.settings = {**st, **({"voice_id": voice_id} if voice_id else {})}
+    emit(s, case, "case.settings_changed", {"voice": "chosen" if voice_id else "default"}, "applicant", "applicant")
+
+
 def set_setting(s: Session, case: Case, key: str, value: str) -> dict[str, str]:
     if value not in APPLICANT_SETTINGS.get(key, {}):
         raise CaseError("invalid_setting", f"{key} can't be {value!r}", key)
     if key == "language":
-        case.language = value
-        emit(s, case, "case.language_changed", {"language": value}, "applicant", "applicant")
+        set_language(s, case, value)
     else:
         case.settings = {**(case.settings or {}), key: value}
         emit(s, case, "case.settings_changed", {key: value}, "applicant", "applicant")

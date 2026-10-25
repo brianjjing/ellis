@@ -66,6 +66,7 @@ def call_config(s, case: Case) -> dict[str, Any]:
             "consent_given": cs.consent_given(s, case), "patient_mode": patient, "language": lang, "locale": locale,
             "stt": {"language": lang, "model": languages.stt_model(locale),
                     "turn_profile": "patient" if patient else "default"},
+            "voice_id": (case.settings or {}).get("voice_id"),  # the applicant's own choice, else Ellis picks
             "tts": {"language": lang, "locale": locale, "add_timestamps": True,
                     "speed": 0.85 if patient or cs.applicant_settings(case)["voice_speed"] == "slow" else 1.0},
             # seconds of silence before a check-in: long enough that they've really drifted off, not just thinking
