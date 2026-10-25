@@ -362,6 +362,12 @@ def record_fact(s: Session, case: Case, field: str, value: Any, *, hedge: bool =
         value = normalize(field, value)
     except ValueError_ as e:
         raise CaseError("invalid_value", str(e), field) from None
+    # The fact row keeps the mask token. The number lives in the vault, including when a document
+    # value was held until consent and applied here.
+    masked_plain = None
+    if catalog.is_masked(field):
+        masked_plain = str(value)
+        value = catalog.mask_token(field)
     if field in _deferred_fields(s, case):
         raise CaseError("deferred_to_professional", "this section is handled by a licensed professional", field, 409)
     # (3) utterance (layer 4 again on stored text)
@@ -512,6 +518,9 @@ def record_fact(s: Session, case: Case, field: str, value: Any, *, hedge: bool =
         new_flags += [f for f in nf if f is not None]
     after_fact_change(s, case)
 
+    if masked_plain and fact is not None and fact.id and s.get(VaultValue, fact.id) is None:
+        s.add(VaultValue(fact_id=fact.id, clinic_id=case.clinic_id, case_id=case.id, field=field,
+                         ciphertext=vault.encrypt(masked_plain), last4=masked_plain[-4:]))
     open_flags = [f for f in new_flags if f is not None]
     touching = [fl for fl in all_open_flags(s, case) if fl.field == field and fl.speed == FLAG_CONTINUE]
     flags_out = {fl.id: flag_dict(fl) for fl in touching + open_flags}
@@ -550,6 +559,7 @@ def _record_consent(s, case, value, utterance_id, session_id, third_party, actor
             set_state(s, case, "intake", "consent.given")
         from .accounts import apply_prefill  # noqa: PLC0415 -- guest answers become hedged facts after consent
         apply_prefill(s, case)
+        apply_pending_deferrals(s, case)
         evaluate_rules(s, case)
         after_fact_change(s, case)
         return {"saved": True, "fact": fact_dict(f), "flags": [], "resolved_flags": [], "derived": None,
@@ -789,6 +799,15 @@ def stop_now(s: Session, case: Case, category: str, layer: int, field: str | Non
     keys = catalog.group_fields(group) if group else []
     if field and field.startswith("background.") and field not in keys:
         keys.append(field)
+    if not consent_given(s, case):
+        # A case-level flag only. The DEFERRED facts are written when consent is recorded.
+        settings = dict(case.settings or {})
+        pending = list(settings.get("pending_deferrals") or [])
+        pending.append({"flag_id": fl.id, "section": section, "fields": keys})
+        settings["pending_deferrals"] = pending
+        case.settings = settings
+        push(s, case, "referral_card", referral_card(s, case, fl))
+        return {"flag_id": fl.id, "speed": STOP_NOW, "script_key": "stop", "new_flag": new, "deferred": []}
     for k in keys:
         cur = current_facts(s, case.id).get(k)
         if cur is not None and cur.value == catalog.DEFERRED:
@@ -917,7 +936,32 @@ def latest_derived(s: Session, case_id: str) -> Derived | None:
                      .limit(1)).first()
 
 
+def apply_pending_deferrals(s: Session, case: Case) -> list[str]:
+    """stop_now before consent stored field keys on the case. Write the DEFERRED facts now that consent exists."""
+    settings = dict(case.settings or {})
+    pending = list(settings.pop("pending_deferrals", None) or [])
+    case.settings = settings
+    deferred: list[str] = []
+    for item in pending:
+        wrote = []
+        for k in item.get("fields") or []:
+            cur = current_facts(s, case.id).get(k)
+            if cur is not None and cur.value == catalog.DEFERRED:
+                continue
+            others = facts_for(s, case.id, k)
+            f = _insert_fact(s, case, k, catalog.DEFERRED, "confirmed", "derived", proposed_by="case_api",
+                             provenance={"flag_id": item.get("flag_id")}, note="deferred to licensed professional")
+            _supersede(others, f)
+            wrote.append(k)
+        if wrote:
+            emit(s, case, "section.deferred", {"section": item.get("section"), "fields": wrote})
+            deferred.extend(wrote)
+    return deferred
+
+
 def evaluate_rules(s: Session, case: Case) -> tuple[Derived | None, list[Flag], list[str]]:
+    if not consent_given(s, case):
+        return None, [], []
     view = cur_view(s, case.id)
     values = {k: v["value"] for k, v in view.items() if v["value"] != catalog.DEFERRED
               and not catalog.is_masked(k)}

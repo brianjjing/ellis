@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import Shell from './Shell'
 import { Flag, Icon } from './icons'
 import { daysToFile, useCase, type CaseView } from './applicant/ApplicantApp'
-import { langOf } from './applicant/i18n'
+import { GuideStart } from './applicant/Guide'
+import { langOf, t } from './applicant/i18n'
 import { VoiceClient, type VoiceState } from './applicant/voice'
+import { api } from './api'
 
 // A permission card: Ellis asked to do something only the applicant can approve (a setting, a question to the clinic).
 type Perm = { id: string; kind: 'setting' | 'ask_clinic'; title: string; detail?: string | null; allowed?: boolean }
@@ -32,8 +34,10 @@ function greeting() {
   return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'
 }
 
+const VOICE_KEY = { connecting: 'connecting', listening: 'listening', thinking: 'thinking', speaking: 'ellisSpeaking', idle: 'paused', ended: 'voiceEnded' } as const
+
 export default function Chat() {
-  const { data, upload } = useCase()
+  const { data, upload, reload } = useCase()
   const lang = langOf(data)
   const [msgs, setMsgs] = useState(live)
   const [focus, setFocus] = useState(liveFocus)
@@ -48,24 +52,36 @@ export default function Chat() {
   const [viewing, setViewing] = useState<Thread | null>(null)
   const [typed, setTyped] = useState('')
   const [holding, setHolding] = useState(false)
+  const [consentLater, setConsentLater] = useState(false)
+  const [started, setStarted] = useState(live.length > 0)
   const [sound, setSound] = useState(soundOn)
   const vc = useRef<VoiceClient | null>(null)
+  const voiceRef = useRef(true)
+  const queued = useRef<string | null>(null)
   const add = (m: Msg) => setMsgs((ms) => (live = [...ms, m]))
   const toggleHistory = () => setHistory(!history)
 
-  // One liaison session per mount; only "New chat" starts a fresh one. Typing vs. talking shares it.
+  const showConsent = !viewing && !data.consent_given
+  const showGuide = !viewing && !!data.consent_given && !started && msgs.length === 0
+  // The liaison waits until they leave the consent screen and the start screen. A chip can be typed before the socket opens.
+  const composerOn = !showConsent && !showGuide
+
+  // One liaison session per chat; only "New chat" starts a fresh one. Typing vs. talking shares it.
   useEffect(() => {
+    if (!composerOn) return
     setNotice(null)
     setSince(live.length)
     const c: VoiceClient = new VoiceClient({
       // A stopped client still reports 'ended' when its socket finally closes; only the current one counts.
-      onState: (s) => { if (vc.current === c) setState(s) },
+      onState: (s) => { if (vc.current === c) { setState(s); if (s !== 'listening') setHolding(false) } },
       onCaption: (cap) => { if (cap.who === 'usted') add({ who: 'you', text: cap.text, spoken: cap.spoken }) },
       onPartial: setPartial,
       onReady: (info) => {
         if (info.talk_unavailable) setMode(false)
         if (info.voice_unavailable) setNotice("Ellis's voice isn't available right now; replies show here as text.")
         else if (info.talk_unavailable) setNotice("Talking isn't available right now. You can type.")
+        const q = queued.current
+        if (q) { queued.current = null; c.sendText(q) }
       },
       onLine: (l) => {
         if (l.meta?.focus) setFocus((liveFocus = l.meta.focus))
@@ -79,10 +95,11 @@ export default function Chat() {
     })
     vc.current = c
     c.soundOn = soundOn
+    c.voice = voiceRef.current
     // the disclosure is only said again on a fresh chat ("New chat" or a reload); the server knows if they agreed
     c.start(lang, data.language ?? 'en-US', live.some((m) => m.kind === 'disclosure'))
     return () => c.stop(false)
-  }, [session])
+  }, [session, composerOn])
 
   // Newest message in view, like a coding agent's transcript. The page scrolls (the composer is sticky over
   // its bottom), so go to the page's end: scrolling an element at the thread's end into view tucks it behind
@@ -90,19 +107,28 @@ export default function Chat() {
   useEffect(() => { if (msgs.length) scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' }) }, [msgs.length])
 
   const setMode = (v: boolean) => {
+    voiceRef.current = v
     setVoice(v)
     setHolding(false)
     vc.current?.setVoice(v)
   }
-  const hold = () => { if (vc.current?.hold()) setHolding(true); else setNotice('No microphone: you can type your answers.') }
-  const release = () => { vc.current?.release(); setHolding(false) }
+  const tap = () => {
+    const r = vc.current?.toggle()
+    if (r === 'unavailable') setNotice(t(lang, 'micDeniedTitle'))
+    setHolding(r === 'on')
+  }
+  const agree = async () => {
+    await api('/api/a/consent', { body: { agree: true } })
+    await reload()
+  }
   const toggleSound = () => { setSound((soundOn = !sound)); vc.current?.setSound(soundOn) }
 
   const send = (text = typed.trim()) => {
     if (!text) return
     setViewing(null)
     if (state === 'ended') return setSession((s) => s + 1) // reconnect first; the typed text stays to send again
-    vc.current?.sendText(text)
+    if (vc.current?.ws?.readyState === WebSocket.OPEN) vc.current.sendText(text)
+    else queued.current = text
     setTyped('')
   }
   const answer = (i: number, yes: boolean) => {
@@ -120,6 +146,9 @@ export default function Chat() {
     setFocus(null)
     setMsgs([])
     setViewing(null)
+    queued.current = null
+    setStarted(false)
+    setMode(true)
     setSession((s) => s + 1)
   }
 
@@ -127,7 +156,7 @@ export default function Chat() {
   // Same speaker twice in a row: one label over the run.
   const cont = (i: number) => i > 0 && shown[i - 1].who === shown[i].who
   const days = daysToFile(data)
-  const canFile = data.filing_window ? (days ? ` You can file in ${days} days.` : ' You can file now.') : ''
+  const canFile = data.filing_window ? (days ? ` Earliest filing: ${days} days away — your clinic will confirm.` : ' Your clinic will confirm when you are ready to file.') : ''
   const title = viewing ? titleOf(viewing) : sectionOf(data, [...msgs].reverse().find((m) => m.field)?.field) ?? 'Chat with Ellis'
 
   return (
@@ -149,17 +178,33 @@ export default function Chat() {
             <div className="thread" aria-live="polite">
               {/* the page's greeting, not something Ellis said */}
               {!viewing && <p className="lead" style={{ fontFamily: 'var(--serif)', fontSize: 32, lineHeight: '40px' }}>{greeting()}, {data.first_name}.{canFile}</p>}
+              {showConsent && (
+                <section className="panel" aria-label={t(lang, 'iAgree')}>
+                  <p className="lead">{data.disclosure}</p>
+                  {consentLater ? <p>{t(lang, 'consentLater')}</p> : (
+                    <div className="btns">
+                      <button type="button" className="btn lg primary" onClick={agree}>{t(lang, 'iAgree')}</button>
+                      <button type="button" className="btn" onClick={() => setConsentLater(true)}>{t(lang, 'notNow')}</button>
+                    </div>
+                  )}
+                </section>
+              )}
+              {showGuide && (
+                <GuideStart lang={lang} onLocale={async (code) => { await api('/api/a/language', { body: { locale: code } }); await reload() }}
+                  onTalk={() => { setMode(true); setStarted(true) }} onType={() => { setMode(false); setStarted(true) }}
+                  onChip={(text) => { setMode(false); queued.current = text; setStarted(true) }} />
+              )}
 
               {shown.map((m, i) => m.who === 'you' ? (
                 <div key={i} className={`you${cont(i) ? ' cont' : ''}`}>
-                  {!cont(i) && <div className="label">{m.spoken ? 'YOU · SPOKEN' : 'YOU'}</div>}
+                  {!cont(i) && <div className="label">{m.spoken ? `${t(lang, 'you')} · spoken` : t(lang, 'you')}</div>}
                   <div className="bubble">{m.text}</div>
                 </div>
               ) : m.kind?.startsWith('readback') ? (
                 <div key={i} className={`msg${cont(i) ? ' cont' : ''}`}>
-                  {!cont(i) && <div className="label green">ELLIS</div>}
+                  {!cont(i) && <div className="label green">{t(lang, 'ellis')}</div>}
                   <div className="draft">
-                    <div className="mono" style={{ fontSize: 12, fontWeight: 700 }}>ADD TO N-400{sectionOf(data, m.field) ? ` · ${sectionOf(data, m.field).toUpperCase()}` : ''}</div>
+                    <div className="label" style={{ fontSize: 12 }}>Add to N-400{sectionOf(data, m.field) ? ` · ${sectionOf(data, m.field)}` : ''}</div>
                     <div style={{ fontSize: 20, lineHeight: '28px' }}>{m.text}</div>
                     <div className="btns">
                       {m.approved ? (
@@ -176,14 +221,14 @@ export default function Chat() {
                 </div>
               ) : (
                 <div key={i} className={`msg${cont(i) && m.kind !== 'official_question' ? ' cont' : ''}`}>
-                  {(!cont(i) || m.kind === 'official_question') && <div className="label green">{m.kind === 'official_question' ? 'ELLIS · OFFICIAL N-400 QUESTION' : 'ELLIS'}</div>}
+                  {(!cont(i) || m.kind === 'official_question') && <div className="label green">{m.kind === 'official_question' ? `${t(lang, 'ellis')} · Official N-400 question` : t(lang, 'ellis')}</div>}
                   <p className="lead">{m.text}</p>
                   {m.en && <div className="small" lang={lang === 'en' ? 'es' : 'en'}>{m.en}</div>}
                   {m.perms?.map((p) => (
                     <div key={p.id} className="perm" role="group" aria-label="Ellis needs your OK">
                       <div className="perm-head label">
                         <Icon name={p.kind === 'ask_clinic' ? 'send' : 'lock'} />
-                        {p.kind === 'ask_clinic' ? 'SEND TO YOUR CLINIC' : 'CHANGE A SETTING'} · NEEDS YOUR OK
+                        {p.kind === 'ask_clinic' ? 'Send to your clinic' : 'Change a setting'} · needs your OK
                       </div>
                       <div className="perm-body">
                         <div style={{ fontWeight: 700 }}>{p.title}</div>
@@ -209,7 +254,7 @@ export default function Chat() {
                     <div className="margin-notes">
                       {m.flags.map((f) => (
                         <a key={f.id} href="/profile?tab=flags" data-nav className="margin-note">
-                          <span className="label" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Flag size={13} pole="#0e192b" />CLINIC WILL CHECK</span>
+                          <span className="label" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Flag size={13} pole="#0e192b" />Clinic will check</span>
                           <strong>{f.label}</strong>
                           <span className="soft">Nothing is decided yet.</span>
                         </a>
@@ -220,7 +265,7 @@ export default function Chat() {
               ))}
             </div>
 
-            <div className="composer">
+            {composerOn && <div className="composer">
               <div>
                 {notice && <p className="small rust" role="status">{notice}</p>}
                 {focus?.next_step && !viewing && (
@@ -237,23 +282,21 @@ export default function Chat() {
                     )}
                   </div>
                 )}
+                <p className="voice-state" aria-live="polite">{voice ? t(lang, VOICE_KEY[state]) : t(lang, 'paused')}</p>
                 <form className="ask" onSubmit={(e) => { e.preventDefault(); send() }}>
                   <span className="tools">
-                    <button type="button" aria-label="Upload a document" className="icon-btn" onClick={() => upload()}><Icon name="clip" size={20} /></button>
-                    {voice
-                      ? <button type="button" aria-label="Type instead" className="icon-btn" onClick={() => setMode(false)}><Icon name="keyboard" size={22} /></button>
-                      : <button type="button" aria-label="Talk instead" className="icon-btn" onClick={() => setMode(true)}><Icon name="talk" size={22} /></button>}
+                    <button type="button" aria-label={t(lang, 'uploadDoc')} className="icon-btn" onClick={() => upload()}><Icon name="clip" size={20} /></button>
+                    <button type="button" className="btn" onClick={() => setMode(!voice)}>{voice ? t(lang, 'typeWord') : t(lang, 'talk')}</button>
                   </span>
-                  <label htmlFor="msg" className="sr-only">{voice ? 'What you are saying' : 'Message Ellis'}</label>
-                  {/* talking: the words appear here as they're recognized, and go when the button is let go */}
+                  <label htmlFor="msg" className="sr-only">{voice ? t(lang, 'listening') : 'Message Ellis'}</label>
                   <input id="msg" type="text" autoComplete="off" readOnly={voice} value={voice ? partial : typed} onChange={(e) => setTyped(e.target.value)}
-                    placeholder={!voice ? 'Ask anything, in any language' : holding ? "Listening… let go to send." : 'Hold on the green microphone button to the right and talk!'} />
+                    placeholder={!voice ? 'Ask anything, in any language' : t(lang, VOICE_KEY[state])} />
                   {voice ? (
-                    <button type="button" aria-label="Hold to talk" aria-pressed={holding} className="icon-btn talk"
-                      onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); hold() }} onPointerUp={release} onPointerCancel={release}
-                      onKeyDown={(e) => { if ((e.key === ' ' || e.key === 'Enter') && !e.repeat) { e.preventDefault(); hold() } }}
-                      onKeyUp={(e) => { if (e.key === ' ' || e.key === 'Enter') release() }} onContextMenu={(e) => e.preventDefault()}>
+                    <button type="button" aria-label={holding || state === 'speaking' ? t(lang, 'stop') : t(lang, 'talk')} aria-pressed={holding || state === 'listening'}
+                      className={`btn primary talk-btn${state === 'listening' || state === 'speaking' ? ' pulse' : ''}`}
+                      onClick={tap}>
                       <Icon name="mic" size={22} />
+                      {holding || state === 'speaking' ? t(lang, 'stop') : t(lang, 'talk')}
                     </button>
                   ) : (
                     <button type="submit" aria-label="Send" className="icon-btn" style={{ background: 'var(--ink)', color: 'var(--white)' }}><Icon name="send" size={20} /></button>
@@ -265,7 +308,7 @@ export default function Chat() {
                   <button type="button" className="btn" onClick={() => upload()}>Read a document for me</button>
                 </div>
               </div>
-            </div>
+            </div>}
           </section>
 
           {history && (

@@ -173,7 +173,7 @@ export default function Profile() {
               {data.case_blocked && (
                 <section className="panel">
                   <div className="stack" style={{ flex: '1 1 280px', gap: 4 }}>
-                    <span className="label rust">NEEDS YOUR CLINIC</span>
+                    <span className="label rust">Needs your clinic</span>
                     <span style={{ fontSize: 18, fontWeight: 700 }}>Your clinic will contact you.</span>
                     {data.clinic.phone && <span className="soft" style={{ fontSize: 15 }}>{data.clinic.name} · {data.clinic.phone}</span>}
                   </div>
@@ -182,7 +182,7 @@ export default function Profile() {
               {data.referrals.map((r: any, i: number) => r.variant === 'stop_now' ? (
                 <section key={r.flag_id} className="panel">
                   <div className="stack" style={{ flex: '1 1 280px', gap: 4 }}>
-                    <span className="label">F-{String(i + 1).padStart(2, '0')} · NEEDS YOU</span>
+                    <span className="label">F-{String(i + 1).padStart(2, '0')} · Needs you</span>
                     <span style={{ fontSize: 18, fontWeight: 700 }}>{r.title}</span>
                     <span className="soft" style={{ fontSize: 15 }}>{r.body}</span>
                     {(r.who || r.phone) && <span className="soft" style={{ fontSize: 15 }}>{[r.who, r.phone].filter(Boolean).join(' · ')}</span>}
@@ -194,7 +194,7 @@ export default function Profile() {
                 <section key={r.flag_id} className="dark" style={{ flexDirection: 'column', gap: 10 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <Flag size={16} pole="#ffffff" />
-                    <span className="label" style={{ color: 'var(--gold)' }}>F-{String(i + 1).padStart(2, '0')} · WITH YOUR CLINIC{r.who ? ` · ${r.who.toUpperCase()}` : ''}</span>
+                    <span className="label" style={{ color: 'var(--gold)' }}>F-{String(i + 1).padStart(2, '0')} · With your clinic{r.who ? ` · ${r.who}` : ''}</span>
                   </div>
                   <div style={{ fontSize: 20, lineHeight: '28px', fontWeight: 700 }}>{r.item || r.title}</div>
                   <p style={{ margin: 0, fontSize: 15, lineHeight: '22px', color: 'var(--on-ink-soft)' }}>
@@ -205,7 +205,7 @@ export default function Profile() {
               {data.reviewer_notes.map((n: any) => (
                 <section key={n.id} className="panel">
                   <div className="stack" style={{ flex: '1 1 280px', gap: 4 }}>
-                    <span className="label">NOTE FROM YOUR CLINIC</span>
+                    <span className="label">Note from your clinic</span>
                     {n.label && <span style={{ fontSize: 18, fontWeight: 700 }}>{n.label}</span>}
                     <span className="soft" style={{ fontSize: 15 }}>{n.note}</span>
                   </div>

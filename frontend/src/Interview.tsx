@@ -50,6 +50,21 @@ function listen(): Promise<string> {
 
 const same = (a: string, b: string) => a.toLowerCase().replace(/[^a-z ]/g, '').trim() === b.toLowerCase().replace(/[^a-z ]/g, '').trim()
 
+// Highlight words in `heard` that differ from the corresponding word in `target` (word-level diff).
+function HighlightDiff({ heard, target }: { heard: string; target: string }) {
+  const heardWords = heard.split(/\s+/)
+  const targetWords = target.replace(/[.!?,]/g, '').toLowerCase().split(/\s+/)
+  return (
+    <span>
+      {heardWords.map((w, i) => {
+        const clean = w.replace(/[^a-z]/gi, '').toLowerCase()
+        const ok = clean === (targetWords[i] ?? '')
+        return <span key={i} style={ok ? undefined : { color: 'var(--rust)', textDecoration: 'underline', textDecorationStyle: 'wavy' }}>{w}{i < heardWords.length - 1 ? ' ' : ''}</span>
+      })}
+    </span>
+  )
+}
+
 export default function Interview() {
   const [tab, setTab] = useState('interview')
   const [n, setN] = useState(0)
@@ -59,7 +74,8 @@ export default function Interview() {
   const [writeMode, setWriteMode] = useState(false)
   const [score, setScore] = useState({ right: 0, asked: 0 })
   const [mic, setMic] = useState(false)
-  const next = () => { setN(n + 1); setPick(null); setHeard(null) }
+  const [showChoices, setShowChoices] = useState(false)
+  const next = () => { setN(n + 1); setPick(null); setHeard(null); setShowChoices(false) }
   const answerOutLoud = async () => { setMic(true); setHeard(await listen() || "I didn't hear anything. Your browser may not support listening."); setMic(false) }
   const q = officer[n % officer.length]
   const c = civics[n % civics.length]
@@ -78,62 +94,68 @@ export default function Interview() {
 
         <div key={tab} className="content enter" style={{ padding: '48px 24px', gap: 24 }}>
           {tab === 'interview' && <>
-            <div className="label">PRACTICE INTERVIEW · QUESTION {(n % officer.length) + 1} OF {officer.length}</div>
+            <div className="label">Practice interview · question {(n % officer.length) + 1} of {officer.length}</div>
             <section aria-label="Officer" className="card" style={{ padding: 32, gap: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                <span className="label">THE OFFICER ASKS</span>
+                <span className="label">The officer asks</span>
                 <button type="button" className="btn" style={{ gap: 6 }} onClick={() => say(q)}><Icon name="speaker" />Hear it again</button>
               </div>
               <p className="display">{q}</p>
             </section>
             {heard && (
               <section aria-label="Your answer" className="stack enter" style={{ padding: '24px 32px', background: 'var(--sand)', borderRadius: 6, gap: 10 }}>
-                <span className="label">YOU SAID</span>
+                <span className="label">You said</span>
                 <p className="lead" style={{ fontSize: 18, lineHeight: '30px' }}>"{heard}"</p>
               </section>
             )}
             <section aria-label="Tip" className="stack" style={{ gap: 8 }}>
-              <span className="label green">ELLIS</span>
+              <span className="label green">Ellis</span>
               <p className="lead">Answer the way you answered on your form, in a full sentence. If you don't understand a question, ask the officer to repeat it.</p>
             </section>
             <div className="btns">
-              <button type="button" className="btn lg primary" onClick={next}>Next question</button>
-              <button type="button" className="btn lg strong" disabled={mic} onClick={answerOutLoud}><Icon name="mic" color="#1e6b5b" />{mic ? 'Listening…' : heard ? 'Answer again out loud' : 'Answer out loud'}</button>
+              <button type="button" className="btn lg primary strong" disabled={mic} onClick={answerOutLoud}><Icon name="mic" color="#1e6b5b" />{mic ? 'Listening…' : heard ? 'Answer again out loud' : 'Answer out loud'}</button>
+              <button type="button" className="btn lg" onClick={next}>Next question</button>
             </div>
           </>}
 
           {tab === 'civics' && <>
             <div className="label" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: 8 }}>
-              <span>CIVICS TEST · QUESTION {(n % civics.length) + 1} OF {civics.length}</span>
-              <span className="soft">THIS PRACTICE: {score.right} OF {score.asked} · NEED 12 OF 20 TO PASS</span>
+              {/* [VERIFY] "12 of 20" passing threshold and "20 questions" total against current USCIS civics test rules */}
+              <span>Civics test · question {(n % civics.length) + 1} of {civics.length}</span>
+              {score.asked > 0 && <span className="soft">This practice: {score.right} of {score.asked} · need 12 of 20 to pass</span>}
             </div>
             <h2 className="display">{c.q}</h2>
-            <div role="radiogroup" aria-label="Answers" className="stack" style={{ gap: 10 }}>
-              {c.answers.map((a, i) => {
-                const verdict = pick !== null && i === 0 ? 'right' : pick === i ? 'wrong' : ''
-                return (
-                  <button key={a} type="button" role="radio" aria-checked={pick === i} className={`ans ${verdict}`} onClick={() => {
-                    if (pick === null) setScore({ right: score.right + (i === 0 ? 1 : 0), asked: score.asked + 1 })
-                    setPick(i)
-                  }}>
-                    <span style={{ flex: 1, textAlign: 'left' }}>{a}</span>
-                    <span className="status">{verdict === 'right' ? 'Correct' : verdict && 'Not this one'}</span>
-                  </button>
-                )
-              })}
+            <div className="btns">
+              <button type="button" className="btn lg primary strong" disabled={mic} onClick={answerOutLoud}><Icon name="mic" color="#1e6b5b" />{mic ? 'Listening…' : 'Answer out loud'}</button>
+              <button type="button" className="btn lg" onClick={() => setShowChoices(!showChoices)}>{showChoices ? 'Hide choices' : 'Show choices'}</button>
             </div>
-            {pick !== null && (
-              <p className="lead enter"><span className="label green">ELLIS</span> · {c.why} At the real test there are no choices: you say the answer out loud.</p>
+            {showChoices && (
+              <div role="radiogroup" aria-label="Answers" className="stack enter" style={{ gap: 10 }}>
+                {c.answers.map((a, i) => {
+                  const verdict = pick !== null && i === 0 ? 'right' : pick === i ? 'wrong' : ''
+                  return (
+                    <button key={a} type="button" role="radio" aria-checked={pick === i} className={`ans ${verdict}`} onClick={() => {
+                      if (pick === null) setScore({ right: score.right + (i === 0 ? 1 : 0), asked: score.asked + 1 })
+                      setPick(i)
+                    }}>
+                      <span style={{ flex: 1, textAlign: 'left' }}>{a}</span>
+                      <span className="status">{verdict === 'right' ? 'Correct' : verdict && 'Not this one'}</span>
+                    </button>
+                  )
+                })}
+              </div>
             )}
+            {pick !== null && (
+              <p className="lead enter"><span className="label green">Ellis</span> · {c.why} At the real test there are no choices: you say the answer out loud.</p>
+            )}
+            {heard && <p className="lead enter"><span className="label">You said</span> · "{heard}"</p>}
             <div className="btns">
               <button type="button" className="btn lg primary" style={{ padding: '0 28px' }} onClick={next}>Next question</button>
-              <button type="button" className="btn lg strong" disabled={mic} onClick={answerOutLoud}><Icon name="mic" color="#1e6b5b" />{mic ? 'Listening…' : 'Answer out loud'}</button>
             </div>
-            {heard && <p className="lead enter"><span className="label">YOU SAID</span> · "{heard}"</p>}
           </>}
 
           {tab === 'english' && <>
-            <div className="label">ENGLISH TEST · {writeMode ? 'WRITING' : 'READING'}</div>
+            <div className="label">English test · {writeMode ? 'writing' : 'reading'}</div>
             <p className="lead soft">{writeMode ? 'The officer will read one sentence out loud. Write it down.' : "The officer will ask you to read one sentence out loud. Read this one when you're ready."}</p>
             <div className="card" style={{ display: 'block', padding: '48px 32px', fontFamily: 'var(--serif)', fontSize: 44, lineHeight: '54px', textAlign: 'center' }}>
               {writeMode ? (
@@ -143,7 +165,10 @@ export default function Interview() {
             </div>
             {writeMode && writing && <strong className={same(writing, sentence) ? 'green' : 'soft'}>{same(writing, sentence) ? 'Correct' : 'Keep going'}</strong>}
             {!writeMode && heard && (
-              <p className="lead enter"><span className="label">YOU SAID</span> · "{heard}" <strong className={same(heard, sentence) ? 'green' : 'rust'}>{same(heard, sentence) ? 'Correct' : 'Try again'}</strong></p>
+              <p className="lead enter">
+                <span className="label">You said</span> · "<HighlightDiff heard={heard} target={sentence} />"
+                {' '}<strong className={same(heard, sentence) ? 'green' : 'rust'}>{same(heard, sentence) ? 'Correct' : 'Try again'}</strong>
+              </p>
             )}
             <div className="btns">
               <button type="button" className="btn lg primary" disabled={mic} onClick={() => { setWriteMode(false); answerOutLoud() }}><Icon name="mic" />{mic ? 'Listening…' : 'Read it out loud'}</button>

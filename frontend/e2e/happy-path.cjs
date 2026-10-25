@@ -18,6 +18,7 @@ const { chromium } = require('playwright');
   await p.screenshot({ path: './e2e-shots/c1-cases.png', fullPage: true });
   await p.click('text=María T.');
   await p.waitForSelector('text=Ready gate');
+  await p.click('text=Demo tools');
   await p.click('text=Simulate remaining intake (demo)');
   await p.waitForTimeout(7000);
   await p.screenshot({ path: './e2e-shots/c2-detail.png', fullPage: false });

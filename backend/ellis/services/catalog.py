@@ -110,6 +110,26 @@ def label_en(key: str) -> str:
     return d.get("label_en", key) if d else key
 
 
+def display_label(key: str, lang: str = "en") -> str:
+    """Catalog label, or a title-cased key when fields.yaml has no entry."""
+    d = field_def(key)
+    if d:
+        picked = d.get("label_es") if lang.startswith("es") else d.get("label_en")
+        if picked:
+            return picked
+    return title_key(key)
+
+
+def title_key(key: str) -> str:
+    base = key.split(".")[-1].replace("_", " ").replace("[", " ").replace("]", " ")
+    base = " ".join(base.split())
+    return base[:1].upper() + base[1:] if base else key
+
+
+def labels(lang: str = "en") -> dict[str, str]:
+    return {k: display_label(k, lang) for k in _static()}
+
+
 def section_of(key: str) -> str:
     d = field_def(key)
     return d["section"] if d else key.split(".")[0].split("[")[0]

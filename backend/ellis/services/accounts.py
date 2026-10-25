@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from ..db import Account, CallSession, Case, Clinic, StaffUser, Utterance, now
 from . import auth
 from . import case_service as cs
-from . import keywords
+from . import catalog, keywords, vault
 
 INDEPENDENT_ID = "cl_independent"
 MIN_PASSWORD = 8
@@ -116,8 +116,25 @@ def save_prefill(s: Session, case: Case, answers: dict) -> None:
         keep["lpr_since"] = v
     if isinstance((answers or {}).get("married_to_citizen"), bool):
         keep["married_to_citizen"] = answers["married_to_citizen"]
+    extracted = dict((case.settings or {}).get("prefill") or {}).get("extracted")
+    if extracted:
+        keep["extracted"] = extracted
     if keep:
         case.settings = {**(case.settings or {}), "prefill": keep}
+
+
+def stash_extracted(s: Session, case: Case, field: str, value, document_id: str | None = None) -> None:
+    """Hold a document value until consent. Same prefill bag as the guest answers; no fact row yet."""
+    settings = dict(case.settings or {})
+    pre = dict(settings.get("prefill") or {})
+    extracted = dict(pre.get("extracted") or {})
+    if catalog.is_masked(field):
+        extracted[field] = {"masked": True, "ciphertext": vault.encrypt(str(value)), "document_id": document_id}
+    else:
+        extracted[field] = {"value": value, "document_id": document_id}
+    pre["extracted"] = extracted
+    settings["prefill"] = pre
+    case.settings = settings
 
 
 def apply_prefill(s: Session, case: Case) -> int:
@@ -134,6 +151,22 @@ def apply_prefill(s: Session, case: Case) -> int:
         try:
             cs.record_fact(s, case, field, value, hedge=True, source="spoken", actor="guest_import",
                            actor_type="system", provenance={"guest": True})
+            saved += 1
+        except cs.CaseError:
+            pass
+    for field, item in (pre.get("extracted") or {}).items():
+        if not isinstance(item, dict):
+            continue
+        if item.get("masked"):
+            try:
+                value = vault.decrypt(item["ciphertext"])
+            except Exception:
+                continue
+        else:
+            value = item.get("value")
+        try:
+            cs.record_fact(s, case, field, value, source="document", actor="extraction", actor_type="system",
+                           provenance={"document_id": item.get("document_id"), "pending_extraction": True})
             saved += 1
         except cs.CaseError:
             pass

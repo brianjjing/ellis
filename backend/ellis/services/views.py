@@ -13,7 +13,8 @@ from ..db import (
     Briefing, Case, CaseLink, Clinic, Deadline, Derived, Document, Event, Extraction, Fact, Flag, Gap, Memo, Packet, ReviewItem,
     StaffUser, Task, Utterance,
 )
-from . import auth, case_service as cs, catalog
+from ..extraction.schemas import LABELS_EN
+from . import activity, auth, case_service as cs, catalog
 from .flags import STOP_NOW
 from .values import display_value
 
@@ -221,6 +222,7 @@ def applicant_case(s: Session, case: Case) -> dict[str, Any]:
         is not None,
         "reminders": reminders(s, case), "settings": cs.applicant_settings(case),
         "consent_given": cs.consent_given(s, case),
+        "disclosure": _disclosure(case, clinic.name),
     }
 
 
@@ -456,13 +458,16 @@ def clinic_case_detail(s: Session, case: Case, staff: StaffUser) -> dict[str, An
     docs = []
     for d in s.scalars(select(Document).where(Document.case_id == case.id).order_by(Document.ts)):
         x = s.scalars(select(Extraction).where(Extraction.document_id == d.id).order_by(Extraction.ts.desc())).first()
-        docs.append({"id": d.id, "document_type": d.document_type, "filename": d.filename, "status": d.status,
+        docs.append({"id": d.id, "document_type": d.document_type,
+                     "document_label": LABELS_EN.get(d.document_type, catalog.title_key(d.document_type)),
+                     "filename": d.filename, "status": d.status,
                      "quality": d.quality, "checks": d.checks, "exhibit": d.exhibit, "ts": d.ts.isoformat(),
                      "uploaded_by": d.uploaded_by, "extraction": x.data if x else None,
                      "extractor": x.extractor if x else None})
+    event_rows = list(s.scalars(select(Event).where(Event.case_id == case.id).order_by(Event.id.desc()).limit(400)))
     events = [{"id": e.id, "kind": e.kind, "payload": e.payload, "actor_type": e.actor_type, "actor": e.actor,
-               "ts": e.ts.isoformat()}
-              for e in s.scalars(select(Event).where(Event.case_id == case.id).order_by(Event.id.desc()).limit(400))]
+               "ts": e.ts.isoformat(), "sentence": activity.describe(s, e, "en")}
+              for e in event_rows]
     memos = [{"id": m.id, "kind": m.kind, "body_md": m.body_md, "proposed_by": m.proposed_by, "ts": m.ts.isoformat()}
              for m in s.scalars(select(Memo).where(Memo.case_id == case.id).order_by(Memo.ts.desc()))]
     retention = (clinic.settings or {}).get("retention", {})
@@ -489,7 +494,15 @@ def clinic_case_detail(s: Session, case: Case, staff: StaffUser) -> dict[str, An
         "documents": docs, "events": events, "memos": memos, "transcript": transcript, "tasks": tasks,
         "gaps": gaps, "review_items": items, "derived": der.data if der else None,
         "briefing": b.body if b else None, "packets": packets,
+        "labels": catalog.labels("en"),
+        "document_types": [{"key": k, "label": v} for k, v in LABELS_EN.items()],
     }
+
+
+def _disclosure(case: Case, clinic_name: str) -> str:
+    from ..voice.liaison import script
+    lang = "en" if (case.language or "en").split("-")[0] == "en" else "es"
+    return script("disclosure", lang=lang, clinic_name=clinic_name).text
 
 
 def review_item_view(s: Session, r: ReviewItem, staff: StaffUser | None) -> dict[str, Any]:

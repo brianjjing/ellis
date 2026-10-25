@@ -145,3 +145,33 @@ button { font-family: inherit; }
 .or::before, .or::after { content: ''; flex: 1; height: 1px; background: var(--line); }
 /* A link in small print (guest sidebar foot, guest chat's sign-up line) takes the print's size, as .switch links do. */
 .small .link-btn { font-size: inherit; text-decoration: underline; white-space: nowrap; }
+
+/* ---------- Case detail header ---------- */
+.case-bar { flex-wrap: wrap; gap: 12px; align-items: flex-start !important; }
+.case-actions { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; flex-shrink: 0; }
+.case-secondary { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+
+/* ⋯ overflow menu */
+.more-menu { position: relative; }
+.more-menu > summary { list-style: none; cursor: pointer; }
+.more-menu > summary::-webkit-details-marker { display: none; }
+.more-menu-body { position: absolute; right: 0; top: calc(100% + 4px); z-index: 30; min-width: 200px; background: var(--white); border: 1px solid var(--line-strong); border-radius: 6px; box-shadow: 0 4px 16px rgba(14,25,43,.12); display: flex; flex-direction: column; gap: 2px; padding: 4px; }
+.more-menu-body .btn { justify-content: flex-start; text-align: left; }
+
+/* ---------- Ready gate ---------- */
+.gate-blocker { padding: 8px 0; border-bottom: 1px solid var(--line); }
+.gate-blocker:last-child { border-bottom: 0; }
+
+/* ---------- Activity actor badge ---------- */
+.actor-badge { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 700; background: var(--sand); }
+
+/* ---------- Form section list ---------- */
+.form-section-row { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--line); cursor: pointer; }
+.form-section-row:hover { background: var(--sand); margin: 0 -8px; padding-left: 8px; padding-right: 8px; }
+
+/* ---------- Agent task cards (Memos tab) ---------- */
+.agent-card { border: 1px solid var(--line); border-radius: 6px; background: var(--white); margin-bottom: 8px; overflow: hidden; }
+.agent-card-head { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--sand); border-bottom: 1px solid var(--line); }
+
+/* ---------- Needs you header badge ---------- */
+.badge-count.needs-you { background: var(--rust); color: var(--white); }

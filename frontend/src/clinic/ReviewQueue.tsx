@@ -1,6 +1,6 @@
 // C3 Review queue: one row per open review item; stop-now pinned on top. Keyboard: J/K move, C clear, N note.
 import { useEffect, useRef, useState } from 'react'
-import { api, ApiError, fmtTime } from '../api'
+import { api, ApiError, fmtTime, relTime } from '../api'
 import type { Me } from './ClinicApp'
 
 const DECISIONS: [string, string, string][] = [
@@ -42,12 +42,22 @@ export default function ReviewQueue({ me, tick }: { me: Me; tick: number }) {
       </header>
       <div className="queue">
         <ul className="q-list" role="listbox" aria-label="Review items">
-          {data.items.length === 0 && <li className="soft" style={{ padding: 16 }}>Nothing to review.</li>}
+          {data.items.length === 0 && (
+            <li style={{ padding: '24px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <span style={{ fontWeight: 700 }}>All clear</span>
+              <span className="soft small">No items waiting for your review.</span>
+            </li>
+          )}
           {data.items.map((it, i) => (
             <li key={it.id} role="option" aria-selected={i === sel} className={`q-row ${i === sel ? 'sel' : ''} ${it.speed === 'stop_now' ? 'stop' : ''}`} onClick={() => setSel(i)}>
-              <span className="label">{it.speed === 'stop_now' ? 'STOP-NOW' : it.category.replace(/_/g, ' ').toUpperCase()}</span>
-              <span>{it.applicant}{it.self_report ? ' · applicant: "not about me"' : ''}</span>
-              <span className="small">{fmtTime(it.ts)}{it.status === 'case_blocked' ? ' · case blocked' : ''}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span className={`status-chip ${it.speed === 'stop_now' ? 'disputed' : it.blocking ? 'disputed' : 'proposed'}`} style={{ fontSize: 11 }}>
+                  {it.speed === 'stop_now' ? 'Stop now' : it.blocking ? 'Blocking' : 'Review'}
+                </span>
+                <span className="label">{it.category.replace(/_/g, ' ')}</span>
+              </div>
+              <span>{it.applicant}{it.self_report ? ' · "not about me"' : ''}</span>
+              <span className="small" title={fmtTime(it.ts)}>{relTime(it.ts)}{it.status === 'case_blocked' ? ' · blocked' : ''}</span>
             </li>
           ))}
         </ul>
@@ -70,7 +80,12 @@ function ItemDetail({ item, gate, noteRef, onDone }: { item: any; gate: any; not
   }
   return (
     <section className="q-detail">
-      <div className="label">{stop ? 'STOP-NOW' : `${item.category.replace(/_/g, ' ')} · ${item.speed.replace('_', ' ')}`}</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span className={`status-chip ${stop ? 'disputed' : item.blocking ? 'disputed' : 'proposed'}`}>
+          {stop ? 'Stop now' : item.blocking ? 'Blocking' : 'Review'}
+        </span>
+        <span className="label">{item.category.replace(/_/g, ' ')} · {item.speed.replace('_', ' ')}</span>
+      </div>
       <h2 className="h1"><a href={`/clinic/cases/${item.case_id}`} data-nav>{item.applicant}</a></h2>
       {stop ? (
         <div className="panel warn"><strong>{item.banner}</strong><span className="small">Category: {item.category} · {fmtTime(item.ts)} · {item.trigger}</span></div>

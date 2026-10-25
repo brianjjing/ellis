@@ -264,6 +264,11 @@ def _title(v: Any) -> str | None:
 def _apply_doc_fact(s: Session, case: Case, doc: Document, field: str, value: Any, quality: str) -> bool:
     if catalog.field_def(field) is None:
         return False
+    if not cs.consent_given(s, case):
+        # Same bag as the guest prefill. record_fact applies it once consent exists. No fact row before that.
+        from .accounts import stash_extracted
+        stash_extracted(s, case, field, value, document_id=doc.id)
+        return True
     existing = cs.facts_for(s, case.id, field)
     cur = cs.current_facts(s, case.id).get(field)
     if cur is not None and cur.value == catalog.DEFERRED:

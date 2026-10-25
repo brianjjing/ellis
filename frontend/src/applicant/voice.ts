@@ -144,6 +144,7 @@ export class VoiceClient {
         this.h.onPartial(m.text)
         break
       case 'user_final':
+        this.talking = false
         this.h.onPartial('')
         this.h.onCaption({ who: 'usted', text: m.text, spoken: m.spoken })
         break
@@ -184,8 +185,22 @@ export class VoiceClient {
     if (this.ctx) this.nextTime = this.ctx.currentTime
   }
 
+  // Tap to talk. A second tap, or Ink closing the turn, ends it. hold/release stay so a
+  // talk-up can still finish a turn Ink has not closed.
+  toggle(): 'on' | 'off' | 'unavailable' {
+    if (this.talking) {
+      this.release()
+      return 'off'
+    }
+    return this.begin('tap') ? 'on' : 'unavailable'
+  }
+
   // Push to talk. Holding cuts Ellis off right away, wherever it is in a line.
   hold(): boolean {
+    return this.begin('hold')
+  }
+
+  private begin(mode: 'tap' | 'hold'): boolean {
     if (!this.stream || !this.ctx) return false
     if (this.releasing) { // pressed again within the tail: the same turn goes on
       clearTimeout(this.releasing)
@@ -196,7 +211,7 @@ export class VoiceClient {
     this.muted = this.current?.id ?? null
     this.stopAudio()
     this.talking = true
-    this.send({ type: 'talk', down: true })
+    this.send({ type: 'talk', down: true, mode })
     return true
   }
 
