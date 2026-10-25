@@ -151,6 +151,7 @@ main, .enter, .dialog::backdrop { animation: enter .18s ease-out; }
 .ask input:focus-visible { outline: none; } /* the bar is the box; it shows focus instead */
 .ask:focus-within { box-shadow: 0 0 0 3px var(--green-tint); }
 .ask input[readonly] { cursor: default; }
+.ask:has(input[readonly]) { background: color-mix(in srgb, var(--line) 50%, var(--white)); } /* voice mode: slightly grayed, nothing to type */
 .icon-btn.mic { box-sizing: border-box; border: 2px solid var(--green); background: var(--white); color: var(--green); transition: background-color .15s, color .15s; } /* tap on, tap off */
 .icon-btn.mic[aria-pressed='true'] { background: var(--green); color: var(--white); }
 .suggest { gap: 6px; }
