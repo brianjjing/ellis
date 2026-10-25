@@ -77,7 +77,7 @@ export default function Shell({ active, guest, children }: { active: Section; gu
           {data.clinic.is_demo && <span className="demo-tag" style={{ alignSelf: 'flex-start', margin: '-20px 12px 0' }}>Demo data</span>}
           <div className="nav-list">
             <a {...link('chat')}>Chat with Ellis</a>
-            <a {...link('form')}><span className="grow">N-400 form</span><span className="badge"><span style={{ color: progressColor(done, data.progress.length), fontWeight: 700 }}>{done}</span> of {data.progress.length}</span></a>
+            <a {...link('form')}><span className="grow">N-400 form</span><span className="badge"><span style={{ color: progressColor(done, data.progress.length), fontWeight: 700 }}>{done}</span> of {data.progress.length} done</span></a>
             <a {...link('interview')}>Interview prep</a>
             <a {...link('reminders')}><span className="grow">Reminders</span>{days > 0 && <span className="badge alert">{days} days</span>}</a>
           </div>
