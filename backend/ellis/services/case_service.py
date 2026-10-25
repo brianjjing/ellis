@@ -237,7 +237,8 @@ def _doc_check(s: Session, case_id: str, field: str, value: Any) -> tuple[str | 
 def applicant_turn(s: Session, case: Case, text: str, session_id: str | None = None,
                    meta: dict | None = None) -> dict[str, Any]:
     """Store an applicant turn after the in-loop checks. Raw stop-list text is never written anywhere."""
-    stop = keywords.stop_hit(text)
+    lang = case_language(case)  # the English/Spanish lists always apply; this adds the case's language
+    stop = keywords.stop_hit(text, lang)
     if stop:
         u = Utterance(clinic_id=case.clinic_id, case_id=case.id, session_id=session_id, speaker="applicant",
                       text=f"[STOP:{stop}]", redacted=True, meta={"stop": True})
@@ -245,8 +246,8 @@ def applicant_turn(s: Session, case: Case, text: str, session_id: str | None = N
         s.flush()
         res = stop_now(s, case, stop, layer=4, session_id=session_id)
         return {"utterance_id": u.id, "stop": stop, "redacted": True, "flags": [], **res}
-    redacted = keywords.has_sensitive_number(text)
-    stored = keywords.redact_numbers(text) if redacted else text
+    redacted = keywords.has_sensitive_number(text, lang)
+    stored = keywords.redact_numbers(text, lang) if redacted else text
     u = Utterance(clinic_id=case.clinic_id, case_id=case.id, session_id=session_id, speaker="applicant",
                   text=stored, redacted=redacted, meta=meta or {})
     s.add(u)
@@ -254,7 +255,7 @@ def applicant_turn(s: Session, case: Case, text: str, session_id: str | None = N
     if redacted:
         emit(s, case, "utterance.redacted", {"utterance_id": u.id, "reason": "sensitive_number"}, "liaison", "liaison")
     flags = []
-    for cat in keywords.flag_hits(text):
+    for cat in keywords.flag_hits(text, lang):
         fl = raise_flag(s, case, cat, layer=4, detail={"utterance_id": u.id})
         if fl is not None:
             flags.append(flag_dict(fl, applicant=True))
@@ -947,7 +948,8 @@ def ask_clinic(s: Session, case: Case, question: str) -> dict[str, Any]:
     q = " ".join((question or "").split())[:500]
     if not q:
         raise CaseError("empty_question", "no question to send")
-    if keywords.stop_hit(q) or keywords.has_sensitive_number(q):
+    lang = case_language(case)
+    if keywords.stop_hit(q, lang) or keywords.has_sensitive_number(q, lang):
         raise CaseError("not_sendable", "that can't be sent as text; the clinic will follow up directly")
     info = cat_info("applicant_question")
     fl = Flag(clinic_id=case.clinic_id, case_id=case.id, category="applicant_question", speed=FLAG_CONTINUE,
@@ -980,7 +982,7 @@ def _layer1(s: Session, case: Case, field: str, value: Any, utterance_text: str 
             return None
         on_yes = q.get("on_yes", "stop_now")
         if on_yes == "classify":
-            hit = keywords.stop_hit(utterance_text or "")
+            hit = keywords.stop_hit(utterance_text or "", case_language(case))
             if hit:
                 stop_now(s, case, hit, layer=1, field=field)
                 return {"stop": hit}

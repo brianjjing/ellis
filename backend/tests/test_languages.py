@@ -201,3 +201,33 @@ def test_fixed_lines_exist_for_every_language_and_drafts_carry_the_english_origi
     # a line a draft doesn't have is the English one, with no draft note
     assert script("stop_offer_end", lang="fr").text == script("stop_offer_end", lang="en").text
     assert not script("stop_offer_end", lang="fr").meta
+
+
+def test_the_keyword_backstop_works_in_the_applicants_language(seeded):
+    from sqlalchemy import select
+    from ellis.config import yaml_config
+    from ellis.db import Utterance
+    from ellis.services import keywords
+    stop_cats, flag_cats = set(yaml_config("stop_list.yaml")), set(yaml_config("flag_list.yaml"))
+    for code, lists in yaml_config("keywords_i18n.yaml").items():
+        assert set(lists["stop"]) == stop_cats and set(lists["flag"]) == flag_cats, code
+    hits = {("vi", "Tôi đã bị bắt năm 2015"): "arrest", ("pl", "Głosowałem w wyborach"): "citizenship_claim",
+            ("zh", "我2015年被捕了"): "arrest", ("ar", "واعتقلوني في ٢٠١٥"): "arrest",
+            ("hi", "मुझे गिरफ्तार किया गया था"): "arrest", ("da", "Jeg har siddet i fængsel"): "arrest",
+            ("vi", "I was arrested once"): "arrest"}  # English applies in every conversation
+    for (lang, text), cat in hits.items():
+        assert keywords.stop_hit(text, lang) == cat, (lang, text)
+    for lang, text in (("vi", "ở tuổi 20 tôi làm việc từ từ"), ("fr", "J'ai arrêté de travailler en 2019"),
+                       ("sv", "Mina föräldrar är döda"), ("fi", "Asuin asemalla"), ("ru", "Я сидел в кафе")):
+        assert keywords.stop_hit(text, lang) is None, (lang, text)
+    assert keywords.has_sensitive_number("我的号码是一二三四五六七八", "zh")
+    assert keywords.has_sensitive_number("un deux trois quatre cinq six sept", "fr")
+
+    with session_scope() as s:
+        case = s.get(Case, "c_jorge")
+        case.language = "vi-VN"
+        out = cs.applicant_turn(s, case, "Tôi đã bị bắt năm 2015")
+        assert out["stop"] == "arrest"
+        stored = s.scalars(select(Utterance).where(Utterance.case_id == "c_jorge")
+                           .order_by(Utterance.ts.desc())).first()
+        assert stored.text == "[STOP:arrest]"  # the words are never written

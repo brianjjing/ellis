@@ -1,0 +1,501 @@
+# Layer-4 keyword backstop for the languages beyond English and Spanish (those stay in stop_list.yaml and
+# flag_list.yaml, which apply to every conversation, since people mix languages).
+#
+# MACHINE-DRAFTED, NOT REVIEWED: every list below needs a native speaker's review and the eval set before
+# real use. False positives are acceptable (fail closed); a missed stop topic is not, so when in doubt add.
+# The model's own stop_script tool is the second layer for anything these lists miss.
+#
+# Matching (ellis/services/keywords.py): text and stems are folded the same way (accents stripped, lowercase).
+# A stem in Latin, Cyrillic, Greek or Georgian script matches at the START of a word, so inflected forms match
+# too (aresztowano, tutuklandım); a stem in any other script matches anywhere in the text.
+#
+#   stop    categories as in stop_list.yaml: arrest, removal, citizenship_claim, fraud, danger
+#   flag    categories as in flag_list.yaml: citation, taxes, medical_exception_question
+#   digits  spoken digit words (0-9), for the sensitive-number check (a run of 7+ is redacted)
+fr:
+  stop:
+    arrest: [arrestation, ete arrete, m ont arrete, m a arrete, garde a vue, menotte, prison, condamn, casier judiciaire, inculpe, detenu]
+    removal: [expuls, deport, reconduit a la frontiere, obligation de quitter, tribunal de l immigration, juge de l immigration]
+    citizenship_claim: [j ai vote, voter aux elections, inscrit sur les listes electorales, dit que j etais citoyen, pretendu etre citoyen]
+    fraud: [faux papiers, faux documents, faux document, fausse carte, mariage blanc, mariage pour les papiers]
+    danger: [tuer, me suicider, suicide, faire du mal a, blesser quelqu un, une arme, des armes, arme a feu, pistolet]
+  flag:
+    citation: [amende, contravention, proces verbal, exces de vitesse]
+    taxes: [pas paye mes impots, pas declare mes impots, dois des impots, pas fait ma declaration d impots]
+    medical_exception_question: [je ne me souviens de rien, ma memoire, demence, alzheimer]
+  digits: [zero, un, une, deux, trois, quatre, cinq, six, sept, huit, neuf]
+pt:
+  stop:
+    arrest: [preso, presa, prisao, fui detido, fui detida, me prenderam, algemad, condenad, cadeia, fianca, ficha criminal]
+    removal: [deportad, deportaram, deportacao, expuls, tribunal de imigracao, juiz de imigracao, ordem de saida]
+    citizenship_claim: [votei, me registrei para votar, disse que era cidadao, disse que era cidada, fingi ser cidadao]
+    fraud: [documentos falsos, documento falso, papeis falsos, comprei um documento, casamento por papeis, casamento falso]
+    danger: [matar, me matar, suicid, machucar alguem, fazer mal a, uma arma, armas de fogo, revolver]
+  flag:
+    citation: [multa, infracao, excesso de velocidade]
+    taxes: [nao paguei impostos, nao declarei imposto, devo impostos]
+    medical_exception_question: [nao me lembro de nada, minha memoria, demencia, alzheimer]
+  digits: [zero, um, uma, dois, duas, tres, quatro, cinco, seis, sete, oito, nove]
+nl:
+  stop:
+    arrest: [gearresteerd, arrestatie, opgepakt, aangehouden, handboeien, gevangenis, veroordeeld, strafblad, borgtocht, cel gezeten]
+    removal: [uitgezet, gedeporteerd, deportatie, uitzetting, immigratierechter, vertrekbevel]
+    citizenship_claim: [ik heb gestemd, geregistreerd om te stemmen, gezegd dat ik staatsburger, deed alsof ik staatsburger]
+    fraud: [valse papieren, vals document, valse documenten, nep documenten, schijnhuwelijk, document gekocht]
+    danger: [vermoorden, doodmaken, zelfmoord, iemand pijn doen, mezelf iets aandoen, een wapen, vuurwapen, pistool]
+  flag:
+    citation: [boete, bekeuring, te hard gereden, snelheidsovertreding]
+    taxes: [geen belasting betaald, geen aangifte gedaan, belastingschuld]
+    medical_exception_question: [ik weet niets meer, mijn geheugen, dementie, alzheimer]
+  digits: [nul, een, twee, drie, vier, vijf, zes, zeven, acht, negen]
+de:
+  stop:
+    arrest: [verhaftet, verhaftung, festgenommen, festnahme, handschellen, gefangnis, verurteilt, vorstrafe, kaution, angeklagt, in haft]
+    removal: [abgeschoben, abschiebung, ausgewiesen, ausweisung, einwanderungsgericht, ausreiseverfugung]
+    citizenship_claim: [ich habe gewahlt, zur wahl registriert, gesagt dass ich staatsburger, als staatsburger ausgegeben]
+    fraud: [falsche papiere, gefalschte dokumente, gefalschter ausweis, scheinehe, papiere gekauft]
+    danger: [jemanden toten, umbringen, selbstmord, suizid, jemandem weh tun, eine waffe, waffen, pistole]
+  flag:
+    citation: [strafzettel, bussgeld, zu schnell gefahren, geschwindigkeitsuberschreitung]
+    taxes: [keine steuern bezahlt, keine steuererklarung, steuerschulden]
+    medical_exception_question: [ich erinnere mich an nichts, mein gedachtnis, demenz, alzheimer]
+  digits: [null, eins, ein, eine, zwei, drei, vier, funf, sechs, sieben, acht, neun]
+it:
+  stop:
+    arrest: [arrestat, arresto, fermato dalla polizia, manette, prigione, carcere, condannat, fedina penale, cauzione, detenut]
+    removal: [deportat, espuls, rimpatriat, tribunale dell immigrazione, ordine di espulsione, foglio di via]
+    citizenship_claim: [ho votato, registrato per votare, detto che ero cittadino, detto che ero cittadina, finto di essere cittadino]
+    fraud: [documenti falsi, documento falso, carte false, matrimonio di comodo, comprato un documento]
+    danger: [uccidere, ammazzare, suicid, fare del male a, un arma, armi da fuoco, pistola]
+  flag:
+    citation: [multa, contravvenzione, eccesso di velocita]
+    taxes: [non ho pagato le tasse, non ho fatto la dichiarazione, debiti con il fisco]
+    medical_exception_question: [non ricordo niente, la mia memoria, demenza, alzheimer]
+  digits: [zero, uno, una, due, tre, quattro, cinque, sei, sette, otto, nove]
+pl:
+  stop:
+    arrest: [aresztowan, areszt, zatrzyman, kajdank, wiezienie, skazan, kartoteka, kaucj, oskarzon]
+    removal: [deportowan, deportacj, wydalon, sad imigracyjny, nakaz opuszczenia]
+    citizenship_claim: [glosowalem, glosowalam, zarejestrowalem sie do glosowania, powiedzialem ze jestem obywatelem, podalem sie za obywatela]
+    fraud: [falszywe dokumenty, falszywy dokument, lewe papiery, fikcyjne malzenstwo, kupilem dokument]
+    danger: [zabic, zabije, samobojst, zrobic komus krzywde, bron, pistolet]
+  flag:
+    citation: [mandat, grzywn, przekroczenie predkosci]
+    taxes: [nie zaplacilem podatkow, nie zlozylem zeznania, zalegam z podatkami]
+    medical_exception_question: [nic nie pamietam, moja pamiec, demencj, alzheimer]
+  digits: [zero, jeden, jedna, dwa, trzy, cztery, piec, szesc, siedem, osiem, dziewiec]
+ru:
+  stop:
+    arrest: [арестова, арест, задержа, наручник, тюрьм, осужд, судимост, залог, обвинен, сидел в тюрьме]
+    removal: [депортир, депортац, выслали, выдвор, иммиграционный суд, приказ о высылке]
+    citizenship_claim: [я голосовал, я голосовала, зарегистрировался для голосования, сказал что я гражданин, выдавал себя за гражданина]
+    fraud: [поддельные документы, фальшивые документы, поддельный паспорт, фиктивный брак, купил документ]
+    danger: [убить, убью, самоубийств, покончить с собой, причинить вред, оружие, пистолет]
+  flag:
+    citation: [штраф, превышение скорости]
+    taxes: [не платил налоги, не подавал декларацию, долг по налогам]
+    medical_exception_question: [ничего не помню, моя память, деменц, альцгеймер]
+  digits: [ноль, один, одна, два, две, три, четыре, пять, шесть, семь, восемь, девять]
+sv:
+  stop:
+    arrest: [arresterad, gripen, anhallen, handbojor, fangelse, domd, straffregister, borgen, atalad]
+    removal: [utvisad, deporterad, avvisad, utvisning, migrationsdomstol]
+    citizenship_claim: [jag har rostat, registrerad for att rosta, sagt att jag var medborgare, utgav mig for att vara medborgare]
+    fraud: [falska papper, falska dokument, falskt dokument, skenaktenskap, kopt ett dokument]
+    danger: [doda nagon, morda, sjalvmord, skada nagon, ett vapen, skjutvapen, pistol]
+  flag:
+    citation: [boter, fortkorning, parkeringsbot]
+    taxes: [inte betalat skatt, inte deklarerat, skatteskuld]
+    medical_exception_question: [jag minns ingenting, mitt minne, demens, alzheimer]
+  digits: [noll, ett, en, tva, tre, fyra, fem, sex, sju, atta, nio]
+tr:
+  stop:
+    arrest: [tutuklan, tutuklu, gozaltina, kelepce, hapis, cezaevi, mahkum, sabika, kefalet, suclan]
+    removal: [sinir disi, deport, ulkeden cikarildim, gocmenlik mahkemesi]
+    citizenship_claim: [oy kullandim, oy vermek icin kaydoldum, vatandas oldugumu soyledim, vatandasmis gibi]
+    fraud: [sahte belge, sahte evrak, sahte kimlik, sahte pasaport, kagit icin evlendim, belge satin aldim]
+    danger: [oldurmek, oldurecegim, intihar, birine zarar, kendime zarar, silah, tabanca]
+  flag:
+    citation: [ceza yedim, trafik cezasi, hiz siniri]
+    taxes: [vergi odemedim, vergi beyannamesi vermedim, vergi borcum]
+    medical_exception_question: [hicbir sey hatirlamiyorum, hafizam, demans, alzheimer]
+  digits: [sifir, bir, iki, uc, dort, bes, alti, yedi, sekiz, dokuz]
+tl:
+  stop:
+    arrest: [inaresto, naaresto, hinuli ng pulis, nakulong, kulungan, posas, nahatulan, piyansa, kinasuhan]
+    removal: [dineport, na deport, deportasyon, pinaalis sa bansa, korte ng imigrasyon]
+    citizenship_claim: [bumoto ako, nagparehistro para bumoto, sinabi kong mamamayan ako, nagpanggap na mamamayan]
+    fraud: [pekeng papeles, pekeng dokumento, pekeng id, kasal para sa papeles, bumili ng dokumento]
+    danger: [papatayin, pumatay, magpakamatay, saktan ang, baril, armas]
+  flag:
+    citation: [multa, tiket, overspeeding]
+    taxes: [hindi nagbayad ng buwis, hindi nag file ng buwis, may utang sa buwis]
+    medical_exception_question: [wala akong maalala, ang memorya ko, dementia, alzheimer]
+  digits: [sero, isa, dalawa, tatlo, apat, lima, anim, pito, walo, siyam]
+bg:
+  stop:
+    arrest: [арестува, арест, задържа, белезници, затвор, осъден, съдимост, гаранция, обвинен]
+    removal: [депортира, депортац, експулсира, имиграционен съд]
+    citizenship_claim: [гласувах, регистрирах се да гласувам, казах че съм гражданин, представих се за гражданин]
+    fraud: [фалшиви документи, фалшив документ, фалшив паспорт, фиктивен брак, купих документ]
+    danger: [да убия, убийство, самоубийств, да нараня, оръжие, пистолет]
+  flag:
+    citation: [глоба, превишена скорост, фиш]
+    taxes: [не съм платил данъци, не съм подал декларация, дължа данъци]
+    medical_exception_question: [нищо не помня, паметта ми, деменц, алцхаймер]
+  digits: [нула, едно, един, една, две, три, четири, пет, шест, седем, осем, девет]
+ro:
+  stop:
+    arrest: [arestat, arestare, retinut de politie, catuse, inchisoare, condamnat, cazier, cautiune, acuzat]
+    removal: [deportat, deportare, expulzat, tribunalul de imigrare, ordin de parasire]
+    citizenship_claim: [am votat, inregistrat sa votez, am spus ca sunt cetatean, m am dat drept cetatean]
+    fraud: [acte false, documente false, document fals, casatorie de convenienta, am cumparat un act]
+    danger: [sa omor, ucide, sinucid, sa ranesc pe cineva, o arma, arme de foc, pistol]
+  flag:
+    citation: [amenda, viteza excesiva, proces verbal]
+    taxes: [nu am platit impozit, nu am depus declaratia, datorii la stat]
+    medical_exception_question: [nu imi amintesc nimic, memoria mea, dementa, alzheimer]
+  digits: [zero, unu, una, doi, doua, trei, patru, cinci, sase, sapte, opt, noua]
+ar:
+  stop:
+    arrest: [اعتقل, قبض علي, القبض, سجن, السجن, محكوم, حكم علي, كفالة, كلبشات, اتهموني, احتجز]
+    removal: [ترحيل, رحلوني, طردوني من البلد, محكمة الهجرة, أمر بالمغادرة]
+    citizenship_claim: [صوتت, سجلت للتصويت, قلت إني مواطن, ادعيت أني مواطن]
+    fraud: [أوراق مزورة, وثائق مزورة, وثيقة مزورة, جواز مزور, زواج صوري, اشتريت وثيقة]
+    danger: [أقتل, قتل, انتحار, أنتحر, أؤذي, سلاح, مسدس]
+  flag:
+    citation: [مخالفة, غرامة, سرعة زائدة]
+    taxes: [لم أدفع الضرائب, لم أقدم الإقرار الضريبي, علي ضرائب]
+    medical_exception_question: [لا أتذكر شيئا, ذاكرتي, الخرف, الزهايمر]
+cs:
+  stop:
+    arrest: [zatcen, zatkli, vazb, pouta, vezeni, odsouzen, trestni rejstrik, kauce, obvinen]
+    removal: [deportov, vyhosten, soud pro pristehovalce, prikaz k vycestovani]
+    citizenship_claim: [volil jsem, volila jsem, registroval se k volbam, rekl ze jsem obcan, vydaval se za obcana]
+    fraud: [falesne doklady, falesny doklad, padelan, fiktivni manzelstvi, koupil doklad]
+    danger: [zabit, zabiju, sebevrazd, ublizit nekomu, zbran, pistol]
+  flag:
+    citation: [pokut, prekroceni rychlosti]
+    taxes: [nezaplatil jsem dane, nepodal jsem priznani, dluzim na danich]
+    medical_exception_question: [nic si nepamatuju, moje pamet, demenc, alzheimer]
+  digits: [nula, jedna, jeden, dve, dva, tri, ctyri, pet, sest, sedm, osm, devet]
+el:
+  stop:
+    arrest: [συνελη, συλλη, κρατηθηκα, χειροπεδ, φυλακ, καταδικ, ποινικο μητρωο, εγγυηση, κατηγορ]
+    removal: [απελα, εκδιωχ, δικαστηριο μεταναστευσης]
+    citizenship_claim: [ψηφισα, γραφτηκα για να ψηφισω, ειπα οτι ειμαι πολιτης, παρισταναν πολιτη]
+    fraud: [πλαστα χαρτια, πλαστα εγγραφα, πλαστο εγγραφο, πλαστο διαβατηριο, εικονικος γαμος, αγορασα εγγραφο]
+    danger: [να σκοτωσω, σκοτωσ, αυτοκτον, να βλαψω, οπλο, πιστολι]
+  flag:
+    citation: [προστιμο, κληση, υπερβολικη ταχυτητα]
+    taxes: [δεν πληρωσα φορους, δεν εκανα φορολογικη δηλωση, χρωσταω φορους]
+    medical_exception_question: [δεν θυμαμαι τιποτα, η μνημη μου, ανοια, αλτσχαιμερ]
+  digits: [μηδεν, ενα, ενας, μια, δυο, δυο, τρια, τρεις, τεσσερα, πεντε, εξι, επτα, εφτα, οκτω, οχτω, εννεα, εννια]
+fi:
+  stop:
+    arrest: [pidatet, pidatys, kiinniotet, kasirau, vankila, tuomittu, rikosrekister, takuu, syytet]
+    removal: [karkotet, karkotus, maasta poist, siirtolaistuomioistuin]
+    citizenship_claim: [aanestin, rekisteroidyin aanestamaan, sanoin olevani kansalainen, esiinnyin kansalaisena]
+    fraud: [vaarennet, vaarat paperit, lumeavioliitto, ostin asiakirjan]
+    danger: [tappaa, itsemurha, satuttaa jotakuta, ampuma ase, aseella, aseita, pistooli]
+  flag:
+    citation: [sakko, ylinopeus, rikesakko]
+    taxes: [en maksanut veroja, en tehnyt veroilmoitusta, verovelka]
+    medical_exception_question: [en muista mitaan, muistini, dementia, alzheimer]
+  digits: [nolla, yksi, kaksi, kolme, nelja, viisi, kuusi, seitseman, kahdeksan, yhdeksan]
+hr:
+  stop:
+    arrest: [uhicen, uhitil, pritvor, lisice, zatvor, osuden, kaznena evidencija, jamcevin, optuzen]
+    removal: [deportiran, deportacij, protjeran, sud za useljenje, nalog za napustanje]
+    citizenship_claim: [glasao sam, glasala sam, registrirao se za glasanje, rekao da sam drzavljanin, predstavljao se kao drzavljanin]
+    fraud: [lazni dokumenti, lazni dokument, krivotvoren, fiktivni brak, kupio dokument]
+    danger: [ubiti, ubit cu, samoubojstv, nauditi nekome, oruzje, pistolj]
+  flag:
+    citation: [kazna, prekoracenje brzine, globa]
+    taxes: [nisam platio porez, nisam predao poreznu prijavu, dugujem porez]
+    medical_exception_question: [nista se ne sjecam, moje pamcenje, demencij, alzheimer]
+  digits: [nula, jedan, jedna, dva, dvije, tri, cetiri, pet, sest, sedam, osam, devet]
+ms:
+  stop:
+    arrest: [ditangkap, tangkap, ditahan, digari, penjara, dihukum, rekod jenayah, jaminan, didakwa]
+    removal: [dihantar pulang, diusir, deportasi, mahkamah imigresen, perintah keluar]
+    citizenship_claim: [saya mengundi, mendaftar untuk mengundi, kata saya warganegara, mengaku warganegara]
+    fraud: [dokumen palsu, kertas palsu, pasport palsu, kahwin kontrak, beli dokumen]
+    danger: [bunuh, membunuh, bunuh diri, mencederakan, senjata, pistol]
+  flag:
+    citation: [saman, denda, memandu laju]
+    taxes: [tidak bayar cukai, tidak isi borang cukai, hutang cukai]
+    medical_exception_question: [saya tidak ingat apa apa, ingatan saya, demensia, alzheimer]
+  digits: [kosong, sifar, satu, dua, tiga, empat, lima, enam, tujuh, lapan, sembilan]
+sk:
+  stop:
+    arrest: [zatknut, zatkli, vazb, vazenie, odsuden, register trestov, kaucia, obvinen]
+    removal: [deportov, vyhosten, sud pre pristahovalectvo, prikaz na vycestovanie]
+    citizenship_claim: [volil som, volila som, registroval som sa na volby, povedal ze som obcan, vydaval sa za obcana]
+    fraud: [falosne doklady, falosny doklad, sfalsovan, fiktivne manzelstvo, kupil doklad]
+    danger: [zabit, zabijem, samovrazd, ublizit niekomu, zbran, pistol]
+  flag:
+    citation: [pokut, prekrocenie rychlosti]
+    taxes: [nezaplatil som dane, nepodal som priznanie, dlzim na daniach]
+    medical_exception_question: [nic si nepamatam, moja pamat, demenci, alzheimer]
+  digits: [nula, jeden, jedna, dva, dve, tri, styri, pat, sest, sedem, osem, devat]
+da:
+  stop:
+    arrest: [anholdt, arresteret, varetaegt, handjern, faengsel, domt, straffeattest, kaution, sigtet]
+    removal: [udvist, deporteret, udvisning, udsendt]
+    citizenship_claim: [jeg har stemt, registreret for at stemme, sagde jeg var statsborger, udgav mig for statsborger]
+    fraud: [falske papirer, falske dokumenter, falsk dokument, proformaaegteskab, kobte et dokument]
+    danger: [draebe, slaa ihjel, selvmord, gore nogen fortraed, et vaben, skydevaben, pistol]
+  flag:
+    citation: [bode, fartbode, korte for staerkt]
+    taxes: [ikke betalt skat, ikke lavet selvangivelse, skattegaeld]
+    medical_exception_question: [jeg kan ikke huske noget, min hukommelse, demens, alzheimer]
+  digits: [nul, en, et, to, tre, fire, fem, seks, syv, otte, ni]
+ta:
+  stop:
+    arrest: [கைது, சிறை, காவல் நிலையத்தில் வைத்த, விலங்கு, தண்டனை, ஜாமீன், குற்றம் சாட்ட]
+    removal: [நாடு கடத்த, வெளியேற்ற, குடிவரவு நீதிமன்ற]
+    citizenship_claim: [வாக்களித்தேன், வாக்களிக்க பதிவு, குடிமகன் என்று சொன்னேன்]
+    fraud: [போலி ஆவண, போலி கடவுச்சீட்டு, போலி திருமண, ஆவணம் வாங்கினேன்]
+    danger: [கொல்ல, கொலை, தற்கொலை, காயப்படுத்த, ஆயுதம், துப்பாக்கி]
+  flag:
+    citation: [அபராதம், வேகமாக ஓட்டி]
+    taxes: [வரி கட்டவில்லை, வரி தாக்கல் செய்யவில்லை, வரி பாக்கி]
+    medical_exception_question: [எதுவும் நினைவில்லை, என் நினைவாற்றல், மறதி நோய்]
+uk:
+  stop:
+    arrest: [заарешту, арешт, затрима, кайданк, "в'язниц", засудж, судимост, застав, обвинува]
+    removal: [депорту, депортац, вислали, видвор, імміграційний суд, наказ про виїзд]
+    citizenship_claim: [я голосував, я голосувала, зареєструвався для голосування, сказав що я громадянин, видавав себе за громадянина]
+    fraud: [підроблені документи, фальшиві документи, підроблений паспорт, фіктивний шлюб, купив документ]
+    danger: [вбити, вбю, самогубств, заподіяти шкоду, зброя, пістолет]
+  flag:
+    citation: [штраф, перевищення швидкості]
+    taxes: [не платив податки, не подавав декларацію, борг з податків]
+    medical_exception_question: ["нічого не пам'ятаю", "моя пам'ять", деменц, альцгеймер]
+  digits: [нуль, один, одна, два, дві, три, чотири, пять, шість, сім, вісім, девять]
+hu:
+  stop:
+    arrest: [letartoztat, orizetbe, bilincs, borton, elitelt, buntetett eloelet, ovadek, megvadol, fogdaban]
+    removal: [kitoloncol, kiutasit, deportal, bevandorlasi birosag]
+    citizenship_claim: [szavaztam, regisztraltam a szavazasra, mondtam hogy allampolgar vagyok, allampolgarnak adtam ki magam]
+    fraud: [hamis papir, hamis okmany, hamis dokumentum, hamisitott, erdekhazassag, okmanyt vettem]
+    danger: [megolni, megolom, ongyilkos, bantani valakit, fegyver, pisztoly]
+  flag:
+    citation: [birsag, gyorshajtas, buntetes]
+    taxes: [nem fizettem adot, nem adtam be bevallast, adotartozas]
+    medical_exception_question: [semmire nem emlekszem, a memoriam, demencia, alzheimer]
+  digits: [nulla, egy, ketto, ket, harom, negy, ot, hat, het, nyolc, kilenc]
+"no":
+  stop:
+    arrest: [arrestert, pagrepet, varetekt, handjern, fengsel, domt, straffeattest, kausjon, siktet]
+    removal: [utvist, deportert, utvisning, sendt ut av landet]
+    citizenship_claim: [jeg har stemt, registrert for a stemme, sa at jeg var statsborger, utga meg for statsborger]
+    fraud: [falske papirer, falske dokumenter, falskt dokument, proformaekteskap, kjopte et dokument]
+    danger: [drepe, ta livet av, selvmord, skade noen, et vapen, skytevapen, pistol]
+  flag:
+    citation: [bot, fartsbot, kjorte for fort]
+    taxes: [ikke betalt skatt, ikke levert skattemelding, skattegjeld]
+    medical_exception_question: [jeg husker ingenting, hukommelsen min, demens, alzheimer]
+  digits: [null, en, ett, to, tre, fire, fem, seks, sju, syv, atte, ni]
+vi:
+  stop:
+    arrest: [bi bat, bat giam, tam giam, con dong, nha tu, vao tu, bi ket an, an tich, tien bao lanh, bi buoc toi]
+    removal: [truc xuat, bi truc xuat, toa di tru, lenh truc xuat]
+    citizenship_claim: [toi da di bau, toi da bo phieu, dang ky di bau, noi toi la cong dan, nhan la cong dan]
+    fraud: [giay to gia, giay to gia mao, ho chieu gia, ket hon gia, mua giay to]
+    danger: [giet, tu sat, lam hai nguoi, lam hai ai, khau sung, vu khi]
+  flag:
+    citation: [bi phat, tien phat, chay qua toc do]
+    taxes: [khong dong thue, khong khai thue, no thue]
+    medical_exception_question: [toi khong nho gi ca, tri nho cua toi, mat tri nho, sa sut tri tue]
+  digits: [khong, mot, hai, ba, bon, tu, nam, sau, bay, tam, chin]
+bn:
+  stop:
+    arrest: [গ্রেপ্তার, গ্রেফতার, হাজতে, জেলে, কারাগার, হাতকড়া, সাজা, জামিন, অভিযুক্ত]
+    removal: [নির্বাসন, দেশ থেকে বের করে, ডিপোর্ট, অভিবাসন আদালত]
+    citizenship_claim: [ভোট দিয়েছি, ভোটের জন্য নিবন্ধন, নাগরিক বলেছি]
+    fraud: [জাল কাগজ, জাল নথি, জাল পাসপোর্ট, কাগজের জন্য বিয়ে, নথি কিনেছি]
+    danger: [খুন, মেরে ফেল, আত্মহত্যা, ক্ষতি করতে, অস্ত্র, বন্দুক]
+  flag:
+    citation: [জরিমানা, টিকিট, বেশি গতিতে]
+    taxes: [কর দিইনি, ট্যাক্স দিইনি, কর বকেয়া]
+    medical_exception_question: [কিছুই মনে নেই, আমার স্মৃতি, স্মৃতিভ্রংশ]
+th:
+  stop:
+    arrest: [ถูกจับ, จับกุม, ถูกคุมขัง, ติดคุก, เรือนจำ, กุญแจมือ, ถูกตัดสิน, ประวัติอาชญากรรม, ประกันตัว, ถูกตั้งข้อหา]
+    removal: [ถูกเนรเทศ, เนรเทศ, ส่งกลับประเทศ, ศาลตรวจคนเข้าเมือง]
+    citizenship_claim: [ไปเลือกตั้ง, ลงคะแนนเสียง, ลงทะเบียนเลือกตั้ง, บอกว่าเป็นพลเมือง, อ้างว่าเป็นพลเมือง]
+    fraud: [เอกสารปลอม, บัตรปลอม, พาสปอร์ตปลอม, แต่งงานเพื่อเอกสาร, ซื้อเอกสาร]
+    danger: [ฆ่า, ฆ่าตัวตาย, ทำร้าย, อาวุธ, ปืน]
+  flag:
+    citation: [ใบสั่ง, ค่าปรับ, ขับรถเร็ว]
+    taxes: [ไม่ได้จ่ายภาษี, ไม่ได้ยื่นภาษี, ค้างภาษี]
+    medical_exception_question: [จำอะไรไม่ได้, ความจำของฉัน, สมองเสื่อม]
+he:
+  stop:
+    arrest: [עצרו אותי, נעצרתי, מעצר, אזיקים, כלא, בית סוהר, הורשעתי, נשפטתי, ערבות, הואשמתי, רישום פלילי]
+    removal: [גירוש, גירשו אותי, גורשתי, בית משפט להגירה, צו יציאה]
+    citizenship_claim: [הצבעתי, נרשמתי להצביע, אמרתי שאני אזרח, התחזיתי לאזרח]
+    fraud: [מסמכים מזויפים, מסמך מזויף, דרכון מזויף, נישואים פיקטיביים, קניתי מסמך]
+    danger: [להרוג, לרצוח, התאבדות, להתאבד, לפגוע במישהו, נשק, אקדח]
+  flag:
+    citation: [קנס, דוח תנועה, מהירות מופרזת]
+    taxes: [לא שילמתי מס, לא הגשתי דוח מס, חוב מס]
+    medical_exception_question: [אני לא זוכר כלום, הזיכרון שלי, דמנציה, אלצהיימר]
+ka:
+  stop:
+    arrest: [დამაპატიმრეს, დაპატიმრ, დამაკავეს, დაკავებ, ბორკილ, ციხე, გამასამართლეს, ნასამართლობ, გირაო, ბრალი წამიყენეს]
+    removal: [დეპორტ, გამაძევეს, გაძევებ, საიმიგრაციო სასამართლო]
+    citizenship_claim: [მივეცი ხმა, ხმის მისაცემად დავრეგისტრირდი, ვთქვი რომ მოქალაქე ვარ, მოქალაქედ გავასაღე თავი]
+    fraud: [ყალბი საბუთ, ყალბი დოკუმენტ, ყალბი პასპორტ, ფიქტიური ქორწინება, ვიყიდე საბუთი]
+    danger: [მოვკლა, მკვლელობ, თვითმკვლელობ, ვინმეს ვავნო, იარაღ, პისტოლეტ]
+  flag:
+    citation: [ჯარიმ, სიჩქარის გადაჭარბება]
+    taxes: [გადასახადი არ გადავიხადე, დეკლარაცია არ შევიტანე, საგადასახადო ვალი]
+    medical_exception_question: [არაფერი მახსოვს, ჩემი მეხსიერება, დემენცია, ალცჰაიმერ]
+  digits: [ნული, ერთი, ორი, სამი, ოთხი, ხუთი, ექვსი, შვიდი, რვა, ცხრა]
+id:
+  stop:
+    arrest: [ditangkap, penangkapan, ditahan, diborgol, penjara, dipenjara, dihukum, catatan kriminal, uang jaminan, didakwa]
+    removal: [dideportasi, deportasi, diusir dari negara, pengadilan imigrasi, perintah keluar]
+    citizenship_claim: [saya memilih di pemilu, saya ikut pemilu, mendaftar untuk memilih, bilang saya warga negara, mengaku warga negara]
+    fraud: [dokumen palsu, surat palsu, paspor palsu, kawin kontrak, membeli dokumen]
+    danger: [membunuh, bunuh, bunuh diri, melukai orang, menyakiti orang, senjata, pistol]
+  flag:
+    citation: [tilang, denda, ngebut]
+    taxes: [tidak bayar pajak, tidak lapor pajak, utang pajak]
+    medical_exception_question: [saya tidak ingat apa apa, ingatan saya, demensia, alzheimer]
+  digits: [nol, kosong, satu, dua, tiga, empat, lima, enam, tujuh, delapan, sembilan]
+te:
+  stop:
+    arrest: [అరెస్ట్, అరెస్టు, నిర్బంధ, జైలు, సంకెళ్ళు, శిక్ష, బెయిల్, నేరం మోప]
+    removal: [దేశం నుండి పంపించ, బహిష్కర, డిపోర్ట్, ఇమ్మిగ్రేషన్ కోర్టు]
+    citizenship_claim: [ఓటు వేశాను, ఓటు కోసం నమోదు, పౌరుడిని అని చెప్పాను]
+    fraud: [నకిలీ పత్రాలు, నకిలీ పాస్‌పోర్ట్, నకిలీ డాక్యుమెంట్, కాగితాల కోసం పెళ్లి, పత్రం కొన్నాను]
+    danger: [చంపు, హత్య, ఆత్మహత్య, హాని చేయ, ఆయుధం, తుపాకీ]
+  flag:
+    citation: [జరిమానా, ఫైన్, వేగంగా నడిపి]
+    taxes: [పన్ను కట్టలేదు, ట్యాక్స్ కట్టలేదు, పన్ను బకాయి]
+    medical_exception_question: [ఏమీ గుర్తు లేదు, నా జ్ఞాపకశక్తి, మతిమరుపు వ్యాధి]
+gu:
+  stop:
+    arrest: [ધરપકડ, અટકાયત, જેલ, હાથકડી, સજા, જામીન, આરોપ]
+    removal: [દેશનિકાલ, ડિપોર્ટ, દેશમાંથી કાઢી, ઇમિગ્રેશન કોર્ટ]
+    citizenship_claim: [મત આપ્યો, મતદાન માટે નોંધણી, નાગરિક છું એમ કહ્યું]
+    fraud: [નકલી કાગળ, નકલી દસ્તાવેજ, નકલી પાસપોર્ટ, કાગળો માટે લગ્ન, દસ્તાવેજ ખરીદ્યો]
+    danger: [મારી નાખ, હત્યા, આત્મહત્યા, નુકસાન પહોંચાડ, હથિયાર, બંદૂક]
+  flag:
+    citation: [દંડ, ટિકિટ, ઝડપથી ગાડી]
+    taxes: [ટેક્સ ભર્યો નથી, કર ભર્યો નથી, ટેક્સ બાકી]
+    medical_exception_question: [કંઈ યાદ નથી, મારી યાદશક્તિ, ઉન્માદ]
+kn:
+  stop:
+    arrest: [ಬಂಧನ, ಬಂಧಿಸ, ಅರೆಸ್ಟ್, ಜೈಲು, ಕೈಕೋಳ, ಶಿಕ್ಷೆ, ಜಾಮೀನು, ಆರೋಪ]
+    removal: [ಗಡೀಪಾರು, ದೇಶದಿಂದ ಹೊರಹಾಕ, ಡಿಪೋರ್ಟ್, ವಲಸೆ ನ್ಯಾಯಾಲಯ]
+    citizenship_claim: [ಮತ ಹಾಕಿದೆ, ಮತದಾನಕ್ಕೆ ನೋಂದಣಿ, ನಾಗರಿಕ ಎಂದು ಹೇಳಿದೆ]
+    fraud: [ನಕಲಿ ದಾಖಲೆ, ನಕಲಿ ಪಾಸ್‌ಪೋರ್ಟ್, ದಾಖಲೆಗಳಿಗಾಗಿ ಮದುವೆ, ದಾಖಲೆ ಖರೀದಿಸಿದೆ]
+    danger: [ಕೊಲ್ಲು, ಕೊಲೆ, ಆತ್ಮಹತ್ಯೆ, ಹಾನಿ ಮಾಡ, ಆಯುಧ, ಬಂದೂಕು]
+  flag:
+    citation: [ದಂಡ, ಟಿಕೆಟ್, ವೇಗವಾಗಿ ಓಡಿಸ]
+    taxes: [ತೆರಿಗೆ ಕಟ್ಟಿಲ್ಲ, ತೆರಿಗೆ ಬಾಕಿ]
+    medical_exception_question: [ಏನೂ ನೆನಪಿಲ್ಲ, ನನ್ನ ನೆನಪು, ಮರೆವಿನ ಕಾಯಿಲೆ]
+ml:
+  stop:
+    arrest: [അറസ്റ്റ്, കസ്റ്റഡി, ജയിൽ, വിലങ്ങ്, ശിക്ഷ, ജാമ്യം, കുറ്റം ചുമത്ത]
+    removal: [നാടുകടത്ത, ഡിപോർട്ട്, രാജ്യത്ത് നിന്ന് പുറത്താക്ക, ഇമിഗ്രേഷൻ കോടതി]
+    citizenship_claim: [വോട്ട് ചെയ്തു, വോട്ടിനായി രജിസ്റ്റർ, പൗരനാണെന്ന് പറഞ്ഞു]
+    fraud: [വ്യാജ രേഖ, വ്യാജ പാസ്പോർട്ട്, രേഖകൾക്കായി വിവാഹം, രേഖ വാങ്ങി]
+    danger: [കൊല്ല, കൊലപാതക, ആത്മഹത്യ, ഉപദ്രവിക്ക, ആയുധം, തോക്ക്]
+  flag:
+    citation: [പിഴ, ടിക്കറ്റ്, അമിതവേഗ]
+    taxes: [നികുതി അടച്ചില്ല, ടാക്സ് അടച്ചില്ല, നികുതി കുടിശ്ശിക]
+    medical_exception_question: [ഒന്നും ഓർമ്മയില്ല, എന്റെ ഓർമ്മ, മറവിരോഗം]
+mr:
+  stop:
+    arrest: [अटक, ताब्यात घेतल, तुरुंग, जेल, बेड्या, शिक्षा, जामीन, आरोप]
+    removal: [हद्दपार, देशातून काढ, डिपोर्ट, इमिग्रेशन कोर्ट]
+    citizenship_claim: [मतदान केले, मत दिले, मतदानासाठी नोंदणी, नागरिक असल्याचे सांगितले]
+    fraud: [बनावट कागद, बनावट दस्तऐवज, बनावट पासपोर्ट, कागदपत्रांसाठी लग्न, कागदपत्र विकत घेतल]
+    danger: [ठार मार, खून, आत्महत्या, इजा करण, हत्यार, बंदूक]
+  flag:
+    citation: [दंड, चलान, वेगाने गाडी]
+    taxes: [कर भरला नाही, टॅक्स भरला नाही, कर थकबाकी]
+    medical_exception_question: [काहीच आठवत नाही, माझी स्मरणशक्ती, स्मृतिभ्रंश]
+pa:
+  stop:
+    arrest: [ਗ੍ਰਿਫ਼ਤਾਰ, ਗ੍ਰਿਫਤਾਰ, ਹਿਰਾਸਤ, ਜੇਲ੍ਹ, ਹੱਥਕੜੀ, ਸਜ਼ਾ, ਜ਼ਮਾਨਤ, ਦੋਸ਼ ਲਗਾ]
+    removal: [ਦੇਸ਼ ਨਿਕਾਲਾ, ਡਿਪੋਰਟ, ਦੇਸ਼ ਵਿੱਚੋਂ ਕੱਢ, ਇਮੀਗ੍ਰੇਸ਼ਨ ਅਦਾਲਤ]
+    citizenship_claim: [ਵੋਟ ਪਾਈ, ਵੋਟ ਲਈ ਰਜਿਸਟਰ, ਨਾਗਰਿਕ ਹਾਂ ਕਿਹਾ]
+    fraud: [ਜਾਅਲੀ ਕਾਗਜ਼, ਜਾਅਲੀ ਦਸਤਾਵੇਜ਼, ਨਕਲੀ ਪਾਸਪੋਰਟ, ਕਾਗਜ਼ਾਂ ਲਈ ਵਿਆਹ, ਦਸਤਾਵੇਜ਼ ਖਰੀਦ]
+    danger: [ਮਾਰ ਦੇ, ਕਤਲ, ਖੁਦਕੁਸ਼ੀ, ਖ਼ੁਦਕੁਸ਼ੀ, ਨੁਕਸਾਨ ਪਹੁੰਚਾ, ਹਥਿਆਰ, ਬੰਦੂਕ]
+  flag:
+    citation: [ਜੁਰਮਾਨਾ, ਚਲਾਨ, ਤੇਜ਼ ਗੱਡੀ]
+    taxes: [ਟੈਕਸ ਨਹੀਂ ਭਰਿਆ, ਟੈਕਸ ਬਕਾਇਆ]
+    medical_exception_question: [ਕੁਝ ਯਾਦ ਨਹੀਂ, ਮੇਰੀ ਯਾਦਦਾਸ਼ਤ, ਭੁੱਲਣ ਦੀ ਬਿਮਾਰੀ]
+ur:
+  stop:
+    arrest: [گرفتار, حراست, جیل, ہتھکڑی, سزا, ضمانت, الزام لگا]
+    removal: [ملک بدر, ڈیپورٹ, ملک سے نکال, امیگریشن عدالت]
+    citizenship_claim: [ووٹ ڈالا, ووٹ دیا, ووٹ کے لیے رجسٹر, شہری ہوں کہا]
+    fraud: [جعلی کاغذ, جعلی دستاویز, جعلی پاسپورٹ, کاغذات کے لیے شادی, دستاویز خریدی]
+    danger: [قتل, مار ڈال, خودکشی, نقصان پہنچا, ہتھیار, بندوق, پستول]
+  flag:
+    citation: [جرمانہ, چالان, تیز رفتاری]
+    taxes: [ٹیکس ادا نہیں, ٹیکس نہیں دیا, ٹیکس باقی]
+    medical_exception_question: [کچھ یاد نہیں, میری یادداشت, بھولنے کی بیماری]
+or:
+  stop:
+    arrest: [ଗିରଫ, ହାଜତ, ଜେଲ, ହାତକଡ଼ି, ଦଣ୍ଡ, ଜାମିନ, ଅଭିଯୋଗ]
+    removal: [ଦେଶରୁ ବାହାର କରି, ନିର୍ବାସନ, ଡିପୋର୍ଟ, ଇମିଗ୍ରେସନ କୋର୍ଟ]
+    citizenship_claim: [ଭୋଟ ଦେଲି, ଭୋଟ ପାଇଁ ପଞ୍ଜୀକରଣ, ନାଗରିକ ବୋଲି କହିଲି]
+    fraud: [ଜାଲ କାଗଜ, ଜାଲ ଦଲିଲ, ଜାଲ ପାସପୋର୍ଟ, କାଗଜ ପାଇଁ ବିବାହ, ଦଲିଲ କିଣିଲି]
+    danger: [ମାରିଦେବି, ହତ୍ୟା, ଆତ୍ମହତ୍ୟା, କ୍ଷତି କରିବ, ଅସ୍ତ୍ର, ବନ୍ଧୁକ]
+  flag:
+    citation: [ଜରିମାନା, ଚାଲାଣ]
+    taxes: [ଟିକସ ଦେଇନାହିଁ, ଟିକସ ବାକି]
+    medical_exception_question: [କିଛି ମନେ ନାହିଁ, ମୋ ସ୍ମୃତି]
+zh:
+  stop:
+    arrest: [被捕, 逮捕, 被抓, 抓起来, 拘留, 坐牢, 监狱, 手铐, 判刑, 定罪, 犯罪记录, 保释, 被起诉]
+    removal: [驱逐出境, 递解出境, 被遣返, 遣返, 移民法庭, 离境令]
+    citizenship_claim: [投过票, 去投票, 登记投票, 说我是公民, 冒充公民, 谎称是公民]
+    fraud: [假证件, 假文件, 假护照, 假身份证, 假结婚, 买了证件, 伪造]
+    danger: [杀了, 杀人, 自杀, 伤害别人, 伤害他, 伤害她, 武器, 枪]
+  flag:
+    citation: [罚款, 罚单, 超速]
+    taxes: [没交税, 没有报税, 欠税]
+    medical_exception_question: [什么都不记得, 我的记忆, 痴呆, 失智, 阿尔茨海默]
+ja:
+  stop:
+    arrest: [逮捕, 捕まった, 拘留, 勾留, 刑務所, 手錠, 有罪, 前科, 保釈, 起訴]
+    removal: [強制送還, 国外退去, 退去強制, 送還された, 入管の裁判]
+    citizenship_claim: [投票した, 投票に行った, 有権者登録, 市民だと言った, 市民のふり]
+    fraud: [偽造, 偽の書類, 偽のパスポート, 偽装結婚, 書類を買った]
+    danger: [殺す, 殺し, 自殺, 傷つけ, 武器, 銃]
+  flag:
+    citation: [罰金, 違反切符, スピード違反]
+    taxes: [税金を払って, 確定申告をして, 税金の滞納]
+    medical_exception_question: [何も覚えていない, 記憶が, 認知症, アルツハイマー]
+ko:
+  stop:
+    arrest: [체포, 구속, 구금, 수갑, 교도소, 감옥, 유죄, 전과, 보석금, 기소]
+    removal: [추방, 강제 출국, 강제추방, 이민 법원, 출국 명령]
+    citizenship_claim: [투표했, 투표를 했, 유권자 등록, 시민이라고 말했, 시민인 척]
+    fraud: [위조, 가짜 서류, 가짜 여권, 위장 결혼, 서류를 샀]
+    danger: [죽이, 살인, 자살, 해치, 다치게, 무기, 총을]
+  flag:
+    citation: [벌금, 딱지, 과속]
+    taxes: [세금을 안 냈, 세금 신고를 안, 체납]
+    medical_exception_question: [아무것도 기억이 안, 기억력, 치매, 알츠하이머]
+hi:
+  stop:
+    arrest: [गिरफ्तार, गिरफ़्तार, हिरासत, जेल, हथकड़ी, सज़ा, सजा, जमानत, ज़मानत, आरोप लगा]
+    removal: [देश निकाला, निर्वासित, डिपोर्ट, देश से निकाल, इमिग्रेशन कोर्ट]
+    citizenship_claim: [वोट डाला, वोट दिया, मतदान किया, वोट के लिए रजिस्टर, नागरिक हूं कहा, नागरिक हूँ कहा]
+    fraud: [जाली कागज, जाली दस्तावेज़, नकली दस्तावेज़, नकली पासपोर्ट, कागज़ों के लिए शादी, दस्तावेज़ खरीद]
+    danger: [मार डाल, जान से मार, हत्या, आत्महत्या, खुदकुशी, नुकसान पहुंचा, हथियार, बंदूक]
+  flag:
+    citation: [जुर्माना, चालान, तेज़ गाड़ी]
+    taxes: [टैक्स नहीं भरा, कर नहीं भरा, टैक्स बाकी]
+    medical_exception_question: [कुछ याद नहीं, मेरी याददाश्त, भूलने की बीमारी, डिमेंशिया]
