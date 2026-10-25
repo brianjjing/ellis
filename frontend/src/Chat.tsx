@@ -6,6 +6,7 @@ import { GuideFoot, GuideStart } from './applicant/Guide'
 import { langOf, t } from './applicant/i18n'
 import { VoiceClient, type VoiceState } from './applicant/voice'
 import { api } from './api'
+import { Sheet } from './applicant/Sheets'
 
 // A permission card: Ellis asked to do something only the applicant can approve (a setting, a question to the clinic).
 type Perm = { id: string; kind: 'setting' | 'ask_clinic'; title: string; detail?: string | null; allowed?: boolean }
@@ -55,6 +56,7 @@ export default function Chat() {
   const [consentLater, setConsentLater] = useState(false)
   const [started, setStarted] = useState(live.length > 0)
   const [sound, setSound] = useState(soundOn)
+  const [deleting, setDeleting] = useState<'confirm' | 'busy' | 'failed' | null>(null)
   const shownState = state === 'listening' && !holding ? 'idle' : state // "Listening" only while the mic is open
   const vc = useRef<VoiceClient | null>(null)
   const voiceRef = useRef(true)
@@ -152,6 +154,15 @@ export default function Chat() {
     setStarted(false)
     setMode(true)
     setSession((s) => s + 1)
+  }
+
+  const deleteChats = async () => {
+    setDeleting('busy')
+    try { await api('/api/a/clear-chats', { body: {} }) } catch { return setDeleting('failed') }
+    past.length = 0
+    live = [] // so newChat has nothing to file under past chats
+    setDeleting(null)
+    newChat()
   }
 
   const shown = viewing?.msgs ?? msgs
@@ -338,6 +349,17 @@ export default function Chat() {
                   </button>
                 ))}
               </div>
+              <button type="button" className="btn lg danger clear-all" style={{ marginTop: 'auto', alignSelf: 'flex-end' }} onClick={() => setDeleting('confirm')}>Delete all chats</button>
+              {deleting && (
+                <Sheet title="Delete all chats?" onClose={() => setDeleting(null)}>
+                  <p className="lead">Every chat with Ellis will be deleted, including the copy your clinic sees. Your answers on the form stay. You can't undo this.</p>
+                  {deleting === 'failed' && <p className="rust" role="alert">Your chats couldn't be deleted. Try again.</p>}
+                  <div className="btns">
+                    <button type="button" className="btn lg danger clear-all" disabled={deleting === 'busy'} onClick={deleteChats}>{deleting === 'busy' ? 'Deleting…' : 'Delete all'}</button>
+                    <button type="button" className="btn lg" onClick={() => setDeleting(null)}>Cancel</button>
+                  </div>
+                </Sheet>
+              )}
             </aside>
           )}
         </div>
