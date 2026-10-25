@@ -110,7 +110,7 @@ export default function Form() {
 
         {question && part ? (
           <div key={i} className="content enter" style={{ padding: '48px 24px', gap: 28 }}>
-            <div className="label">Part {i + 1} · {part.label} · {part.done} of {part.total} required confirmed</div>
+            <div className="label">Part {i + 1} · {part.label} · {part.total ? `${part.done} of ${part.total} required confirmed` : 'Nothing required'}</div>
             <h2 className="display" style={{ marginTop: -14 }}>{part.label}</h2>
 
             {items.length === 0 && missing.length === 0 ? (
@@ -162,7 +162,7 @@ export default function Form() {
                   <span className="mono" style={{ flex: '0 0 28px', fontSize: 13, fontWeight: 700, color: 'var(--ink-soft)' }}>{String(n + 1).padStart(2, '0')}</span>
                   <span style={{ flex: '1 1 200px', fontSize: 17, fontWeight: 700 }}>{p.label}</span>
                   {filling && p.done < p.total && <span className="dots" aria-hidden="true" />}
-                  <span className="soft small">{p.done} of {p.total}</span>
+                  <span className="soft small">{p.total ? `${p.done} of ${p.total}` : 'Optional'}</span>
                   <span className={`status ${meta.cls}`}>{meta.label}</span>
                   <div className="btns" style={{ gap: 6, flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
                     <a href="/" data-nav className="btn sm">Answer<Icon name="mic" size={14} /></a>
