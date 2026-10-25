@@ -53,7 +53,8 @@ def _claude(path: Path, doc_type: str, mime: str) -> dict:
         content.append({"type": "image", "source": {"type": "base64", "media_type": mime, "data": b64}})
     content.append({"type": "text", "text": PROMPT + json.dumps(schema)})
     msg = client.messages.create(model=os.environ.get("ELLIS_EXTRACTION_MODEL", "claude-sonnet-5-5"),
-                                 max_tokens=1500, messages=[{"role": "user", "content": content}])
+                                 max_tokens=8000 if doc_type == "n400" else 1500,
+                                 messages=[{"role": "user", "content": content}])
     text = "".join(b.text for b in msg.content if getattr(b, "type", "") == "text").strip()
     start, end = text.find("{"), text.rfind("}")
     return json.loads(text[start:end + 1])

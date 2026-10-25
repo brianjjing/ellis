@@ -25,6 +25,7 @@ from .values import equal
 
 MAX_BYTES = 10 * 1024 * 1024
 MAX_PAGES = 5
+N400_MAX_PAGES = 30  # the whole form in one PDF
 MAGIC = [
     (b"\xff\xd8\xff", "image/jpeg", "jpg"),
     (b"\x89PNG\r\n\x1a\n", "image/png", "png"),
@@ -45,7 +46,7 @@ def sniff(data: bytes) -> tuple[str, str]:
     raise UploadError("unsupported_type", "JPG, PNG, HEIC or PDF only")
 
 
-def strip_metadata(data: bytes, mime: str) -> tuple[bytes, str]:
+def strip_metadata(data: bytes, mime: str, max_pages: int = MAX_PAGES) -> tuple[bytes, str]:
     """Drop EXIF / PDF properties. HEIC is converted to JPEG when pillow-heif is available."""
     if mime in ("image/jpeg", "image/png", "image/heic"):
         from PIL import Image
@@ -67,8 +68,8 @@ def strip_metadata(data: bytes, mime: str) -> tuple[bytes, str]:
     if mime == "application/pdf":
         from pypdf import PdfReader, PdfWriter
         r = PdfReader(io.BytesIO(data))
-        if len(r.pages) > MAX_PAGES:
-            raise UploadError("too_many_pages", f"at most {MAX_PAGES} pages per file")
+        if len(r.pages) > max_pages:
+            raise UploadError("too_many_pages", f"at most {max_pages} pages per file")
         w = PdfWriter()
         for p in r.pages:
             w.add_page(p)
@@ -86,7 +87,7 @@ def store_upload(s: Session, case: Case, document_type: str, filename: str, data
         raise UploadError("too_large", "10 MB per file at most")
     mime, ext = sniff(data)
     orig_sha = hashlib.sha256(data).hexdigest()
-    clean, mime = strip_metadata(data, mime)
+    clean, mime = strip_metadata(data, mime, N400_MAX_PAGES if document_type == "n400" else MAX_PAGES)
     ext = {"image/jpeg": "jpg", "image/png": "png", "application/pdf": "pdf"}[mime]
     doc = Document(clinic_id=case.clinic_id, case_id=case.id, document_type=document_type,
                    filename=os.path.basename(filename or f"upload.{ext}")[:200], mime=mime, storage_path="",
@@ -116,7 +117,8 @@ def run_extraction_subprocess(doc: Document) -> dict[str, Any]:
             proc = subprocess.run(
                 [sys.executable, "-I", "-m", "ellis.extraction.worker", doc.document_type, path, doc.mime,
                  doc.sha256],
-                capture_output=True, text=True, timeout=60, env=env, cwd=str(BACKEND_DIR))
+                capture_output=True, text=True, timeout=180 if doc.document_type == "n400" else 60, env=env,
+                cwd=str(BACKEND_DIR))
         out = proc.stdout.strip().splitlines()
         return json.loads(out[-1]) if out else {"ok": False, "error": proc.stderr[-500:] or "no output"}
     except subprocess.TimeoutExpired:
@@ -168,6 +170,11 @@ def apply_extraction(s: Session, case: Case, doc: Document, result: dict[str, An
         if data.get(k):
             vaulted[k] = str(data[k])
             data[k] = token
+    answers = data.get("answers") or {}  # n400
+    for k, v in answers.items():
+        if v and catalog.is_masked(k):
+            vaulted[k] = str(v)
+            answers[k] = catalog.mask_token(k)
     quality = data.get("quality", "low")
     x = Extraction(clinic_id=case.clinic_id, case_id=case.id, document_id=doc.id, data=data, quality=quality,
                    quality_reasons=data.get("quality_reasons", []), extractor=result.get("extractor", "?"), ts=now())
@@ -208,6 +215,8 @@ def _belongs_to_applicant(s: Session, case: Case, doc: Document, data: dict) -> 
         given = data.get("taxpayer_name")
     elif doc.document_type in ("benefit_letter",):
         given = data.get("beneficiary_name")
+    elif doc.document_type == "n400":
+        given = (data.get("answers") or {}).get("name.given")
     if not given:
         return True
     view = cs.cur_view(s, case.id)
@@ -224,6 +233,8 @@ def _belongs_to_applicant(s: Session, case: Case, doc: Document, data: dict) -> 
 
 def _apply_fields(s: Session, case: Case, doc: Document, data: dict, vaulted: dict, quality: str) -> list[str]:
     t = doc.document_type
+    if t == "n400":
+        return _apply_n400(s, case, doc, data, vaulted)
     m: dict[str, Any] = {}
     if t == "green_card":
         m = {"lpr_since": _iso(data.get("resident_since")), "dob": _iso(data.get("dob")),
@@ -252,6 +263,27 @@ def _apply_fields(s: Session, case: Case, doc: Document, data: dict, vaulted: di
             continue
         if _apply_doc_fact(s, case, doc, field, value, quality):
             applied.append(field)
+    return applied
+
+
+def _apply_n400(s: Session, case: Case, doc: Document, data: dict, vaulted: dict) -> list[str]:
+    """The applicant's own N-400: every answer on it replaces the current value; a blank leaves it alone."""
+    applied = []
+    for field, value in (data.get("answers") or {}).items():
+        value = vaulted.get(field, value)
+        if value in (None, "", []) or catalog.field_def(field) is None:
+            continue
+        if not cs.consent_given(s, case):
+            from .accounts import stash_extracted
+            stash_extracted(s, case, field, value, document_id=doc.id)
+            applied.append(field)
+            continue
+        try:
+            cs.record_fact(s, case, field, value, source="document", is_correction=True, actor="extraction",
+                           actor_type="system", provenance={"document_id": doc.id, "document_type": "n400"})
+        except cs.CaseError:
+            continue  # unknown key, value that doesn't validate, or a section deferred to the clinic
+        applied.append(field)
     return applied
 
 

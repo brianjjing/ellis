@@ -235,6 +235,42 @@ def test_at11_to_at13_ana_documents(client, runner):
     assert r["fact"]["status"] == "confirmed"
 
 
+# N-400 upload: answers on the form replace current values; blanks never wipe them ---------------------------
+def test_n400_upload_fills_without_blanking(client):
+    from PIL import Image
+    from ellis.db import Extraction
+    from ellis.services import documents as docs
+    consent(client)
+    tool(client, "c_maria", "record_fact", {"field": "trips.any", "value": True})
+    tool(client, "c_maria", "record_fact", {"field": "marital.status", "value": "single"})
+    png = io.BytesIO()
+    Image.new("RGB", (8, 8)).save(png, format="PNG")
+
+    def upload_n400(answers):
+        with session_scope() as s:
+            case = s.get(Case, "c_maria")
+            d = docs.store_upload(s, case, "n400", "n400.png", png.getvalue())
+            docs.apply_extraction(s, case, d, {"ok": True, "extractor": "test",
+                                               "data": {"quality": "high", "quality_reasons": [], "answers": answers}})
+            return d.id
+
+    upload_n400({"name.given": "María", "marital.status": "married", "trips.any": None, "contact.email": "",
+                 "ssn": "123-45-6789", "addresses[0].city": "Salinas", "not.a.field": "x"})
+    with session_scope() as s:
+        cur = cs.current_facts(s, "c_maria")
+        assert cur["marital.status"].value == "married"  # replaced
+        assert cur["trips.any"].value is True  # blank on the form: kept
+        assert "contact.email" not in cur and "not.a.field" not in cur
+        assert cur["addresses[0].city"].value == "Salinas"
+        assert cur["ssn"].value == "[SSN]" and cs.vault_lookup(s, cur["ssn"].id) == "123-45-6789"
+        assert "123-45-6789" not in json.dumps([x.data for x in s.scalars(select(Extraction))])
+    upload_n400({"marital.status": "divorced"})  # a newer N-400 replaces the older one's answer, no dispute
+    with session_scope() as s:
+        cur = cs.current_facts(s, "c_maria")
+        assert cur["marital.status"].value == "divorced" and cur["marital.status"].status != "disputed"
+        assert cur["addresses[0].city"].value == "Salinas"
+
+
 # AT14 --------------------------------------------------------------------------------------------------------
 def test_at14_mark_ready_blocked(client):
     maria_trip(client)

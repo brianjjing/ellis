@@ -27,6 +27,7 @@ export const DOCS_EN: [string, string][] = [
 export function UploadSheet({ initial, lang = 'en', onClose, onUploaded }: { initial?: string; lang?: Lang; onClose: () => void; onUploaded: (id: string) => void }) {
   const en = lang === 'en'
   const DOCS = en ? DOCS_EN : DOCS_ES
+  const n400 = initial === 'n400' // Form's "Fill from a document": the N-400 only, no type picker
   const [type, setType] = useState<string | null>(initial ?? null)
   const [status, setStatus] = useState<string | null>(null)
   const upload = async (f: File) => {
@@ -44,6 +45,18 @@ export function UploadSheet({ initial, lang = 'en', onClose, onUploaded }: { ini
       setStatus(e instanceof ApiError ? e.message : (en ? "Couldn't upload it." : 'No se pudo subir.'))
     }
   }
+  const pick = (files?: FileList | null) => files?.[0] && upload(files[0])
+  if (n400) return (
+    <Sheet title={en ? 'Upload your N-400' : 'Suba su formulario N-400'} onClose={onClose}>
+      <label className="dropzone" onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); pick(e.dataTransfer.files) }}>
+        <Icon name="upload" size={28} />
+        <strong>{en ? 'Choose your N-400 or drop it here' : 'Elija su N-400 o suéltelo aquí'}</strong>
+        <span className="small">{en ? 'PDF, JPG, PNG or HEIC; up to 10 MB.' : 'PDF, JPG, PNG o HEIC; hasta 10 MB.'}</span>
+        <input type="file" accept="image/jpeg,image/png,image/heic,application/pdf" className="sr-only" onChange={(e) => pick(e.target.files)} />
+      </label>
+      {status && <p className="lead" role="status">{status}</p>}
+    </Sheet>
+  )
   return (
     <Sheet title={en ? 'Which document are you uploading?' : '¿Qué documento va a subir?'} onClose={onClose}>
       {!type ? (

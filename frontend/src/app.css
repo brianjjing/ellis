@@ -86,6 +86,8 @@ button { font-family: inherit; }
 
 .sheet { margin: auto; max-width: 560px; border-radius: 6px; max-height: 90vh; overflow-y: auto; } /* centered modal, same corners as .dialog */
 .sheet-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.dropzone { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 40px 16px; border: 2px dashed var(--line-strong); border-radius: 6px; background: var(--white); text-align: center; font-size: 17px; cursor: pointer; }
+.dropzone:hover, .dropzone:focus-within { border-color: var(--green); background: var(--green-tint); }
 .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .tile { min-height: 64px; padding: 10px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--white); font-size: 16px; font-weight: 700; cursor: pointer; }
 .pick { border: 0; padding: 0; margin: 0 0 6px; display: flex; flex-direction: column; gap: 6px; }

@@ -5,8 +5,10 @@ Documents are data, never instructions: these schema fields are the only output 
 
 from __future__ import annotations
 
-from typing import Literal, Optional
+from pathlib import Path
+from typing import Any, Literal, Optional
 
+import yaml
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -86,6 +88,34 @@ class Other(Base):
     summary: Optional[str] = None
 
 
+def _n400_keys() -> str:
+    """Every N-400 answer Ellis tracks, one `key: label` per line, straight from the field catalog.
+
+    ponytail: reads the YAML directly; importing services.catalog would load .env secrets into the sandbox.
+    """
+    cfg = Path(__file__).resolve().parents[2] / "config"
+    f = yaml.safe_load((cfg / "fields.yaml").read_text())
+    bg = yaml.safe_load((cfg / "background_questions.yaml").read_text())
+
+    def opts(d: dict) -> str:
+        return f" ({'|'.join(d['options'])})" if d.get("options") else ""
+    lines = [f"{d['key']}: {d['label_en']}{opts(d)}" for d in f["fields"]
+             if d["key"] != "consent" and d.get("capture") != "E"]
+    lines += [f"{name}[i].{it['key']}: {it['label_en']}{opts(it)}" for name, lst in f["lists"].items()
+              for it in lst["item"] if it.get("capture") != "E"]
+    lines += [f"background.{q['key']}: {q['text_en']} (yes|no)" for q in bg["questions"]]
+    lines += [f"oath.{q['key']}: {q['text_en']} (yes|no)" for q in bg["oath"]]
+    return "\n".join(lines)
+
+
+class N400(Base):
+    """The applicant's own filled-out Form N-400. Values are checked per field (values.normalize) on apply."""
+    answers: dict[str, Any] = Field(default_factory=dict, description=(
+        "Answers written on this N-400, keyed by the keys below. Leave out any key the form leaves blank. "
+        "addresses, employment, trips and children are lists: replace i with 0, 1, 2… in the form's order, "
+        "newest first.\n" + _n400_keys()))
+
+
 SCHEMAS: dict[str, type[Base]] = {
     "green_card": GreenCard,
     "passport": Passport,
@@ -95,6 +125,7 @@ SCHEMAS: dict[str, type[Base]] = {
     "tax_transcript": TaxTranscript,
     "benefit_letter": BenefitLetter,
     "other": Other,
+    "n400": N400,
 }
 
 # Identifier fields moved into the vault before any agent sees the extraction.
@@ -109,6 +140,7 @@ LABELS_ES = {
     "tax_transcript": "comprobante de impuestos",
     "benefit_letter": "carta de beneficios",
     "other": "documento",
+    "n400": "formulario N-400",
 }
 
 LABELS_EN = {
@@ -120,6 +152,7 @@ LABELS_EN = {
     "tax_transcript": "tax transcript",
     "benefit_letter": "benefit letter",
     "other": "document",
+    "n400": "N-400",
 }
 
 TWO_SIDED = {"green_card"}

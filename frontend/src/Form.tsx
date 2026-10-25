@@ -39,7 +39,7 @@ export default function Form() {
           </div>
           <div className="btns">
             <button type="button" className="btn" onClick={() => setView(question ? 'parts' : 'question')}>{question ? 'See all parts' : 'Back to my question'}</button>
-            <button type="button" className="btn primary" onClick={() => upload()}><Icon name="upload" />Fill from a document</button>
+            <button type="button" className="btn primary" onClick={() => upload('n400')}><Icon name="upload" />Fill from a document</button>
           </div>
         </header>
         <div aria-hidden="true" className="progress" style={{ gridTemplateColumns: `repeat(${parts.length}, minmax(0, 1fr))` }}>
