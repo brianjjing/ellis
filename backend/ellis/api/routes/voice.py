@@ -77,12 +77,12 @@ class VoiceSession:
         self.want_voice = start.get("voice") is not False
         # The case's persisted language is the fallback when the client doesn't specify one, so a session never
         # silently switches language on an applicant.
-        case_locale, patient = "en-US", False
-        with session_scope() as cs_s:
-            case = cs_s.get(Case, self.case_id)
-            if case and case.language:
-                case_locale = case.language
-            patient = bool(case and (case.settings or {}).get("patient_mode"))
+        def case_prefs() -> tuple[str, bool]:  # a database round trip: off the event loop
+            with session_scope() as cs_s:
+                case = cs_s.get(Case, self.case_id)
+                return ((case.language if case and case.language else "en-US"),
+                        bool(case and (case.settings or {}).get("patient_mode")))
+        case_locale, patient = await asyncio.to_thread(case_prefs)
         default_lang = "en" if case_locale.startswith("en") else "es"
         language = start.get("language") if start.get("language") in ("es", "en") else default_lang
         locale = start.get("locale") or (case_locale if language == default_lang else

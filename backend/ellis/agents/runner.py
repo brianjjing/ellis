@@ -128,10 +128,11 @@ class Runner:
                 self.backend.dispatch(job.agent, job.case_id, f"events {job.trigger_events}", job.run_id)
                 self._finish(job, "dispatched")
             except Exception as e:  # noqa: BLE001
-                self._fail(job, str(e))
+                self._fail(job, str(e), title=f"Agent could not start ({job.agent}): {str(e)[:160]}")
             return {"dispatched": True}
         error = None
         env = None
+        invalid = True  # False when the backend itself failed (not configured, unreachable, timed out)
         for attempt in range(2):
             try:
                 fut = self.pool.submit(self.backend.run, job.agent, ctx, job.run_id, error)
@@ -141,12 +142,15 @@ class Runner:
             except (ValidationError, ValueError, KeyError, TypeError, BackendError) as e:
                 error = str(e)[:1500]
                 env = None
+                invalid = not isinstance(e, BackendError)
             except concurrent.futures.TimeoutError:
                 error = f"timeout after {RUN_TIMEOUT_S}s"
                 env = None
+                invalid = False
                 break
         if env is None:
-            self._fail(job, error or "invalid output", ctx)
+            self._fail(job, error or "invalid output", ctx,
+                       title=None if invalid else f"Agent run failed ({job.agent}): {(error or '')[:160]}")
             return {"failed": True, "error": error}
         ms = int((time.time() - t0) * 1000)
         with session_scope() as s:
@@ -164,7 +168,7 @@ class Runner:
             j.status = status
             j.finished_at = now()
 
-    def _fail(self, job: Job, error: str, ctx: dict | None = None) -> None:
+    def _fail(self, job: Job, error: str, ctx: dict | None = None, title: str | None = None) -> None:
         with session_scope() as s:
             j = s.get(Job, job.id)
             j.status = "failed"
@@ -175,7 +179,7 @@ class Runner:
                            backend=self.backend.name, trigger_events=job.trigger_events, status="failed",
                            output={"error": error}, ts=now()))
             s.add(Task(clinic_id=case.clinic_id, case_id=case.id, agent=job.agent, kind="system",
-                       title=f"Agent output invalid ({job.agent}): nothing was written", proposed_by="runner",
+                       title=title or f"Agent output invalid ({job.agent}): nothing was written", proposed_by="runner",
                        ts=now()))
             from ..services import case_service as cs
             cs.emit(s, case, "agent.run_failed", {"agent": job.agent, "run_id": job.run_id, "error": error[:300]},
@@ -225,7 +229,7 @@ class Runner:
         except Exception as e:  # noqa: BLE001
             log.exception("agent run crashed")
             try:
-                self._fail(j, f"crash: {e}")
+                self._fail(j, f"crash: {e}", title=f"Agent run crashed ({j.agent}): {str(e)[:160]}")
             except Exception:  # noqa: BLE001
                 pass
 

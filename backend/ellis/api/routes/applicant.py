@@ -132,13 +132,15 @@ def biographics(body: BiographicsReq, request: Request) -> dict[str, Any]:
 @router.post("/documents")
 async def upload(request: Request, document_type: str = Form(...), file: UploadFile = File(...)) -> dict[str, Any]:
     data = await file.read()
-    with session_scope() as s:
-        case = applicant_case(request, s)
-        try:
-            doc = docsvc.store_upload(s, case, document_type, file.filename or "upload", data)
-        except cs.CaseError as e:
-            raise err(e.status, e.code, e.message, e.field) from None
-        doc_id = doc.id
+
+    def store() -> str:  # database + storage round trips: off the event loop
+        with session_scope() as s:
+            case = applicant_case(request, s)
+            try:
+                return docsvc.store_upload(s, case, document_type, file.filename or "upload", data).id
+            except cs.CaseError as e:
+                raise err(e.status, e.code, e.message, e.field) from None
+    doc_id = await asyncio.to_thread(store)
     docsvc.extract_async(doc_id)
     return {"document_id": doc_id, "status": "extracting"}
 

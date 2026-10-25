@@ -272,15 +272,17 @@ def staff_secure(case_id: str, body: StaffSecure, request: Request) -> dict[str,
 async def staff_upload(case_id: str, request: Request, document_type: str = Form(...),
                        file: UploadFile = File(...)) -> dict[str, Any]:
     data = await file.read()
-    with session_scope() as s:
-        u = staff_user(request, s, ALL)
-        c = clinic_case(s, u, case_id)
-        try:
-            doc = docsvc.store_upload(s, c, document_type, file.filename or "upload", data, uploaded_by=u.id,
-                                      actor_type="staff")
-        except cs.CaseError as e:
-            raise err(e.status, e.code, e.message) from None
-        doc_id = doc.id
+
+    def store() -> str:  # database + storage round trips: off the event loop
+        with session_scope() as s:
+            u = staff_user(request, s, ALL)
+            c = clinic_case(s, u, case_id)
+            try:
+                return docsvc.store_upload(s, c, document_type, file.filename or "upload", data, uploaded_by=u.id,
+                                           actor_type="staff").id
+            except cs.CaseError as e:
+                raise err(e.status, e.code, e.message) from None
+    doc_id = await asyncio.to_thread(store)
     docsvc.extract_async(doc_id)
     return {"document_id": doc_id, "status": "extracting"}
 
@@ -445,9 +447,11 @@ async def stream(ws: WebSocket):
     if not payload or payload.get("kind") != "staff":
         await ws.close(code=4401)
         return
-    with session_scope() as s:
-        u = s.get(StaffUser, payload["staff_id"])
-        clinic_id = u.clinic_id if u else None
+    def staff_clinic() -> str | None:
+        with session_scope() as s:
+            u = s.get(StaffUser, payload["staff_id"])
+            return u.clinic_id if u else None
+    clinic_id = await asyncio.to_thread(staff_clinic)
     if clinic_id is None:
         await ws.close(code=4401)
         return
