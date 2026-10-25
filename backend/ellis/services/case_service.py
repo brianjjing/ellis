@@ -616,11 +616,14 @@ def secure_entry(s: Session, case: Case, field: str, value: Any, actor: str = "a
 def clear_form(s: Session, case: Case) -> int:
     """The applicant's "Clear all": every answer on the form is superseded by nothing. Consent stays (without it
     nothing can be saved again), and so do sections the clinic deferred to a licensed professional."""
+    by: dict[str, list[Fact]] = {}
+    for f in facts_for(s, case.id):  # one query for the whole form, not one per answer
+        by.setdefault(f.field, []).append(f)
     cleared = []
-    for field, f in current_facts(s, case.id).items():
-        if field == "consent" or f.value == catalog.DEFERRED:
+    for field, fs in by.items():
+        if field == "consent" or any(f.value == catalog.DEFERRED for f in fs):
             continue
-        _supersede(facts_for(s, case.id, field), None, "cleared by applicant")
+        _supersede(fs, None, "cleared by applicant")  # updates go out together at commit
         cleared.append(field)
     if cleared:
         emit(s, case, "fact.cleared", {"fields": cleared}, "applicant", "applicant")

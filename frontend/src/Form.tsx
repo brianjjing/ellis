@@ -30,7 +30,9 @@ export default function Form() {
   const [clearing, setClearing] = useState<'confirm' | 'busy' | 'failed' | null>(null)
   const clearAll = async () => {
     setClearing('busy')
-    try { await api('/api/a/clear', { body: {} }); await reload(); setClearing(null) } catch { setClearing('failed') }
+    try { await api('/api/a/clear', { body: {} }) } catch { return setClearing('failed') }
+    setClearing(null) // saved: close now; the counts follow when the page refresh lands
+    reload().catch(() => undefined)
   }
   const nav = (
     <div style={{ display: 'flex', gap: 8 }}>
