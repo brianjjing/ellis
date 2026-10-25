@@ -86,7 +86,7 @@ export default function ApplicantApp({ children }: { children: ReactNode }) {
         </div>
       )}
       {overlay?.kind === 'secure' && <SecureEntrySheet field={overlay.field} label={overlay.label} lang={lang} onClose={close} />}
-      {overlay?.kind === 'upload' && <UploadSheet initial={overlay.documentType} lang={lang} onClose={close} onUploaded={() => reload()} />}
+      {overlay?.kind === 'upload' && <UploadSheet initial={overlay.documentType} lang={lang} documents={data.documents} onClose={close} onUploaded={() => reload()} />}
       {overlay?.kind === 'biographics' && <BiographicsSheet lang={lang} onClose={close} />}
     </CaseCtx.Provider>
   )

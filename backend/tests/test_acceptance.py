@@ -264,6 +264,9 @@ def test_n400_upload_fills_without_blanking(client):
         assert cur["addresses[0].city"].value == "Salinas"
         assert cur["ssn"].value == "[SSN]" and cs.vault_lookup(s, cur["ssn"].id) == "123-45-6789"
         assert "123-45-6789" not in json.dumps([x.data for x in s.scalars(select(Extraction))])
+        from ellis.services.views import applicant_case
+        d = applicant_case(s, s.get(Case, "c_maria"))["documents"][-1]
+        assert d["applied"] == 4 and d["owner_ok"] is True  # what the upload sheet reports
     upload_n400({"marital.status": "divorced"})  # a newer N-400 replaces the older one's answer, no dispute
     with session_scope() as s:
         cur = cs.current_facts(s, "c_maria")

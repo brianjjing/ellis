@@ -24,37 +24,48 @@ export const DOCS_EN: [string, string][] = [
   ['benefit_letter', 'Benefit letter'], ['other', 'Other'],
 ]
 
-export function UploadSheet({ initial, lang = 'en', onClose, onUploaded }: { initial?: string; lang?: Lang; onClose: () => void; onUploaded: (id: string) => void }) {
+export function UploadSheet({ initial, lang = 'en', documents = [], onClose, onUploaded }: { initial?: string; lang?: Lang; documents?: any[]; onClose: () => void; onUploaded: (id: string) => void }) {
   const en = lang === 'en'
   const DOCS = en ? DOCS_EN : DOCS_ES
   const n400 = initial === 'n400' // Form's "Fill from a document": the N-400 only, no type picker
   const [type, setType] = useState<string | null>(initial ?? null)
   const [status, setStatus] = useState<string | null>(null)
+  const [docId, setDocId] = useState<string | null>(null) // n400: the sheet stays open until this one is read
+  const doc = documents.find((d) => d.id === docId)
   const upload = async (f: File) => {
     if (f.size > 10 * 1024 * 1024) { setStatus(en ? 'The file is too large (10 MB max).' : 'El archivo es muy grande (máximo 10 MB).'); return }
     setStatus(en ? 'Uploading…' : 'Subiendo…')
+    setDocId(null)
     const fd = new FormData()
     fd.append('document_type', type!)
     fd.append('file', f)
     try {
       const r = await api('/api/a/documents', { form: fd })
       onUploaded(r.document_id)
+      if (n400) { setDocId(r.document_id); setStatus(en ? 'Reading your N-400… This can take a minute or two.' : 'Leyendo su N-400… Puede tardar uno o dos minutos.'); return }
       setStatus(en ? 'Reviewing… You can keep talking.' : 'Revisando… Puede seguir hablando.')
       setTimeout(onClose, 1200)
     } catch (e) {
       setStatus(e instanceof ApiError ? e.message : (en ? "Couldn't upload it." : 'No se pudo subir.'))
     }
   }
-  const pick = (files?: FileList | null) => files?.[0] && upload(files[0])
+  const result = doc?.status === 'failed' ? (en ? "Couldn't read this file. Try a PDF of your filled-out N-400." : 'No se pudo leer este archivo. Pruebe con un PDF de su N-400 lleno.')
+    : doc?.status !== 'extracted' ? null
+    : !doc.owner_ok ? (en ? "The name on this N-400 doesn't match yours, so nothing was filled in. Your clinic will review it." : 'El nombre en este N-400 no coincide con el suyo, así que no se llenó nada. Su clínica lo revisará.')
+    : doc.applied ? (en ? `Filled in ${doc.applied} answers. You'll see them in each part of your form.` : `Se llenaron ${doc.applied} respuestas. Las verá en cada parte de su formulario.`)
+    : (en ? "Nothing could be filled in from this file. Your clinic will review it." : 'No se pudo llenar nada con este archivo. Su clínica lo revisará.')
+  const busy = !!docId && !result
+  const pick = (files?: FileList | null) => !busy && files?.[0] && upload(files[0])
   if (n400) return (
     <Sheet title={en ? 'Upload your N-400' : 'Suba su formulario N-400'} onClose={onClose}>
       <label className="dropzone" onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); pick(e.dataTransfer.files) }}>
         <Icon name="upload" size={28} />
         <strong>{en ? 'Choose your N-400 or drop it here' : 'Elija su N-400 o suéltelo aquí'}</strong>
         <span className="small">{en ? 'PDF, JPG, PNG or HEIC; up to 10 MB.' : 'PDF, JPG, PNG o HEIC; hasta 10 MB.'}</span>
-        <input type="file" accept="image/jpeg,image/png,image/heic,application/pdf" className="sr-only" onChange={(e) => pick(e.target.files)} />
+        <input type="file" accept="image/jpeg,image/png,image/heic,application/pdf" className="sr-only" disabled={busy} onChange={(e) => pick(e.target.files)} />
       </label>
-      {status && <p className="lead" role="status">{status}</p>}
+      {(result ?? status) && <p className="lead" role="status">{result ?? status}</p>}
+      {result && <button type="button" className="btn lg primary" onClick={onClose}>{en ? 'Done' : 'Listo'}</button>}
     </Sheet>
   )
   return (
