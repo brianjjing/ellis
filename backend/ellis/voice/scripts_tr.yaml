@@ -1,0 +1,21 @@
+# Fixed lines for the Turkish chat: a MACHINE-TRANSLATED DRAFT of scripts_en.yaml's five fixed lines (version
+# en-1), not reviewed by a native speaker. A qualified reviewer must check them before real use; then set
+# reviewed: true. While reviewed is false, Ellis shows the English original under each of these lines.
+# Only these five keys: the chat writes everything else itself in the applicant's language.
+version: tr-draft-1
+reviewed: false
+disclosure:
+  locked: true
+  text: Merhaba, ben Ellis, {clinic_name} ile çalışan bir yapay zekâ asistanıyım. Avukat değilim ve size hukuki tavsiye veremem. Vatandaşlık başvurunuzu hazırlamanıza yardımcı oluyorum; her şeyi siz inceleyip imzalarsınız ve başvurunuzu asla sizin yerinize göndermeyiz. Bu konuşmanın sesini değil, yazılı metnini kaydediyoruz. Devam etmeyi kabul ediyor musunuz?
+stop:
+  locked: true
+  text: Bana söylediğiniz için teşekkür ederim. Bu, başvurunuzu yapmadan önce lisanslı bir göçmenlik uzmanının incelemesi gereken bir konudur. Kliniğiniz bu konuda sizinle iletişime geçecek. Bu konuda size tavsiye veremem. Başka bir bölümle devam etmek ister misiniz?
+stop_repeat:
+  locked: false
+  text: Bu, lisanslı bir uzmana sorulması gereken bir soru; ben yanıtlayamam. Ama başvurunuzun geri kalanında size yardımcı olabilirim.
+secure_entry_repeat:
+  locked: true
+  text: Güvenliğiniz için lütfen bu numarayı yüksek sesle söylemeyin. Lütfen ekrana yazın.
+tool_failure:
+  locked: false
+  text: Üzgünüm, bunu kaydedemedim. Tekrar söyler misiniz?

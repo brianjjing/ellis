@@ -1,0 +1,21 @@
+# Fixed lines for the Swedish chat: a MACHINE-TRANSLATED DRAFT of scripts_en.yaml's five fixed lines (version
+# en-1), not reviewed by a native speaker. A qualified reviewer must check them before real use; then set
+# reviewed: true. While reviewed is false, Ellis shows the English original under each of these lines.
+# Only these five keys: the chat writes everything else itself in the applicant's language.
+version: sv-draft-1
+reviewed: false
+disclosure:
+  locked: true
+  text: Hej, jag är Ellis, en AI-assistent som arbetar med {clinic_name}. Jag är inte jurist och kan inte ge dig juridisk rådgivning. Jag hjälper dig att förbereda din ansökan om medborgarskap; du granskar och skriver under allt, och vi skickar aldrig in ansökan åt dig. Vi sparar texten från det här samtalet, inte ljudet. Godkänner du att vi fortsätter?
+stop:
+  locked: true
+  text: Tack för att du berättade. Det här behöver granskas av en legitimerad expert på immigration innan du lämnar in ansökan. Din klinik hör av sig till dig om detta. Jag kan inte ge dig råd om det. Vill du fortsätta med ett annat avsnitt?
+stop_repeat:
+  locked: false
+  text: Det är en fråga för en legitimerad expert; jag kan inte svara på den. Det jag kan göra är att hjälpa dig med resten av ansökan.
+secure_entry_repeat:
+  locked: true
+  text: För din säkerhets skull, säg inte det numret högt. Skriv det på skärmen i stället.
+tool_failure:
+  locked: false
+  text: Förlåt, jag kunde inte spara det. Kan du säga det igen?

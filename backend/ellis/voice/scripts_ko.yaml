@@ -1,0 +1,21 @@
+# Fixed lines for the Korean chat: a MACHINE-TRANSLATED DRAFT of scripts_en.yaml's five fixed lines (version
+# en-1), not reviewed by a native speaker. A qualified reviewer must check them before real use; then set
+# reviewed: true. While reviewed is false, Ellis shows the English original under each of these lines.
+# Only these five keys: the chat writes everything else itself in the applicant's language.
+version: ko-draft-1
+reviewed: false
+disclosure:
+  locked: true
+  text: 안녕하세요, 저는 {clinic_name}와 함께 일하는 인공지능 도우미 Ellis입니다. 저는 변호사가 아니며 법률 자문을 드릴 수 없습니다. 시민권 신청서 준비를 도와드리며, 모든 내용은 직접 검토하고 서명하시고, 저희가 대신 신청서를 제출하는 일은 절대 없습니다. 이 대화의 텍스트는 저장하지만 음성은 저장하지 않습니다. 계속 진행하는 데 동의하십니까?
+stop:
+  locked: true
+  text: 말씀해 주셔서 감사합니다. 이 부분은 신청서를 제출하기 전에 자격을 갖춘 이민 전문가가 검토해야 합니다. 이에 대해서는 클리닉에서 연락을 드릴 것입니다. 이 문제에 대해서는 제가 조언을 드릴 수 없습니다. 다른 항목으로 계속 진행하시겠습니까?
+stop_repeat:
+  locked: false
+  text: 그것은 자격을 갖춘 전문가에게 해야 할 질문이라 제가 답변드릴 수 없습니다. 대신 신청서의 나머지 부분은 도와드릴 수 있습니다.
+secure_entry_repeat:
+  locked: true
+  text: 안전을 위해 그 번호를 소리 내어 말하지 마십시오. 화면에 입력해 주십시오.
+tool_failure:
+  locked: false
+  text: 죄송합니다, 저장하지 못했습니다. 다시 말씀해 주시겠습니까?

@@ -1,14 +1,21 @@
 #!/usr/bin/env bash
 # One command for local dev: seed the synthetic demo, run the Case API (+ in-process agent runner) and the web app.
 #   ./scripts/dev.sh            # uses backend/.env (DATABASE_URL defaults to SQLite if unset)
-# Python runs from the repo's .venv (see README "Quick start" to create it); this script never installs Python packages.
+# Python always runs from the repo-root .venv. If it doesn't exist yet, this script creates it and installs
+# the backend into it (pip install -e "backend[llm,dev]"); nothing is installed outside .venv.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 export ELLIS_TODAY="${ELLIS_TODAY:-2026-10-23}"   # the flows are written for Fri Oct 23, 2026
 if [ ! -x "$ROOT/.venv/bin/python" ]; then
-  echo "No virtualenv at $ROOT/.venv. Create it first:" >&2
-  echo "  python3 -m venv .venv && source .venv/bin/activate && pip install -e \"backend[llm,dev]\"" >&2
-  exit 1
+  PY="${PYTHON:-python3}"
+  if ! "$PY" -c 'import sys; sys.exit(sys.version_info < (3, 12))' 2>/dev/null; then
+    echo "Ellis needs Python 3.12+ to create $ROOT/.venv (set PYTHON=/path/to/python3.12+)." >&2
+    exit 1
+  fi
+  echo "Creating virtualenv at $ROOT/.venv ..."
+  "$PY" -m venv "$ROOT/.venv"
+  "$ROOT/.venv/bin/python" -m pip install --upgrade pip
+  "$ROOT/.venv/bin/python" -m pip install -e "$ROOT/backend[llm,dev]"
 fi
 source "$ROOT/.venv/bin/activate"
 cd "$ROOT/backend"

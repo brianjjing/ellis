@@ -1,0 +1,21 @@
+# Fixed lines for the Dutch chat: a MACHINE-TRANSLATED DRAFT of scripts_en.yaml's five fixed lines (version
+# en-1), not reviewed by a native speaker. A qualified reviewer must check them before real use; then set
+# reviewed: true. While reviewed is false, Ellis shows the English original under each of these lines.
+# Only these five keys: the chat writes everything else itself in the applicant's language.
+version: nl-draft-1
+reviewed: false
+disclosure:
+  locked: true
+  text: Hallo, ik ben Ellis, een AI-assistent die samenwerkt met {clinic_name}. Ik ben geen advocaat en ik kan u geen juridisch advies geven. Ik help u uw aanvraag voor het staatsburgerschap voor te bereiden; u controleert en ondertekent alles, en wij dienen de aanvraag nooit voor u in. We bewaren de tekst van dit gesprek, niet de audio. Gaat u akkoord om verder te gaan?
+stop:
+  locked: true
+  text: Bedankt dat u het me vertelt. Dit moet een erkende immigratieprofessional bekijken voordat u uw aanvraag indient. Uw kliniek neemt hierover contact met u op. Ik kan u hierover geen advies geven. Wilt u verdergaan met een ander onderdeel?
+stop_repeat:
+  locked: false
+  text: Dat is een vraag voor een erkende professional; ik kan die niet beantwoorden. Wat ik wel kan doen, is u helpen met de rest van uw aanvraag.
+secure_entry_repeat:
+  locked: true
+  text: Zeg dat nummer voor uw veiligheid niet hardop. Typ het alstublieft op het scherm.
+tool_failure:
+  locked: false
+  text: Sorry, dat kon ik niet opslaan. Kunt u het nog eens zeggen?

@@ -1,0 +1,21 @@
+# Fixed lines for the Bengali chat: a MACHINE-TRANSLATED DRAFT of scripts_en.yaml's five fixed lines (version
+# en-1), not reviewed by a native speaker. A qualified reviewer must check them before real use; then set
+# reviewed: true. While reviewed is false, Ellis shows the English original under each of these lines.
+# Only these five keys: the chat writes everything else itself in the applicant's language.
+version: bn-draft-1
+reviewed: false
+disclosure:
+  locked: true
+  text: নমস্কার, আমি Ellis, {clinic_name}-এর সঙ্গে কাজ করা একজন কৃত্রিম বুদ্ধিমত্তা সহকারী। আমি আইনজীবী নই এবং আপনাকে আইনি পরামর্শ দিতে পারি না। আমি আপনার নাগরিকত্বের আবেদন প্রস্তুত করতে সাহায্য করি; আপনি সবকিছু দেখে নিয়ে সই করবেন, এবং আমরা কখনোই আপনার হয়ে আবেদন জমা দিই না। আমরা এই কথোপকথনের লেখা সংরক্ষণ করি, অডিও নয়। আপনি কি এগিয়ে যেতে রাজি আছেন?
+stop:
+  locked: true
+  text: আমাকে জানানোর জন্য ধন্যবাদ। আবেদন জমা দেওয়ার আগে এটি একজন লাইসেন্সপ্রাপ্ত অভিবাসন বিশেষজ্ঞকে পর্যালোচনা করতে হবে। আপনার ক্লিনিক এ বিষয়ে আপনার সঙ্গে যোগাযোগ করবে। আমি এ বিষয়ে আপনাকে পরামর্শ দিতে পারি না। আপনি কি অন্য কোনো অংশ নিয়ে এগোতে চান?
+stop_repeat:
+  locked: false
+  text: এটি একজন লাইসেন্সপ্রাপ্ত বিশেষজ্ঞের জন্য প্রশ্ন; আমি এর উত্তর দিতে পারি না। তবে আপনার আবেদনের বাকি অংশে আমি সাহায্য করতে পারি।
+secure_entry_repeat:
+  locked: true
+  text: আপনার নিরাপত্তার জন্য, অনুগ্রহ করে নম্বরটি জোরে বলবেন না। অনুগ্রহ করে এটি স্ক্রিনে টাইপ করুন।
+tool_failure:
+  locked: false
+  text: দুঃখিত, আমি এটি সংরক্ষণ করতে পারিনি। আপনি কি আবার বলতে পারবেন?

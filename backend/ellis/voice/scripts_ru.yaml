@@ -1,0 +1,21 @@
+# Fixed lines for the Russian chat: a MACHINE-TRANSLATED DRAFT of scripts_en.yaml's five fixed lines (version
+# en-1), not reviewed by a native speaker. A qualified reviewer must check them before real use; then set
+# reviewed: true. While reviewed is false, Ellis shows the English original under each of these lines.
+# Only these five keys: the chat writes everything else itself in the applicant's language.
+version: ru-draft-1
+reviewed: false
+disclosure:
+  locked: true
+  text: Здравствуйте, я Ellis, помощник на основе искусственного интеллекта, работающий с {clinic_name}. Я не юрист и не могу давать юридические консультации. Я помогаю подготовить ваше заявление на получение гражданства; вы проверяете и подписываете всё сами, и мы никогда не подаём заявление за вас. Мы сохраняем текст этого разговора, но не аудиозапись. Вы согласны продолжить?
+stop:
+  locked: true
+  text: Спасибо, что сказали мне. Это должен рассмотреть лицензированный специалист по иммиграции до того, как вы подадите заявление. Ваша клиника свяжется с вами по этому поводу. Я не могу консультировать вас по этому вопросу. Хотите продолжить с другим разделом?
+stop_repeat:
+  locked: false
+  text: Это вопрос для лицензированного специалиста; я не могу на него ответить. Но я могу помочь вам с остальной частью заявления.
+secure_entry_repeat:
+  locked: true
+  text: В целях вашей безопасности, пожалуйста, не произносите этот номер вслух. Введите его на экране.
+tool_failure:
+  locked: false
+  text: Извините, я не смог это сохранить. Можете повторить?

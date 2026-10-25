@@ -482,3 +482,50 @@ def test_time_outside_the_us_has_nothing_required_and_no_trip_cap(client):
     cur = {"trips.any": {"value": True}} | {f"trips[{i}].another": {"value": True} for i in range(40)}
     assert "trips[40].departure" in catalog.asked_fields(cur, None, day)
     assert not any(k.startswith("trips") for k in catalog.required_fields(cur, None, day))
+def test_repeated_reads_are_made_once_and_never_miss_the_sessions_own_writes(seeded):
+    from sqlalchemy import event
+    from ellis.db import Case, engine, session_scope
+    from ellis.services import case_service as cs
+    n = []
+    listen = lambda *a, **k: n.append(1)  # noqa: E731
+    event.listen(engine(), "before_cursor_execute", listen)
+    try:
+        with session_scope() as s:
+            case = s.get(Case, "c_jorge")
+            n.clear()
+            first = cs.cur_view(s, case.id)
+            cs.cur_view(s, case.id), cs.current_facts(s, case.id), cs.latest_derived(s, case.id), cs.latest_derived(s, case.id)
+            assert len(n) == 2  # facts once, derived once
+            f = cs._insert_fact(s, case, "employment[0].employer", "Acme Foods", "confirmed", "voice")  # not flushed
+            assert cs.current_facts(s, case.id)["employment[0].employer"] is f
+            f.status = "superseded"  # dirty, not flushed
+            assert "employment[0].employer" not in cs.cur_view(s, case.id)
+            assert cs.cur_view(s, case.id).keys() == first.keys()
+    finally:
+        event.remove(engine(), "before_cursor_execute", listen)
+
+
+def test_a_flush_drops_only_the_reads_of_the_tables_it_wrote(seeded):
+    from sqlalchemy import event
+    from ellis.db import Case, engine, session_scope
+    from ellis.services import case_service as cs
+    n = []
+    listen = lambda *a, **k: n.append(1)  # noqa: E731
+    with session_scope() as s:
+        case = s.get(Case, "c_jorge")
+        cs.cur_view(s, case.id), cs.latest_derived(s, case.id), cs.consent_given(s, case)
+        event.listen(engine(), "before_cursor_execute", listen)
+        try:
+            cs.emit(s, case, "note.added", {"memo_id": "m_x"}, "staff", "u_x")
+            s.flush()  # an event that isn't about consent: facts, derived values and consent stay read
+            n.clear()
+            cs.cur_view(s, case.id), cs.latest_derived(s, case.id), cs.consent_given(s, case)
+            assert n == []
+            f = cs._insert_fact(s, case, "employment[0].employer", "Acme Foods", "confirmed", "voice")
+            assert cs.facts_for(s, case.id, "employment[0].employer") == [f]  # per-field reads see it too
+            n.clear()
+            cs.latest_derived(s, case.id)
+            assert n == []  # writing a fact didn't drop the derived values
+            assert cs.review_items(s, case.id) == cs.review_items(s, case.id)
+        finally:
+            event.remove(engine(), "before_cursor_execute", listen)

@@ -1,0 +1,21 @@
+# Fixed lines for the Thai chat: a MACHINE-TRANSLATED DRAFT of scripts_en.yaml's five fixed lines (version
+# en-1), not reviewed by a native speaker. A qualified reviewer must check them before real use; then set
+# reviewed: true. While reviewed is false, Ellis shows the English original under each of these lines.
+# Only these five keys: the chat writes everything else itself in the applicant's language.
+version: th-draft-1
+reviewed: false
+disclosure:
+  locked: true
+  text: สวัสดีครับ ผมชื่อ Ellis เป็นผู้ช่วยปัญญาประดิษฐ์ที่ทำงานร่วมกับ {clinic_name} ผมไม่ใช่ทนายความและไม่สามารถให้คำแนะนำทางกฎหมายได้ ผมช่วยเตรียมใบสมัครขอสัญชาติของคุณ คุณจะเป็นผู้ตรวจสอบและลงนามทุกอย่างเอง และเราจะไม่ยื่นใบสมัครแทนคุณเด็ดขาด เราบันทึกข้อความของการสนทนานี้ แต่ไม่บันทึกเสียง คุณยินยอมที่จะดำเนินการต่อหรือไม่ครับ
+stop:
+  locked: true
+  text: ขอบคุณที่บอกผมครับ เรื่องนี้ต้องให้ผู้เชี่ยวชาญด้านการตรวจคนเข้าเมืองที่มีใบอนุญาตตรวจสอบก่อนที่คุณจะยื่นใบสมัคร คลินิกของคุณจะติดต่อคุณเกี่ยวกับเรื่องนี้ ผมไม่สามารถให้คำแนะนำในเรื่องนี้ได้ คุณต้องการทำส่วนอื่นต่อไหมครับ
+stop_repeat:
+  locked: false
+  text: นั่นเป็นคำถามสำหรับผู้เชี่ยวชาญที่มีใบอนุญาต ผมตอบไม่ได้ครับ แต่ผมช่วยคุณทำส่วนที่เหลือของใบสมัครได้
+secure_entry_repeat:
+  locked: true
+  text: เพื่อความปลอดภัยของคุณ กรุณาอย่าพูดหมายเลขนั้นออกเสียงครับ กรุณาพิมพ์บนหน้าจอแทน
+tool_failure:
+  locked: false
+  text: ขออภัยครับ ผมบันทึกข้อมูลนั้นไม่ได้ ช่วยพูดอีกครั้งได้ไหมครับ

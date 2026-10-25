@@ -1,0 +1,21 @@
+# Fixed lines for the Romanian chat: a MACHINE-TRANSLATED DRAFT of scripts_en.yaml's five fixed lines (version
+# en-1), not reviewed by a native speaker. A qualified reviewer must check them before real use; then set
+# reviewed: true. While reviewed is false, Ellis shows the English original under each of these lines.
+# Only these five keys: the chat writes everything else itself in the applicant's language.
+version: ro-draft-1
+reviewed: false
+disclosure:
+  locked: true
+  text: Bună ziua, sunt Ellis, un asistent bazat pe inteligență artificială care lucrează cu {clinic_name}. Nu sunt avocat și nu vă pot oferi consultanță juridică. Vă ajut să pregătiți cererea de cetățenie; dumneavoastră verificați și semnați totul, iar noi nu o depunem niciodată în locul dumneavoastră. Salvăm textul acestei conversații, nu înregistrarea audio. Sunteți de acord să continuăm?
+stop:
+  locked: true
+  text: Vă mulțumesc că mi-ați spus. Acest aspect trebuie analizat de un specialist în imigrație autorizat înainte să depuneți cererea. Clinica vă va contacta în legătură cu acest lucru. Nu vă pot sfătui în această privință. Doriți să continuăm cu o altă secțiune?
+stop_repeat:
+  locked: false
+  text: Aceasta este o întrebare pentru un specialist autorizat; nu pot răspunde la ea. Vă pot ajuta în schimb cu restul cererii.
+secure_entry_repeat:
+  locked: true
+  text: Pentru siguranța dumneavoastră, vă rog să nu spuneți acel număr cu voce tare. Vă rog să îl tastați pe ecran.
+tool_failure:
+  locked: false
+  text: Îmi pare rău, nu am putut salva asta. Puteți repeta?

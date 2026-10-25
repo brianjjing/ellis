@@ -182,6 +182,7 @@ button { font-family: inherit; }
 .ghost-row span:first-child { flex: 0 1 45%; }
 .ghost-row span:last-child { flex: 0 1 18%; margin-left: auto; }
 .lang-menu .more-menu-body { top: auto; bottom: calc(100% + 4px); }
+.more-menu-body.lang-picker { width: min(320px, calc(100vw - 32px)); padding: 12px; }
 @media (max-width: 800px) { .guide-foot { grid-template-columns: 1fr; } .guide-foot .small { grid-column: auto; } }
 
 /* ---------- Ready gate ---------- */

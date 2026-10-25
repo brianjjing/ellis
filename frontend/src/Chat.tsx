@@ -9,7 +9,7 @@ import { api } from './api'
 
 // A permission card: Ellis asked to do something only the applicant can approve (a setting, a question to the clinic).
 type Perm = { id: string; kind: 'setting' | 'ask_clinic'; title: string; detail?: string | null; allowed?: boolean }
-type Msg = { who: 'ellis' | 'you'; text: string; kind?: string; field?: string | null; en?: string; spoken?: boolean; approved?: boolean; perms?: Perm[]; flags?: { id: string; label: string }[] }
+type Msg = { who: 'ellis' | 'you'; text: string; kind?: string; field?: string | null; en?: string; mt?: boolean; spoken?: boolean; approved?: boolean; perms?: Perm[]; flags?: { id: string; label: string }[] }
 type Thread = { msgs: Msg[]; when: Date; voice: boolean }
 // What Ellis says the applicant is doing now; the next-step bar shows it. Set by the agent, never computed here.
 type Focus = { task: string; next_step?: string; link?: string; upload?: string }
@@ -86,7 +86,7 @@ export default function Chat() {
       },
       onLine: (l) => {
         if (l.meta?.focus) setFocus((liveFocus = l.meta.focus))
-        add({ who: 'ellis', text: l.text, kind: l.kind, field: l.meta?.field ?? l.field, en: l.meta?.text_en, perms: l.meta?.permissions, flags: l.meta?.flags })
+        add({ who: 'ellis', text: l.text, kind: l.kind, field: l.meta?.field ?? l.field, en: l.meta?.text_en, mt: l.meta?.machine_translation, perms: l.meta?.permissions, flags: l.meta?.flags })
       },
       onEnd: () => undefined,
       onError: (m) => {
@@ -195,7 +195,7 @@ export default function Chat() {
               {shown.map((m, i) => m.who === 'you' ? (
                 <div key={i} className={`you${cont(i) ? ' cont' : ''}`}>
                   {!cont(i) && <div className="label">{m.spoken ? `${t(lang, 'you')} · spoken` : t(lang, 'you')}</div>}
-                  <div className="bubble">{m.text}</div>
+                  <div className="bubble" dir="auto">{m.text}</div>
                 </div>
               ) : m.kind?.startsWith('readback') ? (
                 <div key={i} className={`msg${cont(i) ? ' cont' : ''}`}>
@@ -219,8 +219,8 @@ export default function Chat() {
               ) : (
                 <div key={i} className={`msg${cont(i) && m.kind !== 'official_question' ? ' cont' : ''}`}>
                   {(!cont(i) || m.kind === 'official_question') && <div className="label green">{m.kind === 'official_question' ? `${t(lang, 'ellis')} · Official N-400 question` : t(lang, 'ellis')}</div>}
-                  <p className="lead">{m.text}</p>
-                  {m.en && <div className="small" lang={lang === 'en' ? 'es' : 'en'}>{m.en}</div>}
+                  <p className="lead" dir="auto">{m.text}</p>
+                  {m.en && <div className="small" lang={m.mt ? 'en' : lang === 'en' ? 'es' : 'en'}>{m.mt && <span className="soft">{lang === 'es' ? 'Traducción automática, todavía sin revisar. En inglés: ' : 'Machine translation, not yet reviewed. In English: '}</span>}{m.en}</div>}
                   {m.perms?.map((p) => (
                     <div key={p.id} className="perm" role="group" aria-label="Ellis needs your OK">
                       <div className="perm-head label">
@@ -316,7 +316,7 @@ export default function Chat() {
                 )}
               </div>
             </div>}
-            {showGuide && <GuideFoot lang={lang} onLocale={async (code) => { await api('/api/a/language', { body: { locale: code } }); await reload() }} />}
+            {showGuide && <GuideFoot lang={lang} locale={data.language} onLocale={async (code) => { await api('/api/a/language', { body: { locale: code } }); await reload() }} />}
           </section>
 
           {history && (

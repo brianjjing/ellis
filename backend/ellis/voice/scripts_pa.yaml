@@ -1,0 +1,21 @@
+# Fixed lines for the Punjabi chat: a MACHINE-TRANSLATED DRAFT of scripts_en.yaml's five fixed lines (version
+# en-1), not reviewed by a native speaker. A qualified reviewer must check them before real use; then set
+# reviewed: true. While reviewed is false, Ellis shows the English original under each of these lines.
+# Only these five keys: the chat writes everything else itself in the applicant's language.
+version: pa-draft-1
+reviewed: false
+disclosure:
+  locked: true
+  text: ਸਤ ਸ੍ਰੀ ਅਕਾਲ, ਮੈਂ Ellis ਹਾਂ, {clinic_name} ਨਾਲ ਕੰਮ ਕਰਨ ਵਾਲਾ ਇੱਕ ਆਰਟੀਫ਼ਿਸ਼ਲ ਇੰਟੈਲੀਜੈਂਸ ਸਹਾਇਕ। ਮੈਂ ਵਕੀਲ ਨਹੀਂ ਹਾਂ ਅਤੇ ਤੁਹਾਨੂੰ ਕਾਨੂੰਨੀ ਸਲਾਹ ਨਹੀਂ ਦੇ ਸਕਦਾ। ਮੈਂ ਤੁਹਾਡੀ ਨਾਗਰਿਕਤਾ ਦੀ ਅਰਜ਼ੀ ਤਿਆਰ ਕਰਨ ਵਿੱਚ ਮਦਦ ਕਰਦਾ ਹਾਂ; ਤੁਸੀਂ ਸਭ ਕੁਝ ਦੇਖਦੇ ਹੋ ਅਤੇ ਦਸਤਖ਼ਤ ਕਰਦੇ ਹੋ, ਅਤੇ ਅਸੀਂ ਕਦੇ ਵੀ ਤੁਹਾਡੀ ਥਾਂ ਅਰਜ਼ੀ ਜਮ੍ਹਾਂ ਨਹੀਂ ਕਰਦੇ। ਅਸੀਂ ਇਸ ਗੱਲਬਾਤ ਦਾ ਲਿਖਤੀ ਰੂਪ ਸੰਭਾਲਦੇ ਹਾਂ, ਆਡੀਓ ਨਹੀਂ। ਕੀ ਤੁਸੀਂ ਅੱਗੇ ਵਧਣ ਲਈ ਸਹਿਮਤ ਹੋ?
+stop:
+  locked: true
+  text: ਮੈਨੂੰ ਦੱਸਣ ਲਈ ਧੰਨਵਾਦ। ਅਰਜ਼ੀ ਦੇਣ ਤੋਂ ਪਹਿਲਾਂ ਇਸਦੀ ਜਾਂਚ ਕਿਸੇ ਲਾਇਸੈਂਸਸ਼ੁਦਾ ਇਮੀਗ੍ਰੇਸ਼ਨ ਮਾਹਰ ਨੂੰ ਕਰਨੀ ਪਵੇਗੀ। ਤੁਹਾਡਾ ਕਲੀਨਿਕ ਇਸ ਬਾਰੇ ਤੁਹਾਡੇ ਨਾਲ ਸੰਪਰਕ ਕਰੇਗਾ। ਮੈਂ ਤੁਹਾਨੂੰ ਇਸ ਬਾਰੇ ਸਲਾਹ ਨਹੀਂ ਦੇ ਸਕਦਾ। ਕੀ ਤੁਸੀਂ ਕਿਸੇ ਹੋਰ ਹਿੱਸੇ ਨਾਲ ਅੱਗੇ ਵਧਣਾ ਚਾਹੋਗੇ?
+stop_repeat:
+  locked: false
+  text: ਇਹ ਸਵਾਲ ਕਿਸੇ ਲਾਇਸੈਂਸਸ਼ੁਦਾ ਮਾਹਰ ਲਈ ਹੈ; ਮੈਂ ਇਸਦਾ ਜਵਾਬ ਨਹੀਂ ਦੇ ਸਕਦਾ। ਪਰ ਮੈਂ ਤੁਹਾਡੀ ਅਰਜ਼ੀ ਦੇ ਬਾਕੀ ਹਿੱਸੇ ਵਿੱਚ ਮਦਦ ਕਰ ਸਕਦਾ ਹਾਂ।
+secure_entry_repeat:
+  locked: true
+  text: ਤੁਹਾਡੀ ਸੁਰੱਖਿਆ ਲਈ, ਕਿਰਪਾ ਕਰਕੇ ਉਹ ਨੰਬਰ ਉੱਚੀ ਆਵਾਜ਼ ਵਿੱਚ ਨਾ ਬੋਲੋ। ਕਿਰਪਾ ਕਰਕੇ ਇਸਨੂੰ ਸਕ੍ਰੀਨ 'ਤੇ ਟਾਈਪ ਕਰੋ।
+tool_failure:
+  locked: false
+  text: ਮਾਫ਼ ਕਰਨਾ, ਮੈਂ ਇਸਨੂੰ ਸੰਭਾਲ ਨਹੀਂ ਸਕਿਆ। ਕੀ ਤੁਸੀਂ ਦੁਬਾਰਾ ਦੱਸ ਸਕਦੇ ਹੋ?

@@ -1,0 +1,21 @@
+# Fixed lines for the Urdu chat: a MACHINE-TRANSLATED DRAFT of scripts_en.yaml's five fixed lines (version
+# en-1), not reviewed by a native speaker. A qualified reviewer must check them before real use; then set
+# reviewed: true. While reviewed is false, Ellis shows the English original under each of these lines.
+# Only these five keys: the chat writes everything else itself in the applicant's language.
+version: ur-draft-1
+reviewed: false
+disclosure:
+  locked: true
+  text: السلام علیکم، میں Ellis ہوں، ایک مصنوعی ذہانت کا معاون جو {clinic_name} کے ساتھ کام کرتا ہے۔ میں وکیل نہیں ہوں اور آپ کو قانونی مشورہ نہیں دے سکتا۔ میں آپ کی شہریت کی درخواست تیار کرنے میں مدد کرتا ہوں؛ آپ سب کچھ خود دیکھتے ہیں اور دستخط کرتے ہیں، اور ہم کبھی بھی آپ کی طرف سے درخواست جمع نہیں کرواتے۔ ہم اس گفتگو کا تحریری متن محفوظ کرتے ہیں، آڈیو نہیں۔ کیا آپ آگے بڑھنے پر رضامند ہیں؟
+stop:
+  locked: true
+  text: مجھے بتانے کا شکریہ۔ درخواست جمع کروانے سے پہلے اس کا جائزہ کسی لائسنس یافتہ امیگریشن ماہر کو لینا ہوگا۔ آپ کا کلینک اس بارے میں آپ سے رابطہ کرے گا۔ میں اس بارے میں آپ کو مشورہ نہیں دے سکتا۔ کیا آپ کسی اور حصے کے ساتھ آگے بڑھنا چاہیں گے؟
+stop_repeat:
+  locked: false
+  text: یہ سوال کسی لائسنس یافتہ ماہر کے لیے ہے؛ میں اس کا جواب نہیں دے سکتا۔ لیکن میں آپ کی درخواست کے باقی حصے میں مدد کر سکتا ہوں۔
+secure_entry_repeat:
+  locked: true
+  text: آپ کی حفاظت کے لیے، براہ کرم وہ نمبر اونچی آواز میں نہ بولیں۔ براہ کرم اسے اسکرین پر ٹائپ کریں۔
+tool_failure:
+  locked: false
+  text: معاف کیجیے، میں اسے محفوظ نہیں کر سکا۔ کیا آپ دوبارہ بتا سکتے ہیں؟

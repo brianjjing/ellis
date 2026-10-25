@@ -23,7 +23,7 @@
 
 ## Global Constraints
 
-- Backend commands run from `backend/`: tests are `uv run pytest`, and Line tests are `uv run --extra line pytest tests/test_line_app.py`.
+- Backend commands run from `backend/` with the repo-root `.venv` active (`source ../.venv/bin/activate`): tests are `pytest`, and Line tests are `pytest tests/test_line_app.py` (needs `pip install -e ".[line]"`).
 - New dependency: only `mcp>=1.12`, added to `[project].dependencies` in `backend/pyproject.toml`. No others.
 - Agents never write directly. Every agent write reaches the DB through `validate_envelope` + `apply_proposal` (`ellis/agents/proposals.py`). No tool, for any role, approves a review item, signs, builds a packet, or files anything.
 - Nothing leaves the building without approval. Any tool of kind `external_action` only creates a pending `OutboundAction`. Only a staff user with role `reviewer` or `admin` can make it execute.
@@ -118,7 +118,7 @@ def test_reseed_leaves_no_orphan_files(seeded):
     assert all(Path(p).exists() for p in paths)
 ```
 
-- [ ] **Step 2: Run it and confirm it fails** — `uv run pytest tests/test_storage.py::test_reseed_leaves_no_orphan_files -v`. Expected: FAIL, because the first seed's files remain.
+- [ ] **Step 2: Run it and confirm it fails** — `pytest tests/test_storage.py::test_reseed_leaves_no_orphan_files -v`. Expected: FAIL, because the first seed's files remain.
 - [ ] **Step 3: Implement.** In `load()`, when `reset` is true, call `shutil.rmtree(settings.files_dir, ignore_errors=True)` before `drop_all()`. `settings.files_dir` recreates the directory on next access.
 - [ ] **Step 4: Run it and confirm it passes** — same command. Expected: PASS.
 - [ ] **Step 5: Commit** — `git commit -m "fix(seed): clear file storage on reset so reseeding leaves no orphans"`
@@ -148,7 +148,7 @@ def test_rebuilt_packets_keep_their_own_bytes(seeded):
 
 - [ ] **Step 2: Run it and confirm it fails** (both rows share `packet/professional_draft.pdf`).
 - [ ] **Step 3: Implement.** In `build_packet`, for each kind, set `pk_id = new_id("p")` first, set `path = folder / pk_id / fn`, run `path.parent.mkdir(parents=True, exist_ok=True)`, and construct `Packet(id=pk_id, ...)`.
-- [ ] **Step 4: Run `uv run pytest tests/test_storage.py tests/test_acceptance.py -k "packet or at15"` and confirm it passes.**
+- [ ] **Step 4: Run `pytest tests/test_storage.py tests/test_acceptance.py -k "packet or at15"` and confirm it passes.**
 - [ ] **Step 5: Commit** — `git commit -m "fix(packet): write each packet version to its own path"`
 
 ### Task 3: One way to end a session, and session-linked uploads (F1, F6)
@@ -216,7 +216,7 @@ def test_voice_ws_disconnect_ends_session(client):
 - [ ] **Step 3: Implement `end_session`** in `case_service.py`. Then replace the three inline copies with it: `InProcessClient.session_end` uses `reason="liaison"`, the `/tools/session_end` route uses `"client"`, and the loop in `start_session` uses `"superseded"`.
 - [ ] **Step 4: Fix `VoiceSession.shutdown`** so that, whenever `self.liaison` exists, it calls `self.liaison.c.session_end()`, dropping the `not self.liaison.ended` condition. This is safe because `end_session` is idempotent.
 - [ ] **Step 5: Add `Document.session_id`** with its Postgres `ALTER`, thread `session_id` through `store_upload`, and in `applicant.upload` pass `active_session(s, case, None, create=False)`'s id or `None`. Staff uploads pass nothing.
-- [ ] **Step 6: Run `uv run pytest` and confirm it passes**, including the existing AT tests.
+- [ ] **Step 6: Run `pytest` and confirm it passes**, including the existing AT tests.
 - [ ] **Step 7: Commit** — `git commit -m "fix(sessions): single idempotent end_session; link uploads to the active session"`
 
 ### Task 4: Per-session summary artifact (F1)
@@ -264,7 +264,7 @@ def test_summary_omits_stop_now_and_vault_digits(client):
 
 - [ ] **Step 2: Run them and confirm they fail** (the table is missing).
 - [ ] **Step 3: Add the table and `session_files.py`, then call the builder from `end_session`.**
-- [ ] **Step 4: Run `uv run pytest tests/test_storage.py` and confirm it passes.**
+- [ ] **Step 4: Run `pytest tests/test_storage.py` and confirm it passes.**
 - [ ] **Step 5: Commit** — `git commit -m "feat(sessions): build a session summary PDF when a session ends"`
 
 ### Task 5: Unified files API with kind-bound signed URLs (F1, F3)
@@ -312,7 +312,7 @@ def test_cross_clinic_files_404(client):
 
 - [ ] **Step 2: Run them and confirm they fail.**
 - [ ] **Step 3: Implement `case_files`, the kind-aware signing, the file route and the two list endpoints.**
-- [ ] **Step 4: Run `uv run pytest` and confirm everything passes** (the AT15/AT16 packet tests use the new URL shape).
+- [ ] **Step 4: Run `pytest` and confirm everything passes** (the AT15/AT16 packet tests use the new URL shape).
 - [ ] **Step 5: Commit** — `git commit -m "feat(files): one files list per audience with kind-bound signed URLs"`
 
 ### Task 6: Files in both UIs
@@ -442,7 +442,7 @@ def test_tools_read_back_forwards_lang(client, monkeypatch):
     assert seen["lang"] == "en"
 ```
 
-- [ ] **Step 2: Run them and confirm they fail** — `uv run --extra line pytest tests/test_line_app.py -v` and `uv run pytest tests/test_voice_paths.py -v`.
+- [ ] **Step 2: Run them and confirm they fail** — `pytest tests/test_line_app.py -v` and `pytest tests/test_voice_paths.py -v`.
 - [ ] **Step 3: Implement everything listed in Interfaces.**
 - [ ] **Step 4: Run both commands again and confirm they pass.**
 - [ ] **Step 5: Commit** — `git commit -m "fix(line): persist every turn and line, end sessions, use public API URL and settings secret"`
@@ -589,10 +589,10 @@ def test_expire_dispatched_writes_nothing(seeded): ...
     # stage a task, age claimed_at past TTL, expire_dispatched() == 1, job failed, no Task titled "A", board task exists
 ```
 
-- [ ] **Step 2: Run `uv run pytest tests/test_staff_tools.py -v` and confirm it fails.**
-- [ ] **Step 3: Implement `authority_reason`**, then run `uv run pytest tests/test_acceptance.py -k authority`. Expected: PASS, unchanged behavior.
+- [ ] **Step 2: Run `pytest tests/test_staff_tools.py -v` and confirm it fails.**
+- [ ] **Step 3: Implement `authority_reason`**, then run `pytest tests/test_acceptance.py -k authority`. Expected: PASS, unchanged behavior.
 - [ ] **Step 4: Implement `registry.py`, `runs.py`, `Job.staged` and the longer run ids.**
-- [ ] **Step 5: Run `uv run pytest` and confirm everything passes.**
+- [ ] **Step 5: Run `pytest` and confirm everything passes.**
 - [ ] **Step 6: Commit** — `git commit -m "feat(staff-tools): role-scoped tool registry with staged, apply-once agent runs"`
 
 ### Task 10: Case tools: read, propose, finish
@@ -648,13 +648,13 @@ def test_skeleton_output_through_tools_publishes_briefing(seeded):
 
 - [ ] **Step 2: Run them and confirm they fail.**
 - [ ] **Step 3: Implement `case_tools.py`.**
-- [ ] **Step 4: Run `uv run pytest tests/test_staff_tools.py` and confirm it passes.**
+- [ ] **Step 4: Run `pytest tests/test_staff_tools.py` and confirm it passes.**
 - [ ] **Step 5: Commit** — `git commit -m "feat(staff-tools): case read, propose and finish tools generated from the proposal schema"`
 
 ### Task 11: MCP server per role on the Case API
 
 **Files:**
-- Modify: `backend/pyproject.toml` (add `"mcp>=1.12"` to dependencies), then run `uv lock`
+- Modify: `backend/pyproject.toml` (add `"mcp>=1.12"` to dependencies), then run `pip install -e ".[llm,dev]"` in the `.venv`
 - Create: `backend/ellis/staff_tools/mcp_server.py`
 - Modify: `backend/ellis/api/app.py` (mount the apps and enter their managers in `lifespan`)
 - Modify: `backend/ellis/api/app.py` `NoToolBodies` filter so it also covers `/mcp/`
@@ -728,10 +728,10 @@ def test_mcp_tool_error_is_reported_not_raised(client, tokens):
 
 Put `MCP_H`, `INIT`, `rpc` and the `tokens` fixture in `tests/conftest.py`; Task 15 reuses them.
 
-- [ ] **Step 2: Run `uv sync && uv run pytest tests/test_mcp_server.py -v` and confirm it fails** (404 on `/mcp/...`).
+- [ ] **Step 2: Run `pip install -e ".[llm,dev]" && pytest tests/test_mcp_server.py -v` and confirm it fails** (404 on `/mcp/...`).
 - [ ] **Step 3: Implement `mcp_server.py` and the `create_app` wiring.**
-- [ ] **Step 4: Run `uv run pytest` and confirm everything passes.**
-- [ ] **Step 5: Commit** — `git add backend/pyproject.toml backend/uv.lock ...` then `git commit -m "feat(mcp): role-scoped MCP server for Creao staff agents"`
+- [ ] **Step 4: Run `pytest` and confirm everything passes.**
+- [ ] **Step 5: Commit** — `git add backend/pyproject.toml ...` then `git commit -m "feat(mcp): role-scoped MCP server for Creao staff agents"`
 
 ### Task 12: Creao run lifecycle in the runner and webhook
 
@@ -801,7 +801,7 @@ def test_runner_expires_stale_dispatch(seeded): ...
 
 - [ ] **Step 2: Run them and confirm they fail.**
 - [ ] **Step 3: Implement the dispatch, runner and webhook changes.**
-- [ ] **Step 4: Run `uv run pytest` and confirm everything passes**, including AT19 and AT20, which still use the synchronous backends.
+- [ ] **Step 4: Run `pytest` and confirm everything passes**, including AT19 and AT20, which still use the synchronous backends.
 - [ ] **Step 5: Commit** — `git commit -m "feat(creao): dispatched-run lifecycle with webhook completion and expiry"`
 
 ### Task 13: External tools and MCP connectors with an approval gate
@@ -913,7 +913,7 @@ def test_cross_clinic_cannot_decide_action(client, email): ...   # staff@other.d
 
 - [ ] **Step 2: Run them and confirm they fail.**
 - [ ] **Step 3: Implement the yaml, the table, `connectors.py`, the routes and the wiring.**
-- [ ] **Step 4: Run `uv run pytest` and confirm everything passes.**
+- [ ] **Step 4: Run `pytest` and confirm everything passes.**
 - [ ] **Step 5: Commit** — `git commit -m "feat(connectors): external MCP tools behind role scope, redaction and reviewer approval"`
 
 ### Task 14: Clinic approvals UI
@@ -927,7 +927,7 @@ def test_cross_clinic_cannot_decide_action(client, email): ...   # staff@other.d
 
 - [ ] **Step 1: Implement it.**
 - [ ] **Step 2: Type-check** — `cd frontend && npx tsc --noEmit`. Expected: no errors.
-- [ ] **Step 3: Verify in the browser.** With `ELLIS_MCP_EMAIL_URL` set and `REMOTE_CALL` pointed at nothing, create a pending action via `uv run python -c` calling `registry.call("case_manager","email_send",...)` on a `dispatched_job`. As Dana, approve it. The status changes to `failed` (unreachable) with the error shown. As Sam, no buttons are shown.
+- [ ] **Step 3: Verify in the browser.** With `ELLIS_MCP_EMAIL_URL` set and `REMOTE_CALL` pointed at nothing, create a pending action via `python -c` calling `registry.call("case_manager","email_send",...)` on a `dispatched_job`. As Dana, approve it. The status changes to `failed` (unreachable) with the error shown. As Sam, no buttons are shown.
 - [ ] **Step 4: Commit** — `git commit -m "feat(ui): clinic approvals tab for agent-proposed outbound actions"`
 
 ### Task 15: Charters, the handoff runbook, and a simulated Creao run
@@ -940,7 +940,7 @@ def test_cross_clinic_cannot_decide_action(client, email): ...   # staff@other.d
 
 **Interfaces:**
 - Consumes: `registry.tools_for` (Tasks 9–13).
-- Produces: `charter_for(agent: str) -> str`. This is `prompts/<agent>.md` with its `## Output schema` section removed (that section is the JSON-envelope contract for `AnthropicBackend`, which stays as is), then the full text of `creao_contract.md`, then `## Your tools` with one line per tool, `- <name> (<kind>): <description>`, from `tools_for(agent)`. It also provides a CLI, `uv run python -m ellis.agents.charters <agent>`, that prints it.
+- Produces: `charter_for(agent: str) -> str`. This is `prompts/<agent>.md` with its `## Output schema` section removed (that section is the JSON-envelope contract for `AnthropicBackend`, which stays as is), then the full text of `creao_contract.md`, then `## Your tools` with one line per tool, `- <name> (<kind>): <description>`, from `tools_for(agent)`. It also provides a CLI, `python -m ellis.agents.charters <agent>`, that prints it.
 - `creao_contract.md` must state these rules, wording up to the writer:
   1. Your run input has `run_id` and `case_id`. Pass `run_id` to every tool. Never invent one.
   2. Call `get_case` first.
@@ -957,7 +957,7 @@ def test_cross_clinic_cannot_decide_action(client, email): ...   # staff@other.d
   - **Exposing the dev server** — a tunnel, for example `cloudflared tunnel --url http://localhost:8000`, assigned to `ELLIS_PUBLIC_API_URL`. The same URL serves the Line agent.
   - **Adding a tool we write** — a 10-line `register(StaffTool(...))` example in a new module imported from `staff_tools/__init__.py`, covering choosing `kind` and `roles` and returning plain JSON.
   - **Adding an external MCP** — a `connectors.yaml` entry, env vars, a choice of `external_read` vs `external_action`, and the rule that sends always go through approval.
-  - **Testing without credits** — `uv run pytest tests/test_creao.py::test_simulated_creao_run_end_to_end`.
+  - **Testing without credits** — `pytest tests/test_creao.py::test_simulated_creao_run_end_to_end`.
   - **Open questions** — Creao `/v1/runs` field names and webhook body shape (`TODO(open-question-7)` in `backends.py` and `webhooks.py`); whether a custom MCP counts against the per-agent connector limit (`docs/oneshot.md` line ~1224); the email MCP's real tool names (`TODO(connector-email)`).
   - **Go-live checklist** — secrets set and not dev defaults; `/api/health` shows `agent_backend: creao`; one rehearsal run per agent visible as an `AgentRun` with `backend == "creao"`; an approvals tab round trip.
 
@@ -995,8 +995,8 @@ def test_simulated_creao_run_end_to_end(client, creao, tokens):
 
 - [ ] **Step 2: Run them and confirm they fail.**
 - [ ] **Step 3: Write `creao_contract.md`, `charters.py` and `docs/creao-integration.md`.**
-- [ ] **Step 4: Run `uv run pytest` and confirm the whole suite passes.**
-- [ ] **Step 5: Print and read a charter** — `uv run python -m ellis.agents.charters case_manager`. It should read as a complete, self-contained Creao system prompt.
+- [ ] **Step 4: Run `pytest` and confirm the whole suite passes.**
+- [ ] **Step 5: Print and read a charter** — `python -m ellis.agents.charters case_manager`. It should read as a complete, self-contained Creao system prompt.
 - [ ] **Step 6: Commit** — `git commit -m "docs(creao): charters, integration runbook, simulated end-to-end Creao run"`
 
 ---

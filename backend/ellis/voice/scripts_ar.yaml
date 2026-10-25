@@ -1,0 +1,21 @@
+# Fixed lines for the Arabic chat: a MACHINE-TRANSLATED DRAFT of scripts_en.yaml's five fixed lines (version
+# en-1), not reviewed by a native speaker. A qualified reviewer must check them before real use; then set
+# reviewed: true. While reviewed is false, Ellis shows the English original under each of these lines.
+# Only these five keys: the chat writes everything else itself in the applicant's language.
+version: ar-draft-1
+reviewed: false
+disclosure:
+  locked: true
+  text: مرحبًا، أنا Ellis، مساعد يعمل بالذكاء الاصطناعي مع {clinic_name}. أنا لست محاميًا ولا أستطيع أن أقدم لك استشارة قانونية. أساعدك في تحضير طلب الحصول على الجنسية؛ أنت تراجع كل شيء وتوقّع عليه، ونحن لا نقدّم الطلب نيابةً عنك أبدًا. نحفظ نص هذه المحادثة، وليس التسجيل الصوتي. هل توافق على المتابعة؟
+stop:
+  locked: true
+  text: شكرًا لأنك أخبرتني. هذا أمر يجب أن يراجعه مختص مرخّص في شؤون الهجرة قبل أن تقدّم طلبك. ستتواصل معك العيادة بخصوص هذا الأمر. لا أستطيع أن أنصحك بشأنه. هل تريد المتابعة في قسم آخر؟
+stop_repeat:
+  locked: false
+  text: هذا سؤال لمختص مرخّص؛ لا أستطيع الإجابة عنه. لكن يمكنني مساعدتك في بقية طلبك.
+secure_entry_repeat:
+  locked: true
+  text: حفاظًا على أمانك، من فضلك لا تقل هذا الرقم بصوت عالٍ. من فضلك اكتبه على الشاشة.
+tool_failure:
+  locked: false
+  text: عذرًا، لم أتمكن من حفظ ذلك. هل يمكنك أن تقوله مرة أخرى؟

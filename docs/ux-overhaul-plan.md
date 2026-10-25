@@ -12,7 +12,7 @@ Where a later phase conflicts with the code, it is marked **Conflict**.
 
 3. **Field labels** come from `backend/config/fields.yaml` through the API (`label_en` or `label_es` by the viewer's language). There is no frontend label map. The reviewer UI is English, so the case payload uses `label_en`. A key missing from `fields.yaml` is title-cased. Those keys are listed under "Labels that are not in fields.yaml" below.
 
-4. **Languages.** The picker lists only what the liaison supports: English and Spanish, with the dialects in `LANGUAGES`. No Vietnamese in the UI. Adding a language needs liaison scripts, field questions, and UI strings. Screens touched in Phase 1 use `t()` in `applicant/i18n.ts`, with strings in `en` and `es`.
+4. **Languages.** *(Superseded 2026-10-25: Ellis now talks in every language and accent Cartesia's Sonic speaks, listed in `backend/config/languages.yaml` and served by `GET /api/languages`; screen text stays English/Spanish. See CLAUDE.md rule 4.)* The picker lists only what the liaison supports: English and Spanish, with the dialects in `LANGUAGES`. No Vietnamese in the UI. Adding a language needs liaison scripts, field questions, and UI strings. Screens touched in Phase 1 use `t()` in `applicant/i18n.ts`, with strings in `en` and `es`.
 
 5. **Voice** is tap-to-talk. A tap sends talk-down. The turn ends on a second tap or when Ink signals end of turn (`turn.end` in `voice.py`, already used for push-to-talk). `VoiceClient.hold` / `release` stay, because a tap-to-stop still has to send talk-up when Ink has not closed the turn yet. That path is not a second gesture in the UI. Visible text and an `aria-live` region use the existing `VoiceState` values: Connecting…, Listening…, Thinking…, Ellis is speaking, Paused or ended. Tapping the mic while Ellis speaks interrupts it. The signed-in composer toggle reads "Talk" / "Type". The guest composer reads "Sign in to talk with Ellis".
 
@@ -232,10 +232,11 @@ There is no separate work log. Agent work that becomes an event, a task, a memo,
 
 ## 11. Tests
 
-Backend, from `backend/`:
+Backend, from `backend/` with the repo `.venv` active:
 
 ```bash
-uv run pytest
+source ../.venv/bin/activate
+pytest
 ```
 
 `pyproject.toml` sets `testpaths = ["tests"]` and `addopts = "-q"`. Files: `test_acceptance.py` (AT1–AT20, including consent-first), `test_portal.py` (guest chat, prefill-on-consent, accounts), `test_rules.py`, `test_agent.py`.
@@ -332,7 +333,7 @@ A human with current USCIS access must verify each one before the app is used wi
 # Applicant: http://localhost:5173/a/demo-jorge
 
 # Run all tests
-cd backend && uv run pytest                          # 91 tests
+source .venv/bin/activate && cd backend && pytest
 cd frontend && npm run build                         # type-check + Vite
 cd frontend && npm run screenshots                   # 33 shots, 0 axe violations
 ```

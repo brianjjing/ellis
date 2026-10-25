@@ -238,3 +238,112 @@ def test_the_model_sees_what_was_withheld_or_unheard(seeded):
     b.start()  # a resume: memory comes from the stored transcript
     texts = [m["content"] for m in b.history if isinstance(m["content"], str)]
     assert not any("STOP:" in t for t in texts) and any(STOP_NOTE in t for t in texts)
+
+
+def test_live_case_data_is_built_between_turns_and_checked_with_one_query(seeded):
+    a = agent("c_jorge",
+              use("request_upload", document_type="passport"), use("set_focus", task="general", next_step="Hi"),
+              say("Suba su pasaporte."),
+              use("record_fact", field="employment[0].employer", value="Acme Foods"), say("Gracias."),
+              say("Su clínica agregó una nota."))
+    builds, checks = [], []
+    real_build, real_check = a.c.case_context, a.c.latest_event_id
+    a.c.case_context = lambda focus: builds.append(dict(focus)) or real_build(focus)
+    a.c.latest_event_id = lambda: checks.append(1) or real_check()
+    a.cfg = {"consent_given": True}
+
+    a.handle("Tengo mi pasaporte")
+    # three model rounds, two builds: a card tool keeps the data, the new focus needs it again;
+    # then the next turn's data is built after the reply
+    assert len(a._anthropic.calls) == 3
+    a._prefetch.result()
+    assert len(builds) == 3 and builds[-1]["task"] == "general" and checks == []
+
+    a.handle("Trabajo en Acme Foods")
+    # the turn starts with one check (nothing changed: the prefetched data is used); record_fact wrote, so the
+    # round after it builds again; then the next turn's data is prefetched
+    a._prefetch.result()
+    assert len(checks) == 1 and len(builds) == 5
+
+    with session_scope() as s:  # someone else changes the case between turns
+        cs.emit(s, s.get(Case, "c_jorge"), "note.added", {"memo_id": "m_x"}, "staff", "u_x")
+    a.handle("¿Hay algo nuevo?")
+    a._prefetch.result()
+    assert len(checks) == 2 and len(builds) == 7  # the check saw the new event: built again (+ the prefetch)
+
+
+def test_saving_ellis_lines_never_holds_up_the_reply(seeded):
+    import time
+    a = agent("c_jorge", say("¿Dónde trabaja?"))
+    a.cfg = {"consent_given": True}
+    real = a.c.liaison_said
+    a.c.liaison_said = lambda *args: time.sleep(0.5) or real(*args)
+    t0 = time.time()
+    assert a.handle("Hola")[0].text == "¿Dónde trabaja?"
+    assert time.time() - t0 < 0.4
+    from ellis.voice.llm_liaison import _CAPTIONS
+    _CAPTIONS.submit(lambda: None).result()  # a resume waits for this too
+    said = [t for who, t, _ in a.c.recent_transcript() if who == "liaison"]
+    assert said[-1] == "¿Dónde trabaja?"
+
+
+def _voice_ws(client, monkeypatch, *responses, delay=0.0):
+    """Sign in as Jorge (consent given) and open WS /api/a/voice with a scripted model and no Cartesia key."""
+    import time
+    from ellis.config import settings
+    from ellis.voice import llm_liaison
+    monkeypatch.setattr(type(settings), "anthropic_api_key", property(lambda self: "test"))
+    monkeypatch.setattr(type(settings), "cartesia_api_key", property(lambda self: None))
+    model = FakeModel(*responses)
+    real = model.create
+
+    def slow(**kw):
+        time.sleep(delay)
+        return real(**kw)
+    model.create = slow
+    monkeypatch.setattr(llm_liaison.LlmLiaison, "_client_", lambda self: model)
+    assert client.post("/api/a/session", json={"token": "demo-jorge"}).status_code == 200
+    return model
+
+
+def _until(ws, kind, seen):
+    while True:
+        m = ws.receive_json()
+        seen.append(m)
+        if m["type"] == kind:
+            return m
+
+
+def test_the_mic_is_ready_before_ellis_opening_line(client, monkeypatch):
+    model = _voice_ws(client, monkeypatch, say("Bienvenido otra vez, Jorge."), say("Anotado: Acme Foods."),
+                      say("Hasta luego."))
+    with client.websocket_connect("/api/a/voice") as ws:
+        ws.send_json({"type": "start", "voice": False, "language": "es", "locale": "es-MX"})
+        seen = []
+        ready = _until(ws, "ready", seen)
+        assert ready["mode"] == "text" and ready["talk_unavailable"]
+        assert not any(m["type"] == "line" for m in seen)  # ready came first
+        line = _until(ws, "line", seen)
+        assert line["text"] == "Bienvenido otra vez, Jorge."
+        ws.send_json({"type": "text", "text": "Trabajo en Acme Foods"})
+        assert _until(ws, "user_final", seen)["text"] == "Trabajo en Acme Foods"
+        assert _until(ws, "line", seen)["text"] == "Anotado: Acme Foods."
+        ws.send_json({"type": "end"})
+    assert len(model.calls) >= 2  # the opening and the turn (the goodbye may still be running)
+
+
+def test_typing_before_the_opening_is_ready_loses_neither_line(client, monkeypatch):
+    model = _voice_ws(client, monkeypatch, say("Hola de nuevo."), say("Claro, le explico."), say("Hasta luego."),
+                      delay=0.4)
+    with client.websocket_connect("/api/a/voice") as ws:
+        ws.send_json({"type": "start", "voice": False, "language": "es", "locale": "es-MX"})
+        seen = []
+        _until(ws, "ready", seen)
+        ws.send_json({"type": "text", "text": "¿Qué documentos necesito?"})  # while the opening is prepared
+        lines = [_until(ws, "line", seen)["text"], _until(ws, "line", seen)["text"]]
+        ws.send_json({"type": "end"})
+    assert lines == ["Hola de nuevo.", "Claro, le explico."]
+    # the model is told the question came before the opening reached them
+    turn = next(m["content"] for m in model.calls[1]["messages"]
+                if isinstance(m["content"], str) and "¿Qué documentos necesito?" in m["content"])
+    assert "never heard it" in turn

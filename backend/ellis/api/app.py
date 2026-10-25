@@ -61,8 +61,14 @@ def create_app(start_workers: bool | None = None) -> FastAPI:
 
     app = FastAPI(title="Ellis Case API", version="0.1.0", lifespan=lifespan)
     logging.getLogger("uvicorn.access").addFilter(NoToolBodies())
+    if not log.handlers:  # uvicorn configures only its own loggers: without this, ellis INFO lines (turn timings) drop
+        h = logging.StreamHandler()
+        h.setFormatter(logging.Formatter("%(levelname)s:     %(name)s: %(message)s"))
+        log.addHandler(h)
+        log.setLevel(logging.INFO)
 
     from .routes import applicant, auth, clinic, guest, tools, voice, webhooks
+    from ..services import languages
 
     app.include_router(tools.router)
     app.include_router(applicant.router)
@@ -88,6 +94,11 @@ def create_app(start_workers: bool | None = None) -> FastAPI:
         return JSONResponse(status_code=422, content={"error": {"code": "invalid_request",
                                                                 "message": "invalid request",
                                                                 "details": exc.errors()[:5]}})
+
+    @app.get("/api/languages")
+    def language_list():
+        """Every language and accent Ellis talks in, for the pickers on both sides (no sign-in needed)."""
+        return {"languages": languages.catalog()}
 
     @app.get("/api/health")
     def health():

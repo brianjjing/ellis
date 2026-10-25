@@ -10,7 +10,7 @@ import json
 from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import event as sa_event, select
 from sqlalchemy.orm import Session
 
 from ..config import fee_config, rule_config, settings
@@ -19,12 +19,61 @@ from ..db import (
     Signoff, Task, Utterance, VaultValue, new_id, now,
 )
 from ..rules import engine as rules
-from . import catalog, keywords, vault
+from . import catalog, keywords, languages, vault
 from .bus import queue_after_commit
 from .flags import CATEGORIES, FLAG_CONTINUE, RULE_TRIGGERS, STOP_NOW, category as cat_info
 from .values import ValueError_, equal, normalize
 
 READBACK_WINDOW_S = 120
+
+
+# Reads repeated within one session (a chat turn rebuilds the case view from several helpers) are made once: on a
+# hosted database each is a ~100 ms round trip. A read always sees the session's own writes: a pending change to
+# the table a read depends on makes it read fresh (the query autoflushes), and a flush drops the reads of the
+# tables it wrote. Commit and rollback drop them all.
+def _memo_model(key: tuple):
+    return {"facts": Fact, "consent": Event, "open_flags": Flag, "derived": Derived, "open_gaps": Gap,
+            "briefing": Briefing, "review_items": ReviewItem, "documents": Document}[key[0]]
+
+
+def _touches(objs, key: tuple) -> bool:
+    model = _memo_model(key)
+    for o in objs:
+        if isinstance(o, model) and (model is not Event or str(o.kind or "").startswith("consent.")):
+            return True  # of the event table, only consent events change a memoized read
+    return False
+
+
+def _pending(s: Session) -> list:
+    return [*s.new, *s.dirty, *s.deleted]
+
+
+def _memo(s: Session, key: tuple, load):
+    reads = s.info.setdefault("reads", {})
+    if _touches(_pending(s), key):
+        reads.pop(key, None)
+        out = load()
+        if not _touches(_pending(s), key):  # the query flushed them: what it read is current
+            reads[key] = out
+        return out
+    if key not in reads:
+        reads[key] = load()
+    return reads[key]
+
+
+@sa_event.listens_for(Session, "after_flush")
+def _drop_flushed_reads(s: Session, _ctx) -> None:
+    reads = s.info.get("reads")
+    if reads:
+        flushed = _pending(s)  # still the pre-flush state inside after_flush
+        for key in [k for k in reads if _touches(flushed, k)]:
+            del reads[key]
+
+
+@sa_event.listens_for(Session, "after_commit")
+@sa_event.listens_for(Session, "after_soft_rollback")
+def _drop_reads(s: Session, *_) -> None:
+    s.info.pop("reads", None)
 
 
 class CaseError(Exception):
@@ -40,7 +89,13 @@ def today() -> date:
 
 
 def case_lang(case: Case) -> str:
-    return "en" if (case.language or "").startswith("en") else "es"
+    """The language of Ellis's own text for this case: 'es' or 'en' (every language but Spanish reads English)."""
+    return languages.copy_lang(case.language)
+
+
+def case_language(case: Case) -> str:
+    """The language Ellis talks in with this applicant: any supported base code ('fr', 'vi', ...)."""
+    return languages.base(case.language)
 
 
 def _aware(dt: datetime | None) -> datetime | None:
@@ -79,7 +134,11 @@ def facts_for(s: Session, case_id: str, field: str | None = None, include_supers
         q = q.where(Fact.field == field)
     if not include_superseded:
         q = q.where(Fact.status != "superseded")
-    return list(s.scalars(q.order_by(Fact.ts, Fact.id)))
+    if include_superseded:
+        return list(s.scalars(q.order_by(Fact.ts, Fact.id)))
+    if field is not None:  # one field: the same rows, from the case's memoized facts
+        return [f for f in facts_for(s, case_id) if f.field == field]
+    return list(_memo(s, ("facts", case_id), lambda: list(s.scalars(q.order_by(Fact.ts, Fact.id)))))
 
 
 def current_facts(s: Session, case_id: str) -> dict[str, Fact]:
@@ -113,8 +172,9 @@ def fact_values(s: Session, case_id: str, masked: bool = True) -> dict[str, Any]
 
 def consent_given(s: Session, case: Case) -> bool:
     # the latest answer wins, so a "no" from settings withdraws an earlier "yes"
-    ev = s.scalars(select(Event).where(Event.case_id == case.id, Event.kind.in_(("consent.given", "consent.declined")))
-                   .order_by(Event.id.desc()).limit(1)).first()
+    ev = _memo(s, ("consent", case.id), lambda: s.scalars(
+        select(Event).where(Event.case_id == case.id, Event.kind.in_(("consent.given", "consent.declined")))
+        .order_by(Event.id.desc()).limit(1)).first())
     return ev is not None and ev.kind == "consent.given" and ev.payload.get("disclosure_version") == case.disclosure_version
 
 
@@ -208,7 +268,8 @@ def _doc_check(s: Session, case_id: str, field: str, value: Any) -> tuple[str | 
 def applicant_turn(s: Session, case: Case, text: str, session_id: str | None = None,
                    meta: dict | None = None) -> dict[str, Any]:
     """Store an applicant turn after the in-loop checks. Raw stop-list text is never written anywhere."""
-    stop = keywords.stop_hit(text)
+    lang = case_language(case)  # the English/Spanish lists always apply; this adds the case's language
+    stop = keywords.stop_hit(text, lang)
     if stop:
         u = Utterance(clinic_id=case.clinic_id, case_id=case.id, session_id=session_id, speaker="applicant",
                       text=f"[STOP:{stop}]", redacted=True, meta={"stop": True})
@@ -216,8 +277,8 @@ def applicant_turn(s: Session, case: Case, text: str, session_id: str | None = N
         s.flush()
         res = stop_now(s, case, stop, layer=4, session_id=session_id)
         return {"utterance_id": u.id, "stop": stop, "redacted": True, "flags": [], **res}
-    redacted = keywords.has_sensitive_number(text)
-    stored = keywords.redact_numbers(text) if redacted else text
+    redacted = keywords.has_sensitive_number(text, lang)
+    stored = keywords.redact_numbers(text, lang) if redacted else text
     u = Utterance(clinic_id=case.clinic_id, case_id=case.id, session_id=session_id, speaker="applicant",
                   text=stored, redacted=redacted, meta=meta or {})
     s.add(u)
@@ -225,7 +286,7 @@ def applicant_turn(s: Session, case: Case, text: str, session_id: str | None = N
     if redacted:
         emit(s, case, "utterance.redacted", {"utterance_id": u.id, "reason": "sensitive_number"}, "liaison", "liaison")
     flags = []
-    for cat in keywords.flag_hits(text):
+    for cat in keywords.flag_hits(text, lang):
         fl = raise_flag(s, case, cat, layer=4, detail={"utterance_id": u.id})
         if fl is not None:
             flags.append(flag_dict(fl, applicant=True))
@@ -233,9 +294,9 @@ def applicant_turn(s: Session, case: Case, text: str, session_id: str | None = N
 
 
 def liaison_utterance(s: Session, case: Case, text: str, session_id: str | None = None, locked: bool = False,
-                      meta: dict | None = None) -> Utterance:
+                      meta: dict | None = None, ts: datetime | None = None) -> Utterance:
     u = Utterance(clinic_id=case.clinic_id, case_id=case.id, session_id=session_id, speaker="liaison",
-                  text=text, locked=locked, meta=meta or {})
+                  text=text, locked=locked, meta=meta or {}, ts=ts or now())
     s.add(u)
     s.flush()
     return u
@@ -658,7 +719,8 @@ def real_value(s: Session, case_id: str, field: str) -> Any:
 # ---------------------------------------------------------------- flags & review items
 
 def all_open_flags(s: Session, case: Case) -> list[Flag]:
-    return list(s.scalars(select(Flag).where(Flag.case_id == case.id, Flag.status == "open").order_by(Flag.ts)))
+    return list(_memo(s, ("open_flags", case.id), lambda: list(
+        s.scalars(select(Flag).where(Flag.case_id == case.id, Flag.status == "open").order_by(Flag.ts)))))
 
 
 def _open_flags(s: Session, case: Case, category: str, field: str | None = None) -> list[Flag]:
@@ -873,8 +935,7 @@ def flag_for_review(s: Session, case: Case, category: str, field: str | None = N
 # Settings the applicant may change by asking Ellis (value -> how it reads on screen). The chat only ever
 # asks; set_setting runs once the applicant taps Allow.
 APPLICANT_SETTINGS = {
-    "language": {"en-US": "English (United States)", "en-GB": "English (United Kingdom)",
-                 "es-MX": "Español (México)", "es-US": "Español (Estados Unidos)", "es-ES": "Español (España)"},
+    "language": languages.options(),  # every language and accent Ellis talks in (config/languages.yaml)
     "reply_length": {"short": "Short", "normal": "Normal", "detailed": "Detailed"},
     "voice_speed": {"normal": "Normal", "slow": "Slower"},
 }
@@ -887,12 +948,27 @@ def applicant_settings(case: Case) -> dict[str, str]:
             "voice_speed": st.get("voice_speed", "normal")}
 
 
+def set_language(s: Session, case: Case, locale: str, actor_type: str = "applicant", actor: str = "applicant") -> None:
+    """A new language or accent. A chosen voice was chosen for the old one, so Ellis picks again."""
+    case.language = locale
+    st = dict(case.settings or {})
+    st.pop("voice_id", None)
+    case.settings = st
+    emit(s, case, "case.language_changed", {"language": locale}, actor_type, actor)
+
+
+def set_voice(s: Session, case: Case, voice_id: str | None) -> None:
+    """The Sonic voice the applicant chose for Ellis (None: Ellis picks one for their accent)."""
+    st = {k: v for k, v in (case.settings or {}).items() if k != "voice_id"}
+    case.settings = {**st, **({"voice_id": voice_id} if voice_id else {})}
+    emit(s, case, "case.settings_changed", {"voice": "chosen" if voice_id else "default"}, "applicant", "applicant")
+
+
 def set_setting(s: Session, case: Case, key: str, value: str) -> dict[str, str]:
     if value not in APPLICANT_SETTINGS.get(key, {}):
         raise CaseError("invalid_setting", f"{key} can't be {value!r}", key)
     if key == "language":
-        case.language = value
-        emit(s, case, "case.language_changed", {"language": value}, "applicant", "applicant")
+        set_language(s, case, value)
     else:
         case.settings = {**(case.settings or {}), key: value}
         emit(s, case, "case.settings_changed", {key: value}, "applicant", "applicant")
@@ -905,7 +981,8 @@ def ask_clinic(s: Session, case: Case, question: str) -> dict[str, Any]:
     q = " ".join((question or "").split())[:500]
     if not q:
         raise CaseError("empty_question", "no question to send")
-    if keywords.stop_hit(q) or keywords.has_sensitive_number(q):
+    lang = case_language(case)
+    if keywords.stop_hit(q, lang) or keywords.has_sensitive_number(q, lang):
         raise CaseError("not_sendable", "that can't be sent as text; the clinic will follow up directly")
     info = cat_info("applicant_question")
     fl = Flag(clinic_id=case.clinic_id, case_id=case.id, category="applicant_question", speed=FLAG_CONTINUE,
@@ -938,7 +1015,7 @@ def _layer1(s: Session, case: Case, field: str, value: Any, utterance_text: str 
             return None
         on_yes = q.get("on_yes", "stop_now")
         if on_yes == "classify":
-            hit = keywords.stop_hit(utterance_text or "")
+            hit = keywords.stop_hit(utterance_text or "", case_language(case))
             if hit:
                 stop_now(s, case, hit, layer=1, field=field)
                 return {"stop": hit}
@@ -956,8 +1033,9 @@ def _layer1(s: Session, case: Case, field: str, value: Any, utterance_text: str 
 # ---------------------------------------------------------------- derived / rules
 
 def latest_derived(s: Session, case_id: str) -> Derived | None:
-    return s.scalars(select(Derived).where(Derived.case_id == case_id).order_by(Derived.ts.desc(), Derived.id.desc())
-                     .limit(1)).first()
+    return _memo(s, ("derived", case_id), lambda: s.scalars(
+        select(Derived).where(Derived.case_id == case_id).order_by(Derived.ts.desc(), Derived.id.desc())
+        .limit(1)).first())
 
 
 def apply_pending_deferrals(s: Session, case: Case) -> list[str]:
@@ -1071,8 +1149,21 @@ def set_state(s: Session, case: Case, to: str, reason: str, actor_type: str = "s
     emit(s, case, "case.state_changed", {"from": frm, "to": to, "reason": reason}, actor_type, actor)
 
 
+def review_items(s: Session, case_id: str) -> list[ReviewItem]:
+    """Every review item of the case, oldest first (screens filter this one read)."""
+    return list(_memo(s, ("review_items", case_id), lambda: list(
+        s.scalars(select(ReviewItem).where(ReviewItem.case_id == case_id).order_by(ReviewItem.ts, ReviewItem.id)))))
+
+
+def documents(s: Session, case_id: str) -> list[Document]:
+    """Every document of the case, oldest first."""
+    return list(_memo(s, ("documents", case_id), lambda: list(
+        s.scalars(select(Document).where(Document.case_id == case_id).order_by(Document.ts, Document.id)))))
+
+
 def open_gaps(s: Session, case_id: str) -> list[Gap]:
-    return list(s.scalars(select(Gap).where(Gap.case_id == case_id, Gap.status == "open")))
+    return list(_memo(s, ("open_gaps", case_id), lambda: list(
+        s.scalars(select(Gap).where(Gap.case_id == case_id, Gap.status == "open")))))
 
 
 def after_fact_change(s: Session, case: Case) -> None:
@@ -1146,7 +1237,8 @@ def facts_hash(s: Session, case_id: str) -> tuple[list[str], str]:
 # ---------------------------------------------------------------- briefing
 
 def latest_briefing(s: Session, case_id: str) -> Briefing | None:
-    return s.scalars(select(Briefing).where(Briefing.case_id == case_id).order_by(Briefing.version.desc()).limit(1)).first()
+    return _memo(s, ("briefing", case_id), lambda: s.scalars(
+        select(Briefing).where(Briefing.case_id == case_id).order_by(Briefing.version.desc()).limit(1)).first())
 
 
 def latest_briefing_version(s: Session, case_id: str) -> int:

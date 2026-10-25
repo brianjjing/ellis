@@ -49,6 +49,30 @@ class InProcessClient:
         from ..services import views
         return self._run(lambda s, case: views.agent_context(s, case, focus))
 
+    def suggested_next(self) -> dict[str, Any]:
+        """The one step Ellis recommends first (views.suggested_next), without building the whole live case data."""
+        from ..services import views
+        return self._run(lambda s, case: views.suggested_next(s, case, views.section_progress(s, case)))
+
+    def latest_event_id(self) -> int | None:
+        """Every change to a case appends an event: the same id means the case hasn't changed."""
+        from sqlalchemy import select
+        from ..db import Event, session_scope
+        with session_scope() as s:  # one query: no need to load the case row
+            return s.scalars(select(Event.id).where(Event.case_id == self.case_id)
+                             .order_by(Event.id.desc()).limit(1)).first()
+
+    def case_context(self, focus: dict[str, Any]) -> tuple[int | None, dict[str, Any]]:
+        """agent_context plus the latest event id read before it (a change after the id still shows as new)."""
+        from sqlalchemy import select
+        from ..db import Event
+        from ..services import views
+
+        def f(s, case):
+            ev = s.scalars(select(Event.id).where(Event.case_id == case.id).order_by(Event.id.desc()).limit(1)).first()
+            return ev, views.agent_context(s, case, focus)
+        return self._run(f)
+
     def call_config(self) -> dict[str, Any]:
         from ..api.routes.tools import call_config
         return self._run(call_config)
@@ -130,11 +154,11 @@ class InProcessClient:
         from ..services import case_service as cs
         return self._run(lambda s, case: cs.applicant_turn(s, case, text, self.session_id))
 
-    def liaison_said(self, text: str, locked: bool = False, meta: dict | None = None) -> None:
+    def liaison_said(self, text: str, locked: bool = False, meta: dict | None = None, ts=None) -> None:
         from ..services import case_service as cs
 
         def f(s, case):
-            cs.liaison_utterance(s, case, text, self.session_id, locked, meta)
+            cs.liaison_utterance(s, case, text, self.session_id, locked, meta, ts)
             cs.push(s, case, "caption", {"speaker": "liaison", "text": text, "locked": locked})
         self._run(f)
 
@@ -212,7 +236,7 @@ class HttpClient:
     def applicant_turn(self, text) -> dict[str, Any]:
         return self._post("applicant_turn", {"text": text})
 
-    def liaison_said(self, text, locked=False, meta=None) -> None:
+    def liaison_said(self, text, locked=False, meta=None, ts=None) -> None:  # the server stamps ts
         self._post("liaison_said", {"text": text, "locked": locked})
 
     def third_party(self, present, relation) -> None:

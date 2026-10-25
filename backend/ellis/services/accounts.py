@@ -181,13 +181,14 @@ def import_guest_transcript(s: Session, case: Case, transcript: list[dict]) -> s
     sess = CallSession(clinic_id=case.clinic_id, case_id=case.id, started_at=t, ended_at=t, channel="guest")
     s.add(sess)
     s.flush()
+    lang = cs.case_language(case)
     for m in transcript[:200]:
         text, redacted = (m.get("text") or "")[:2000], False
         you = m.get("who") == "you"
-        if you and (cat := keywords.stop_hit(text)):
+        if you and (cat := keywords.stop_hit(text, lang)):
             text, redacted = f"[STOP:{cat}]", True
-        elif keywords.has_sensitive_number(text):
-            text, redacted = keywords.redact_numbers(text), True
+        elif keywords.has_sensitive_number(text, lang):
+            text, redacted = keywords.redact_numbers(text, lang), True
         s.add(Utterance(clinic_id=case.clinic_id, case_id=case.id, session_id=sess.id,
                         speaker="applicant" if you else "liaison", text=text, redacted=redacted, ts=t))
     s.flush()

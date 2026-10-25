@@ -1,0 +1,21 @@
+# Fixed lines for the Kannada chat: a MACHINE-TRANSLATED DRAFT of scripts_en.yaml's five fixed lines (version
+# en-1), not reviewed by a native speaker. A qualified reviewer must check them before real use; then set
+# reviewed: true. While reviewed is false, Ellis shows the English original under each of these lines.
+# Only these five keys: the chat writes everything else itself in the applicant's language.
+version: kn-draft-1
+reviewed: false
+disclosure:
+  locked: true
+  text: ನಮಸ್ಕಾರ, ನಾನು Ellis, {clinic_name} ಜೊತೆ ಕೆಲಸ ಮಾಡುವ ಕೃತಕ ಬುದ್ಧಿಮತ್ತೆ ಸಹಾಯಕ. ನಾನು ವಕೀಲನಲ್ಲ ಮತ್ತು ನಿಮಗೆ ಕಾನೂನು ಸಲಹೆ ನೀಡಲು ಸಾಧ್ಯವಿಲ್ಲ. ನಿಮ್ಮ ಪೌರತ್ವ ಅರ್ಜಿಯನ್ನು ಸಿದ್ಧಪಡಿಸಲು ನಾನು ಸಹಾಯ ಮಾಡುತ್ತೇನೆ; ನೀವು ಎಲ್ಲವನ್ನೂ ಪರಿಶೀಲಿಸಿ ಸಹಿ ಮಾಡುತ್ತೀರಿ, ಮತ್ತು ನಾವು ಎಂದಿಗೂ ನಿಮ್ಮ ಪರವಾಗಿ ಅರ್ಜಿಯನ್ನು ಸಲ್ಲಿಸುವುದಿಲ್ಲ. ನಾವು ಈ ಸಂಭಾಷಣೆಯ ಪಠ್ಯವನ್ನು ಉಳಿಸುತ್ತೇವೆ, ಧ್ವನಿಮುದ್ರಣವನ್ನಲ್ಲ. ಮುಂದುವರಿಯಲು ನೀವು ಒಪ್ಪುತ್ತೀರಾ?
+stop:
+  locked: true
+  text: ನನಗೆ ತಿಳಿಸಿದ್ದಕ್ಕೆ ಧನ್ಯವಾದಗಳು. ನೀವು ಅರ್ಜಿ ಸಲ್ಲಿಸುವ ಮೊದಲು ಇದನ್ನು ಪರವಾನಗಿ ಹೊಂದಿರುವ ವಲಸೆ ತಜ್ಞರು ಪರಿಶೀಲಿಸಬೇಕು. ಈ ಬಗ್ಗೆ ನಿಮ್ಮ ಕ್ಲಿನಿಕ್ ನಿಮ್ಮನ್ನು ಸಂಪರ್ಕಿಸುತ್ತದೆ. ಈ ವಿಷಯದಲ್ಲಿ ನಾನು ನಿಮಗೆ ಸಲಹೆ ನೀಡಲು ಸಾಧ್ಯವಿಲ್ಲ. ನೀವು ಇನ್ನೊಂದು ವಿಭಾಗದೊಂದಿಗೆ ಮುಂದುವರಿಯಲು ಬಯಸುವಿರಾ?
+stop_repeat:
+  locked: false
+  text: ಅದು ಪರವಾನಗಿ ಹೊಂದಿರುವ ತಜ್ಞರಿಗೆ ಕೇಳಬೇಕಾದ ಪ್ರಶ್ನೆ; ನಾನು ಅದಕ್ಕೆ ಉತ್ತರಿಸಲು ಸಾಧ್ಯವಿಲ್ಲ. ನಿಮ್ಮ ಅರ್ಜಿಯ ಉಳಿದ ಭಾಗದಲ್ಲಿ ನಾನು ಸಹಾಯ ಮಾಡಬಲ್ಲೆ.
+secure_entry_repeat:
+  locked: true
+  text: ನಿಮ್ಮ ಸುರಕ್ಷತೆಗಾಗಿ, ದಯವಿಟ್ಟು ಆ ಸಂಖ್ಯೆಯನ್ನು ಜೋರಾಗಿ ಹೇಳಬೇಡಿ. ದಯವಿಟ್ಟು ಅದನ್ನು ಪರದೆಯ ಮೇಲೆ ಟೈಪ್ ಮಾಡಿ.
+tool_failure:
+  locked: false
+  text: ಕ್ಷಮಿಸಿ, ಅದನ್ನು ಉಳಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ನೀವು ಮತ್ತೊಮ್ಮೆ ಹೇಳಬಹುದೇ?

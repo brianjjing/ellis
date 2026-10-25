@@ -15,7 +15,7 @@ from sqlalchemy import select
 
 from ...config import settings
 from ...db import Case, Clinic, Document, Event, Memo, ReviewItem, StaffUser, now, session_scope
-from ...services import auth, bus, case_service as cs, catalog, documents as docsvc, review, storage, views
+from ...services import auth, bus, case_service as cs, catalog, documents as docsvc, languages, review, storage, views
 from ...services.demo import simulate_answers
 from ...services.flags import STOP_NOW
 from ..deps import APPLICANT_COOKIE, STAFF_COOKIE, clinic_case, err, staff_user
@@ -101,8 +101,9 @@ class NewCase(BaseModel):
 def create_case(body: NewCase, request: Request) -> dict[str, Any]:
     with session_scope() as s:
         u = staff_user(request, s, ALL)
-        if body.language.split("-")[0] not in ("es", "en"):
+        if not languages.supported(body.language):
             raise err(400, "language", "unsupported language")
+        body.language = languages.normalize(body.language)
         if body.assigned_reviewer:
             r = s.get(StaffUser, body.assigned_reviewer)
             if r is None or r.clinic_id != u.clinic_id:

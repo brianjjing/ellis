@@ -1,0 +1,21 @@
+# Fixed lines for the German chat: a MACHINE-TRANSLATED DRAFT of scripts_en.yaml's five fixed lines (version
+# en-1), not reviewed by a native speaker. A qualified reviewer must check them before real use; then set
+# reviewed: true. While reviewed is false, Ellis shows the English original under each of these lines.
+# Only these five keys: the chat writes everything else itself in the applicant's language.
+version: de-draft-1
+reviewed: false
+disclosure:
+  locked: true
+  text: Hallo, ich bin Ellis, ein KI-Assistent, der mit {clinic_name} zusammenarbeitet. Ich bin kein Anwalt und kann Ihnen keine Rechtsberatung geben. Ich helfe Ihnen, Ihren Antrag auf Einbürgerung vorzubereiten; Sie prüfen und unterschreiben alles, und wir reichen den Antrag niemals für Sie ein. Wir speichern den Text dieses Gesprächs, nicht die Tonaufnahme. Sind Sie einverstanden, fortzufahren?
+stop:
+  locked: true
+  text: Danke, dass Sie mir das sagen. Das muss eine zugelassene Fachkraft für Einwanderungsrecht prüfen, bevor Sie den Antrag einreichen. Ihre Klinik wird sich deswegen bei Ihnen melden. Ich kann Sie dazu nicht beraten. Möchten Sie mit einem anderen Abschnitt weitermachen?
+stop_repeat:
+  locked: false
+  text: Das ist eine Frage für eine zugelassene Fachkraft; ich kann sie nicht beantworten. Ich kann Ihnen aber beim Rest Ihres Antrags helfen.
+secure_entry_repeat:
+  locked: true
+  text: Sagen Sie diese Nummer zu Ihrer Sicherheit bitte nicht laut. Bitte tippen Sie sie auf dem Bildschirm ein.
+tool_failure:
+  locked: false
+  text: Entschuldigung, das konnte ich nicht speichern. Können Sie es noch einmal sagen?

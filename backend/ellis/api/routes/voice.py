@@ -29,7 +29,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from ...config import settings
 from ...db import Case, session_scope
-from ...services import auth
+from ...services import auth, languages
 from ...voice import cartesia
 from ...voice.client import InProcessClient
 from ...voice.liaison import Say
@@ -47,6 +47,9 @@ PTT_MAX_WAIT_S = 2.5
 # Tap to talk ends once no new word has come for this long (about what Gemini Live waits), so a long think isn't cut
 # off. ponytail: a fixed wait, not Ink-2's turn detection; raise it if thinkers still get cut off.
 TAP_SILENCE_S = 3.0
+# ink-whisper (languages Ink-2 doesn't hear) has no turn detection: talk-up sends "finalize" and waits for
+# flush_done, which takes longer than Ink-2's turn close
+PTT_MANUAL_MAX_WAIT_S = 4.0
 
 
 class VoiceSession:
@@ -59,6 +62,9 @@ class VoiceSession:
         self.last_interrupt: dict[str, Any] | None = None
         self.tts: cartesia.TTS | None = None
         self.stt: cartesia.STT | None = None
+        self.stt_task: asyncio.Task | None = None
+        self.patient = False
+        self.opening = False  # Ellis's first line is still being prepared
         self.want_voice = True  # talking (vs. typing): silence only means "gone" when they talk
         self.talk: dict[str, Any] | None = None  # transcript so far while the talk button is held (+ tail)
         self.nudges = 0  # silence check-ins since the applicant last did something
@@ -81,29 +87,28 @@ class VoiceSession:
         self.want_voice = start.get("voice") is not False
         # The case's persisted language is the fallback when the client doesn't specify one, so a session never
         # silently switches language on an applicant.
-        def case_prefs() -> tuple[str, bool]:  # a database round trip: off the event loop
+        def case_prefs() -> tuple[str, bool, str | None]:  # a database round trip: off the event loop
             with session_scope() as cs_s:
                 case = cs_s.get(Case, self.case_id)
-                return ((case.language if case and case.language else "en-US"),
-                        bool(case and (case.settings or {}).get("patient_mode")))
-        case_locale, patient = await asyncio.to_thread(case_prefs)
-        default_lang = "en" if case_locale.startswith("en") else "es"
-        language = start.get("language") if start.get("language") in ("es", "en") else default_lang
-        locale = start.get("locale") or (case_locale if language == default_lang else
-                                         ("en-US" if language == "en" else "es-MX"))
+                st = (case.settings or {}) if case else {}
+                return ((case.language if case and case.language else languages.DEFAULT_LOCALE),
+                        bool(st.get("patient_mode")), st.get("voice_id"))
+        case_locale, patient, voice_id = await asyncio.to_thread(case_prefs)
+        # the language and accent Ellis talks in: what the client asked for, else what the case has
+        locale = (languages.normalize(start.get("locale")) or languages.normalize(case_locale)
+                  or languages.DEFAULT_LOCALE)
+        language = languages.base(locale)
         if not settings.anthropic_api_key:
             await self.send({"type": "error", "message": "Ellis can't talk right now: this server has no "
                              "ANTHROPIC_API_KEY."})
             return
         self.liaison = LlmLiaison(InProcessClient(self.case_id), language=language, channel="voice")
-        # Cartesia connects while Ellis's first line is prepared, each on its own: no Ink-2 only means typing,
-        # and Ellis keeps Sonic's voice.
-        connecting = asyncio.gather(self._connect("tts", cartesia.TTS(locale=locale)),
-                                    self._connect("stt", cartesia.STT(patient=patient))) \
-            if settings.cartesia_api_key else None
-        lines = await asyncio.to_thread(self.liaison.start, bool(start.get("disclosure_shown")))
-        if connecting:
-            await connecting
+        # The session opens (no model call) while Cartesia connects, each on its own: no Ink-2 only means typing,
+        # and Ellis keeps Sonic's voice. Then the applicant can talk at once; the opening line follows.
+        self.patient = patient
+        connects = [self._connect("tts", cartesia.TTS(locale=locale, voice_id=voice_id)),
+                    self._connect_stt(locale)] if settings.cartesia_api_key else []
+        await asyncio.gather(asyncio.to_thread(self.liaison.begin), *connects)
         if self.tts:
             self.tts.speed = self.liaison.cfg["tts"]["speed"]
         await self.send({"type": "ready", "mode": "voice" if self.stt else "text", "cartesia": bool(self.tts),
@@ -113,16 +118,19 @@ class VoiceSession:
         self.tasks.append(asyncio.create_task(self.speaker()))
         self.tasks.append(asyncio.create_task(self.watchdog()))
         if self.stt:
-            self.tasks.append(asyncio.create_task(self.stt_loop()))
-        for ln in lines:
-            await self.q.put(ln)
+            self.stt_task = asyncio.create_task(self.stt_loop())
+        self.opening = True
+        await self.send({"type": "state", "state": "thinking"})
+        self.tasks.append(asyncio.create_task(self.open(bool(start.get("disclosure_shown")))))
         try:
             while True:
                 msg = await self.ws.receive()
                 if msg.get("type") == "websocket.disconnect":
                     break
                 if msg.get("bytes") is not None:
-                    if self.stt:
+                    # ink-whisper transcribes whatever it gets: only what is said while the button is held
+                    manual = getattr(self.stt, "manual", False)
+                    if self.stt and (not manual or (self.talk is not None and not self.talk["finishing"])):
                         await self.stt.send_audio(msg["bytes"])
                     continue
                 if msg.get("text"):
@@ -134,6 +142,31 @@ class VoiceSession:
             pass
         finally:
             await self.shutdown()
+
+    async def open(self, disclosure_shown: bool) -> None:
+        """Ellis's first line, prepared after `ready` so the applicant can already talk or type. It holds the turn
+        lock: a turn sent meanwhile waits for it, and the model is told that turn came before they heard it."""
+        lines: list[Say] = []
+        try:
+            async with self.lock:
+                lines = await asyncio.to_thread(self.liaison.start, disclosure_shown)
+        except Exception:  # noqa: BLE001 - the applicant can still talk; the next turn answers
+            log.exception("opening failed")
+        finally:
+            self.opening = False
+            self.last_line_end = time.time()  # silence check-ins count from now, not from connecting
+        for ln in lines:
+            await self.q.put(ln)
+        if not lines and self.current is None and not self.user_active:
+            await self.send({"type": "state", "state": "listening"})
+
+    async def _connect_stt(self, locale: str) -> None:
+        """The speech-to-text model that hears this language (none: the applicant types)."""
+        model = languages.stt_model(locale)
+        if model is None:
+            log.info("no speech-to-text for %s: typing only", locale)
+            return
+        await self._connect("stt", cartesia.STT(patient=self.patient, model=model, language=languages.base(locale)))
 
     async def _connect(self, kind: str, client) -> None:
         # ponytail: measured 6-14 s for a cold voice lookup plus handshake; past 20 s, captions/typing instead
@@ -198,8 +231,16 @@ class VoiceSession:
         if talk.get("finishing"):
             return
         talk["finishing"] = True
-        t_up = time.time()
-        while time.time() - t_up < PTT_MAX_WAIT_S:
+        t_up, max_wait = time.time(), PTT_MAX_WAIT_S
+        if self.stt and getattr(self.stt, "manual", False):  # no turn detection: flush what was said, wait for it
+            talk["open"] = talk["flushing"] = True
+            max_wait = PTT_MANUAL_MAX_WAIT_S
+            try:
+                await self.stt.finalize()
+            except Exception as e:  # noqa: BLE001 - send what arrived
+                log.warning("stt finalize failed: %r", e)
+                talk["open"] = talk["flushing"] = False
+        while time.time() - t_up < max_wait:
             heard = talk["done"] or talk["partial"]
             if not talk["open"] and (heard or time.time() - t_up > PTT_START_GRACE_S):
                 break
@@ -222,17 +263,39 @@ class VoiceSession:
             await asyncio.sleep(0.1)
 
     async def retune(self) -> None:
-        """A setting the applicant just allowed (language, voice speed) applies from the next line spoken."""
+        """A setting the applicant just allowed (language, accent, voice speed) applies from the next line spoken."""
         cfg = self.liaison.cfg if self.liaison else {}
-        if not self.tts or "tts" not in cfg:
+        if "tts" not in cfg:
             return
-        self.tts.speed = cfg["tts"]["speed"]
-        if cfg["locale"] != self.tts.locale:
+        if self.tts:
+            self.tts.speed = cfg["tts"]["speed"]
+            chosen = cfg.get("voice_id")
+            if cfg["locale"] != self.tts.locale or (chosen and chosen != self.tts.voice_id):
+                try:
+                    self.tts.voice_id = chosen or await cartesia.voice_id_for(cfg["locale"]) or self.tts.voice_id
+                    self.tts.locale = cfg["locale"]
+                except Exception as e:  # noqa: BLE001 - keep the old voice rather than go silent
+                    log.warning("voice for %s unavailable: %s", cfg["locale"], e)
+        if settings.cartesia_api_key:
+            await self.relisten(cfg["locale"])
+
+    async def relisten(self, locale: str) -> None:
+        """A new language may need another speech-to-text model (Ink-2 hears five languages, ink-whisper the rest)."""
+        model, lang = languages.stt_model(locale), languages.base(locale)
+        if self.stt and (self.stt.model, self.stt.language) == (model, lang):
+            return
+        old, self.stt = self.stt, None
+        if self.stt_task:
+            self.stt_task.cancel()
+            self.stt_task = None
+        if old:
             try:
-                self.tts.voice_id = await cartesia.voice_id_for(cfg["locale"]) or self.tts.voice_id
-                self.tts.locale = cfg["locale"]
-            except Exception as e:  # noqa: BLE001 - keep the old voice rather than go silent
-                log.warning("voice for %s unavailable: %s", cfg["locale"], e)
+                await old.close()
+            except Exception:  # noqa: BLE001
+                pass
+        await self._connect_stt(locale)
+        if self.stt:
+            self.stt_task = asyncio.create_task(self.stt_loop())
 
     async def stt_loop(self) -> None:
         """Ink-2 is only the transcriber: what counts is what was said while the talk button was held."""
@@ -257,7 +320,9 @@ class VoiceSession:
                     talk["uncertain"], talk["open"] = True, True
                 elif t == "turn.end":
                     talk["done"].append(ev.get("transcript", ""))
-                    talk["partial"], talk["open"] = "", False
+                    talk["partial"], talk["open"] = "", bool(talk.get("flushing"))
+                elif t == "turn.flushed":  # ink-whisper: everything said while held has arrived
+                    talk["open"] = talk["flushing"] = False
                 else:
                     continue
                 text = " ".join(talk["done"] + [talk["partial"]]).strip()
@@ -335,7 +400,7 @@ class VoiceSession:
         while not self.closed:
             await asyncio.sleep(1)
             if (not self.want_voice or self.liaison is None or self.liaison.ended or self.current is not None
-                    or self.user_active):
+                    or self.user_active or self.opening):
                 continue
             waits = self.liaison.cfg.get("silence_thresholds_s", [15, 45, 120])
             if self.nudges >= len(waits) or time.time() - self.last_line_end < waits[self.nudges]:
@@ -347,8 +412,9 @@ class VoiceSession:
 
     async def shutdown(self) -> None:
         self.closed = True
-        for t in self.tasks:
-            t.cancel()
+        for t in [*self.tasks, self.stt_task]:
+            if t is not None:
+                t.cancel()
         for c in (self.stt, self.tts):
             if c is not None:
                 try:

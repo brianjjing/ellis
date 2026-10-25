@@ -1,0 +1,21 @@
+# Fixed lines for the Hindi chat: a MACHINE-TRANSLATED DRAFT of scripts_en.yaml's five fixed lines (version
+# en-1), not reviewed by a native speaker. A qualified reviewer must check them before real use; then set
+# reviewed: true. While reviewed is false, Ellis shows the English original under each of these lines.
+# Only these five keys: the chat writes everything else itself in the applicant's language.
+version: hi-draft-1
+reviewed: false
+disclosure:
+  locked: true
+  text: नमस्ते, मैं Ellis हूँ, एक आर्टिफ़िशियल इंटेलिजेंस सहायक जो {clinic_name} के साथ काम करता है। मैं वकील नहीं हूँ और आपको कानूनी सलाह नहीं दे सकता। मैं आपकी नागरिकता के आवेदन की तैयारी में मदद करता हूँ; आप सब कुछ देखते हैं और उस पर हस्ताक्षर करते हैं, और हम आपकी ओर से कभी भी आवेदन जमा नहीं करते। हम इस बातचीत का लिखित पाठ सहेजते हैं, ऑडियो नहीं। क्या आप आगे बढ़ने के लिए सहमत हैं?
+stop:
+  locked: true
+  text: मुझे बताने के लिए धन्यवाद। आवेदन जमा करने से पहले इसकी समीक्षा किसी लाइसेंस प्राप्त इमिग्रेशन विशेषज्ञ को करनी होगी। आपका क्लिनिक इस बारे में आपसे संपर्क करेगा। मैं आपको इस पर सलाह नहीं दे सकता। क्या आप किसी दूसरे हिस्से के साथ आगे बढ़ना चाहेंगे?
+stop_repeat:
+  locked: false
+  text: यह सवाल किसी लाइसेंस प्राप्त विशेषज्ञ के लिए है; मैं इसका जवाब नहीं दे सकता। मैं आपके आवेदन के बाकी हिस्से में आपकी मदद कर सकता हूँ।
+secure_entry_repeat:
+  locked: true
+  text: आपकी सुरक्षा के लिए, कृपया वह नंबर ज़ोर से न बोलें। कृपया उसे स्क्रीन पर टाइप करें।
+tool_failure:
+  locked: false
+  text: माफ़ कीजिए, मैं उसे सहेज नहीं पाया। क्या आप फिर से बता सकते हैं?

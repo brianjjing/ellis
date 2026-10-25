@@ -1,0 +1,21 @@
+# Fixed lines for the Japanese chat: a MACHINE-TRANSLATED DRAFT of scripts_en.yaml's five fixed lines (version
+# en-1), not reviewed by a native speaker. A qualified reviewer must check them before real use; then set
+# reviewed: true. While reviewed is false, Ellis shows the English original under each of these lines.
+# Only these five keys: the chat writes everything else itself in the applicant's language.
+version: ja-draft-1
+reviewed: false
+disclosure:
+  locked: true
+  text: こんにちは。私は {clinic_name} と連携している AI アシスタントの Ellis です。私は弁護士ではないため、法的な助言はできません。市民権の申請書の準備をお手伝いします。内容はすべてご自身で確認して署名していただき、私たちがあなたの代わりに申請を提出することはありません。この会話の文字は保存しますが、音声は保存しません。続けることに同意しますか？
+stop:
+  locked: true
+  text: 教えていただきありがとうございます。これは、申請を提出する前に資格を持つ移民の専門家が確認する必要がある内容です。この件については、クリニックからあなたに連絡があります。この件について私から助言することはできません。別のセクションに進みますか？
+stop_repeat:
+  locked: false
+  text: それは資格を持つ専門家への質問なので、私はお答えできません。申請書の残りの部分についてはお手伝いできます。
+secure_entry_repeat:
+  locked: true
+  text: 安全のため、その番号は声に出して言わないでください。画面に入力してください。
+tool_failure:
+  locked: false
+  text: 申し訳ありません、保存できませんでした。もう一度言っていただけますか？

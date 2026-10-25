@@ -1,25 +1,49 @@
-// Minimal i18n for the applicant-facing chrome around and during the conversation. The conversation itself
-// (questions, read-backs, flags) is driven by the backend in the chosen language; this covers the static
-// screen text so the surrounding UI isn't stuck in Spanish when English is selected.
+// Minimal i18n for the applicant-facing chrome around and during the conversation. Ellis talks in every language
+// Cartesia's Sonic speaks (the list comes from GET /api/languages, backend/config/languages.yaml); this screen text
+// exists in Spanish and English only, so every language but Spanish reads English here.
+import { useEffect, useState } from 'react'
+import { api } from '../api'
+
 export type Lang = 'es' | 'en'
 
-// Derive the UI language from a case's persisted locale (e.g. "es-MX" -> 'es'). Defaults to English for an
-// unset/unrecognized locale, matching Case.language's own DB default.
+// The screen-text language for a case's persisted locale ("es-MX" -> 'es', "fr-CA" -> 'en'). Defaults to English for
+// an unset locale, matching Case.language's own DB default.
 export function langOf(data: { language?: string | null }): Lang {
   return (data.language || 'en-US').startsWith('es') ? 'es' : 'en'
 }
 
-export const LANGUAGES: { code: Lang; label: string; dialects: { code: string; label: string }[] }[] = [
-  { code: 'en', label: 'English', dialects: [
-    { code: 'en-US', label: 'United States' },
-    { code: 'en-GB', label: 'United Kingdom' },
-  ] },
-  { code: 'es', label: 'Español', dialects: [
-    { code: 'es-MX', label: 'México' },
-    { code: 'es-US', label: 'Estados Unidos' },
-    { code: 'es-ES', label: 'España' },
-  ] },
-]
+export type Language = {
+  code: string; name: string; native: string; rtl: boolean; voice_input: boolean; copy_lang: Lang
+  locales: { code: string; label: string | null }[]
+}
+
+let languages: Promise<Language[]> | null = null
+export function loadLanguages(): Promise<Language[]> {
+  languages ??= api<{ languages: Language[] }>('/api/languages').then((r) => r.languages)
+    .catch((e) => { languages = null; throw e })
+  return languages
+}
+
+// Every language and accent Ellis talks in ([] until loaded).
+export function useLanguages(): Language[] {
+  const [list, setList] = useState<Language[]>([])
+  useEffect(() => { loadLanguages().then(setList).catch(() => undefined) }, [])
+  return list
+}
+
+export function languageOf(list: Language[], locale?: string | null): Language | undefined {
+  const base = (locale || '').split(/[-_]/)[0].toLowerCase()
+  return list.find((l) => l.code === base)
+}
+
+// "Français (Canada)", "Tiếng Việt"; native: false gives the English name ("French (Canada)").
+export function localeName(list: Language[], locale?: string | null, native = true): string {
+  const l = languageOf(list, locale)
+  if (!l) return locale || ''
+  const label = l.locales.length > 1 ? l.locales.find((x) => x.code === locale)?.label : null
+  const name = native ? l.native : l.name
+  return label ? `${name} (${label})` : name
+}
 
 const STRINGS = {
   es: {

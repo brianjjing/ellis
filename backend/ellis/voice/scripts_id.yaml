@@ -1,0 +1,21 @@
+# Fixed lines for the Indonesian chat: a MACHINE-TRANSLATED DRAFT of scripts_en.yaml's five fixed lines (version
+# en-1), not reviewed by a native speaker. A qualified reviewer must check them before real use; then set
+# reviewed: true. While reviewed is false, Ellis shows the English original under each of these lines.
+# Only these five keys: the chat writes everything else itself in the applicant's language.
+version: id-draft-1
+reviewed: false
+disclosure:
+  locked: true
+  text: Halo, saya Ellis, asisten kecerdasan buatan yang bekerja sama dengan {clinic_name}. Saya bukan pengacara dan tidak dapat memberi Anda nasihat hukum. Saya membantu menyiapkan permohonan kewarganegaraan Anda; Anda yang memeriksa dan menandatangani semuanya, dan kami tidak pernah mengajukannya atas nama Anda. Kami menyimpan teks percakapan ini, bukan rekaman suaranya. Apakah Anda setuju untuk melanjutkan?
+stop:
+  locked: true
+  text: Terima kasih sudah memberi tahu saya. Hal ini perlu ditinjau oleh profesional imigrasi berlisensi sebelum Anda mengajukan permohonan. Klinik Anda akan menghubungi Anda mengenai hal ini. Saya tidak dapat memberi nasihat tentang hal ini. Apakah Anda ingin melanjutkan ke bagian lain?
+stop_repeat:
+  locked: false
+  text: Itu pertanyaan untuk profesional berlisensi; saya tidak dapat menjawabnya. Yang dapat saya lakukan adalah membantu Anda dengan bagian lain dari permohonan Anda.
+secure_entry_repeat:
+  locked: true
+  text: Demi keamanan Anda, jangan ucapkan nomor itu dengan keras. Silakan ketik nomor itu di layar.
+tool_failure:
+  locked: false
+  text: Maaf, saya tidak dapat menyimpannya. Bisakah Anda mengulanginya?

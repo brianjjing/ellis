@@ -23,7 +23,7 @@ from line.events import (
 )
 from line.voice_agent_app import AgentEnv, CallRequest, VoiceAgentApp
 
-from ..services import keywords
+from ..services import keywords, languages
 from .client import HttpClient
 from .liaison import Liaison, script
 
@@ -63,15 +63,16 @@ class ScriptedLineAgent:
 class KeywordGuard:
     """Layer 4 in the Line handler: runs on every final transcript before the LLM."""
 
-    def __init__(self, inner, client: HttpClient):
+    def __init__(self, inner, client: HttpClient, lang: str | None = None):
         self.inner = inner
         self.client = client
+        self.lang = lang  # the call's language: its keyword lists apply as well as English/Spanish
         self.stopped_categories: set[str] = set()
 
     async def process(self, env: TurnEnv, event: InputEvent):
         if isinstance(event, UserTurnEnded):
             text = _text(event)
-            cat = keywords.stop_hit(text)
+            cat = keywords.stop_hit(text, self.lang)
             if cat:
                 await asyncio.to_thread(self.client.applicant_turn, text)  # stored as [STOP:<category>] only
                 # replace the turn in the LLM's history; it must never see the words
@@ -85,7 +86,7 @@ class KeywordGuard:
                 line = script("stop") if first else script("stop_repeat")
                 yield AgentSendText(text=line.text, interruptible=not line.locked)
                 return
-            if keywords.has_sensitive_number(text):
+            if keywords.has_sensitive_number(text, self.lang):
                 await asyncio.to_thread(self.client.applicant_turn, text)
                 await asyncio.to_thread(self.client.request_secure_entry, "a_number")
                 line = script("secure_entry_repeat")
@@ -126,7 +127,7 @@ def _llm_agent(case_id: str, clinic_name: str, lang: str = "en"):
         end_call,
     ]
     prompt = (PROMPT.read_text(encoding="utf-8").replace("{clinic_name}", clinic_name)
-              .replace("{language}", "Spanish" if lang == "es" else "English"))
+              .replace("{language}", languages.name(lang)))
     disclosure = script("disclosure", lang=lang, clinic_name=clinic_name).text
     return LlmAgent(model=os.environ.get("ELLIS_LINE_MODEL", "anthropic/claude-haiku-5-5"),
                     api_key=os.environ.get("ANTHROPIC_API_KEY"), tools=tools,
@@ -140,7 +141,8 @@ async def get_agent(env: AgentEnv, call_request: CallRequest):
     client = HttpClient(API, SECRET, case_id)
     if os.environ.get("ELLIS_LINE_BRAIN", "scripted") == "llm" and os.environ.get("ANTHROPIC_API_KEY"):
         cfg = await asyncio.to_thread(client.session_start, "line")
-        return KeywordGuard(_llm_agent(case_id, cfg.get("clinic_name", "your clinic"), cfg.get("language", "en")), client)
+        lang = cfg.get("language", "en")
+        return KeywordGuard(_llm_agent(case_id, cfg.get("clinic_name", "your clinic"), lang), client, lang)
     return ScriptedLineAgent(case_id)
 
 

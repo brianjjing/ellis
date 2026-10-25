@@ -4,17 +4,18 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import re
 import hmac
 import time
 from typing import Any
 
-from fastapi import APIRouter, File, Form, Request, Response, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, File, Form, HTTPException, Request, Response, UploadFile, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 from sqlalchemy import select
 
 from ...config import settings
 from ...db import Case, Gap, Packet, session_scope
-from ...services import auth, bus, case_service as cs, documents as docsvc, review, signoff, storage, views
+from ...services import auth, bus, case_service as cs, documents as docsvc, languages, review, signoff, storage, views
 from ...services.flags import STOP_NOW
 from ..deps import APPLICANT_COOKIE, applicant_case, err
 
@@ -60,20 +61,97 @@ class LanguageReq(BaseModel):
     locale: str
 
 
-SUPPORTED_LOCALE_PREFIXES = ("es", "en")
-
-
 @router.post("/language")
 def set_language(body: LanguageReq, request: Request) -> dict[str, Any]:
     """Persists the applicant's chosen conversation language/dialect on the case, so a returning session
     (or the review/sign-off screens) uses it instead of silently reverting to Spanish."""
-    if not body.locale.split("-")[0] in SUPPORTED_LOCALE_PREFIXES:
+    locale = languages.normalize(body.locale)
+    if locale is None:
         raise err(400, "unsupported_language", "unsupported language")
     with session_scope() as s:
         case = applicant_case(request, s)
-        case.language = body.locale
-        cs.emit(s, case, "case.language_changed", {"language": body.locale}, "applicant", "applicant")
+        if locale != case.language:
+            cs.set_language(s, case, locale)
         return {"language": case.language}
+
+
+def _case_voice(request: Request) -> tuple[str, str | None]:
+    with session_scope() as s:
+        case = applicant_case(request, s)
+        return case.language or languages.DEFAULT_LOCALE, (case.settings or {}).get("voice_id")
+
+
+def _greeting(request: Request, locale: str) -> str:
+    """The first sentence of Ellis's disclosure in this language ("Hi, I'm Ellis, ... working with <clinic>.")."""
+    from ...services.clinic_service import clinic_of
+    from ...voice.liaison import script
+    with session_scope() as s:
+        clinic = clinic_of(s, applicant_case(request, s)).name
+    text = script("disclosure", lang=languages.base(locale), clinic_name=clinic).text
+    first = re.split(r"(?<=[.。।۔!?？！])\s*", text, maxsplit=1)[0]
+    return first if len(first) <= 160 else first[:160].rsplit(" ", 1)[0]
+
+
+@router.get("/voices")
+async def list_voices(request: Request) -> dict[str, Any]:
+    """Cartesia's voices for the applicant's language and accent, recorded in that accent first."""
+    locale, chosen = await asyncio.to_thread(_case_voice, request)
+    if not settings.cartesia_api_key:
+        return {"locale": locale, "chosen": chosen, "voices": [], "available": False}
+    from ...voice import cartesia
+    try:
+        found = await cartesia.voices(locale)
+    except Exception:  # noqa: BLE001
+        return {"locale": locale, "chosen": chosen, "voices": [], "available": False}
+    want = locale.lower()
+    return {"locale": locale, "chosen": chosen, "available": True, "voices": [
+        {"id": v["id"], "name": v.get("name"), "description": v.get("description") or v.get("tagline"),
+         "gender": v.get("gender"), "preview_url": f"/api/a/voices/{v['id']}/sample",
+         "accent": next((a.get("accent") for a in v.get("accents") or [] if str(a.get("locale", "")).lower() == want),
+                        None)}
+        for v in found[:24]]}
+
+
+@router.get("/voices/{voice_id}/sample")
+async def voice_sample(voice_id: str, request: Request) -> Response:
+    """This voice saying Ellis's greeting in the applicant's language and accent, to choose by ear."""
+    from ...voice import cartesia
+    locale, _ = await asyncio.to_thread(_case_voice, request)
+    if not settings.cartesia_api_key:
+        raise err(503, "voice_unavailable", "voice is unavailable")
+    try:
+        if not any(v["id"] == voice_id for v in await cartesia.voices(locale)):
+            raise err(404, "unknown_voice", "That voice isn't available for your language.")
+        audio = await cartesia.sample(voice_id, locale, await asyncio.to_thread(_greeting, request, locale))
+    except HTTPException:
+        raise
+    except Exception:  # noqa: BLE001
+        raise err(503, "voice_unavailable", "voice is unavailable") from None
+    return Response(content=audio, media_type="audio/wav", headers={"Cache-Control": "private, max-age=3600"})
+
+
+class VoiceReq(BaseModel):
+    voice_id: str | None = None
+
+
+@router.post("/voice")
+async def choose_voice(body: VoiceReq, request: Request) -> dict[str, Any]:
+    """The applicant picks the voice Ellis speaks with (null: Ellis picks one for their accent again)."""
+    locale, _ = await asyncio.to_thread(_case_voice, request)
+    if body.voice_id:
+        from ...voice import cartesia
+        try:
+            ok = settings.cartesia_api_key and any(v["id"] == body.voice_id for v in await cartesia.voices(locale))
+        except Exception:  # noqa: BLE001
+            ok = False
+        if not ok:
+            raise err(400, "unknown_voice", "That voice isn't available for your language.")
+
+    def save() -> None:
+        with session_scope() as s:
+            cs.set_voice(s, applicant_case(request, s), body.voice_id)
+    await asyncio.to_thread(save)
+    return {"voice_id": body.voice_id}
 
 
 class ConsentReq(BaseModel):

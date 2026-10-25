@@ -1,0 +1,21 @@
+# Fixed lines for the Hungarian chat: a MACHINE-TRANSLATED DRAFT of scripts_en.yaml's five fixed lines (version
+# en-1), not reviewed by a native speaker. A qualified reviewer must check them before real use; then set
+# reviewed: true. While reviewed is false, Ellis shows the English original under each of these lines.
+# Only these five keys: the chat writes everything else itself in the applicant's language.
+version: hu-draft-1
+reviewed: false
+disclosure:
+  locked: true
+  text: Jó napot, Ellis vagyok, egy mesterséges intelligencián alapuló asszisztens, aki a(z) {clinic_name} szervezettel dolgozik. Nem vagyok ügyvéd, és nem adhatok jogi tanácsot. Segítek előkészíteni az állampolgársági kérelmét; Ön mindent átnéz és aláír, és mi soha nem nyújtjuk be a kérelmet Ön helyett. A beszélgetés szövegét mentjük, a hangfelvételt nem. Beleegyezik, hogy folytassuk?
+stop:
+  locked: true
+  text: Köszönöm, hogy elmondta. Ezt egy engedéllyel rendelkező bevándorlási szakembernek kell átnéznie, mielőtt benyújtja a kérelmét. A klinikája ezzel kapcsolatban felveszi Önnel a kapcsolatot. Ebben nem adhatok tanácsot. Szeretne egy másik résszel folytatni?
+stop_repeat:
+  locked: false
+  text: Ez egy engedéllyel rendelkező szakembernek szóló kérdés; nem tudok rá válaszolni. Abban viszont segíthetek, hogy kitöltsük a kérelem többi részét.
+secure_entry_repeat:
+  locked: true
+  text: Az Ön biztonsága érdekében kérem, ne mondja ki hangosan ezt a számot. Kérem, írja be a képernyőn.
+tool_failure:
+  locked: false
+  text: Elnézést, ezt nem sikerült elmentenem. Megismételné?
