@@ -8,7 +8,8 @@ Server → browser:  JSON {"type":"ready"|"line"|"audio"|"line_end"|"stop_audio"
 
 Turns: push to talk. Pressing the talk button ("talk" down) cuts Ellis off at any point in any line -- no line
 is protected from interruption -- and starts collecting Ink-2's transcript; releasing it submits what was said
-while held. Typed text is a turn too and cuts Ellis off the same way. Every turn goes through the in-loop keyword
+while held. Tap to talk (the chat's mic button) ends TAP_SILENCE_S after the last new word instead; a tap mid-turn
+only mutes. Typed text is a turn too and cuts Ellis off the same way. Every turn goes through the in-loop keyword
 check (inside the liaison) before anything else sees it.
 Ellis only ever speaks with Cartesia's voice. When Sonic is unreachable, lines are captions only; when Ink-2 is,
 the applicant types.
@@ -43,6 +44,9 @@ router = APIRouter(tags=["voice"])
 # MAX_WAIT_S: never hold the message longer than this (raise both if endings get clipped).
 PTT_START_GRACE_S = 1.0
 PTT_MAX_WAIT_S = 2.5
+# Tap to talk ends once no new word has come for this long (about what Gemini Live waits), so a long think isn't cut
+# off. ponytail: a fixed wait, not Ink-2's turn detection; raise it if thinkers still get cut off.
+TAP_SILENCE_S = 3.0
 # ink-whisper (languages Ink-2 doesn't hear) has no turn detection: talk-up sends "finalize" and waits for
 # flush_done, which takes longer than Ink-2's turn close
 PTT_MANUAL_MAX_WAIT_S = 4.0
@@ -178,9 +182,11 @@ class VoiceSession:
             await self.turn(str(data.get("text", "")))
         elif t == "talk":
             if data.get("down"):
-                self.talk = {"done": [], "partial": "", "uncertain": False, "open": False,
+                self.talk = {"done": [], "partial": "", "uncertain": False, "open": False, "text": "", "last": 0.0,
                              "mode": "tap" if data.get("mode") == "tap" else "hold", "finishing": False}
                 self.nudges = 0
+                if self.talk["mode"] == "tap":
+                    self.tasks.append(asyncio.create_task(self.tap_end(self.talk)))
                 await self.user_started()
             elif self.talk is not None:
                 self.tasks.append(asyncio.create_task(self.talk_up(self.talk)))  # don't block the mic frames
@@ -249,6 +255,13 @@ class VoiceSession:
             await self.send({"type": "user_partial", "text": ""})
             await self.send({"type": "state", "state": "listening"})
 
+    async def tap_end(self, talk: dict) -> None:
+        """Tap to talk: send what was said TAP_SILENCE_S after the last new word, however long they think before it."""
+        while self.talk is talk and not talk["finishing"]:
+            if talk["text"] and time.time() - talk["last"] > TAP_SILENCE_S:
+                await self.talk_up(talk)
+            await asyncio.sleep(0.1)
+
     async def retune(self) -> None:
         """A setting the applicant just allowed (language, accent, voice speed) applies from the next line spoken."""
         cfg = self.liaison.cfg if self.liaison else {}
@@ -308,16 +321,14 @@ class VoiceSession:
                 elif t == "turn.end":
                     talk["done"].append(ev.get("transcript", ""))
                     talk["partial"], talk["open"] = "", bool(talk.get("flushing"))
-                    # Tap-to-talk ends on Ink's turn, without waiting for a second tap. ink-whisper's final
-                    # pieces aren't the end of a turn: there, a second tap ends it.
-                    manual = getattr(self.stt, "manual", False)
-                    if talk.get("mode") == "tap" and not talk.get("finishing") and not manual:
-                        self.tasks.append(asyncio.create_task(self.talk_up(talk)))
                 elif t == "turn.flushed":  # ink-whisper: everything said while held has arrived
                     talk["open"] = talk["flushing"] = False
                 else:
                     continue
-                await self.send({"type": "user_partial", "text": " ".join(talk["done"] + [talk["partial"]]).strip()})
+                text = " ".join(talk["done"] + [talk["partial"]]).strip()
+                if text and text != talk["text"]:  # a new word: tap_end's clock starts over
+                    talk["text"], talk["last"] = text, time.time()
+                await self.send({"type": "user_partial", "text": text})
         except Exception as e:  # noqa: BLE001
             log.warning("stt loop ended: %s", e)
 

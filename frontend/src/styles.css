@@ -163,7 +163,7 @@ main, .enter, .dialog::backdrop { animation: enter .18s ease-out; }
 
 /* N-400 form */
 .progress { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 3px; padding: 0 24px; margin-top: -3.25px; } /* 15.25px below the header h1: 5px (h1 centered in the 40px button row) + 13.5px .bar padding - 3.25px */
-.progress > div { height: 6px; }
+.progress > button { height: 22px; margin: -8px 0; padding: 8px 0; border: 0; background-clip: content-box; cursor: pointer; } /* a 6px bar with a 22px hit area; the negative margin keeps the layout at 6px */
 .opt { display: flex; align-items: center; gap: 16px; width: 100%; min-height: 64px; padding: 12px 20px; border-radius: 6px; cursor: pointer; color: var(--ink); box-sizing: border-box; background: var(--white); border: 1px solid var(--line-strong); }
 .opt.unsure { background: var(--sand); }
 .opt[aria-checked='true'] { background: var(--green-tint); border: 1.5px solid var(--green); }

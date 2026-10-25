@@ -12,7 +12,7 @@ from ellis.db import (
     AgentRun, Briefing, Case, Document, Event, Fact, Flag, Gap, Job, Packet, ReviewItem, Signoff, StaffUser, Task,
     Utterance, VaultValue, session_scope,
 )
-from ellis.services import case_service as cs, storage
+from ellis.services import case_service as cs, catalog, storage
 from ellis.voice.client import InProcessClient
 from ellis.voice.liaison import Liaison
 
@@ -456,6 +456,32 @@ def test_interview_stage_waits_for_every_part():
     assert roadmap_index(SimpleNamespace(state="review"), [done] * 12 + [partial]) == 1
 
 
+def test_form_lists_unanswered_questions_and_saves_a_typed_answer(client):
+    client.post("/api/a/session", json={"token": "demo-maria"})
+    client.post("/api/a/consent", json={"agree": True})
+
+    def identity():
+        return next(p for p in client.get("/api/a/case").json()["progress"] if p["section"] == "identity")
+    before = identity()
+    rows = {m["field"]: m for m in before["missing"]}
+    assert rows["names.used"]["required"] and not rows["ssn"]["required"] and "ssn" in before["optional"]
+    assert client.post("/api/a/answer", json={"field": "names.used", "value": "Mary Lopez"}).status_code == 200
+    after = identity()
+    assert "names.used" not in {m["field"] for m in after["missing"]}
+    assert after["done"] == before["done"] + 1  # typed on the form counts as confirmed
+    assert client.post("/api/a/answer", json={"field": "dob", "value": "not a date"}).status_code == 400
+
+
+def test_time_outside_the_us_has_nothing_required_and_no_trip_cap(client):
+    client.post("/api/a/session", json={"token": "demo-maria"})
+    client.post("/api/a/consent", json={"agree": True})
+    travel = next(p for p in client.get("/api/a/case").json()["progress"] if p["section"] == "travel")
+    assert travel["total"] == 0 and not any(m["required"] for m in travel["missing"])
+    day = date(2026, 10, 23)
+    assert any(it.get("field") == "trips.any" for it in catalog.fallback_queue({}, None, day))  # Ellis still asks
+    cur = {"trips.any": {"value": True}} | {f"trips[{i}].another": {"value": True} for i in range(40)}
+    assert "trips[40].departure" in catalog.asked_fields(cur, None, day)
+    assert not any(k.startswith("trips") for k in catalog.required_fields(cur, None, day))
 def test_repeated_reads_are_made_once_and_never_miss_the_sessions_own_writes(seeded):
     from sqlalchemy import event
     from ellis.db import Case, engine, session_scope

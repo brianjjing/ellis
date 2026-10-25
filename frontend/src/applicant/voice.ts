@@ -3,7 +3,8 @@
 // 24 kHz from the server); with Cartesia unreachable, lines are captions only, never the browser's own voice.
 // Push to talk: the mic streams silence until hold() and real audio until just after release(), through a level gate
 // (gate.ts) that silences what isn't clearly the applicant's voice; the server keeps only what was said while held and
-// submits it on release. Holding also cuts Ellis off at any point in any line.
+// submits it on release. Holding also cuts Ellis off at any point in any line. The chat's mic button is tap to talk:
+// a tap opens the mic, a tap mid-turn mutes and unmutes it, and the server sends the turn 3 s after the last word.
 import { wsUrl } from '../api'
 import { Gate } from './gate'
 
@@ -44,6 +45,7 @@ export class VoiceClient {
   talking = false
   releasing: ReturnType<typeof setTimeout> | null = null
   soundOn = true // Ellis's voice on/off (the mute button); muted lines still arrive as text
+  micOn = true // mid-turn mute: nothing said while muted leaves the browser
   voice = true // talking vs. typing, sent with start and on every switch
   pcmBuf: number[] = []
   energy = 0 // sum of squares of this frame's real samples, button up or down: the gate's level
@@ -93,10 +95,11 @@ export class VoiceClient {
     this.node.port.onmessage = (ev) => {
       const f32 = ev.data as Float32Array
       // silence unless the button is held: the STT socket stays fed, but nothing said off-button leaves the browser
+      const live = this.talking && this.micOn
       for (let i = 0; i < f32.length; i += ratio) {
         const x = f32[Math.floor(i)]
         this.energy += x * x
-        this.pcmBuf.push(this.talking ? x : 0)
+        this.pcmBuf.push(live ? x : 0)
       }
       if (this.pcmBuf.length >= 1600) this.flush()
     }
@@ -110,7 +113,7 @@ export class VoiceClient {
     let pcm = this.pcmBuf
     this.pcmBuf = []
     this.energy = 0
-    if (this.talking) pcm = this.gate.pass(pcm, db)
+    if (this.talking && this.micOn) pcm = this.gate.pass(pcm, db)
     else this.gate.heard(db, this.sources.length > 0)
     const out = new Int16Array(pcm.length)
     for (let i = 0; i < pcm.length; i++) out[i] = Math.max(-1, Math.min(1, pcm[i])) * 0x7fff
@@ -185,13 +188,14 @@ export class VoiceClient {
     if (this.ctx) this.nextTime = this.ctx.currentTime
   }
 
-  // Tap to talk. A second tap, or Ink closing the turn, ends it. hold/release stay so a
-  // talk-up can still finish a turn Ink has not closed.
+  // Tap to talk. Mid-turn a tap mutes (what was said still goes 3 s after the last word) and unmutes; the server
+  // ends the turn, not a tap.
   toggle(): 'on' | 'off' | 'unavailable' {
     if (this.talking) {
-      this.release()
-      return 'off'
+      this.micOn = !this.micOn
+      return this.micOn ? 'on' : 'off'
     }
+    this.micOn = true
     return this.begin('tap') ? 'on' : 'unavailable'
   }
 

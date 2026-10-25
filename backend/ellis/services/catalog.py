@@ -210,6 +210,11 @@ def _to_date(v: Any) -> date | None:
         return None
 
 
+def optional_fields(cur: dict[str, dict]) -> list[str]:
+    """Optional field keys that apply to this case (derived ones aside: nobody answers those)."""
+    return [k for k, d in _static().items() if not d.get("required") and d.get("capture") != "E" and _requires_ok(d, cur)]
+
+
 def list_items_required(name: str, cur: dict[str, dict], derived: dict[str, Any] | None, today: date) -> list[str]:
     """Required item field keys for one list, in conversational order."""
     lcfg = lists()[name]
@@ -240,7 +245,7 @@ def list_items_required(name: str, cur: dict[str, dict], derived: dict[str, Any]
     # trips: item 0, then "another" after each completed trip
     trip_days = {t["index"]: t["days"] for t in (derived or {}).get("trips", [])}
     i = 0
-    while i < 30:
+    while True:  # ponytail: no cap on trips; the loop ends at the first trip whose "another" isn't yes
         keys = [f"{name}[{i}].{it['key']}" for it in item_keys]
         for it in lcfg["item"]:
             if "required_if_days_gt" in it and trip_days.get(i, 0) > it["required_if_days_gt"]:
@@ -254,8 +259,8 @@ def list_items_required(name: str, cur: dict[str, dict], derived: dict[str, Any]
     return out
 
 
-def required_fields(cur: dict[str, dict], derived: dict[str, Any] | None, today: date) -> list[str]:
-    """All required field keys for this case, in default section order."""
+def asked_fields(cur: dict[str, dict], derived: dict[str, Any] | None, today: date) -> list[str]:
+    """Every field Ellis asks for in this case, in default section order (required ones plus optional sections)."""
     st = _static()
     by_section: dict[str, list[str]] = {s["key"]: [] for s in sections()}
     for key, d in st.items():
@@ -274,6 +279,12 @@ def required_fields(cur: dict[str, dict], derived: dict[str, Any] | None, today:
     for s in sections():
         out += by_section[s["key"]]
     return out
+
+
+def required_fields(cur: dict[str, dict], derived: dict[str, Any] | None, today: date) -> list[str]:
+    """The asked fields that count toward progress and signing: an `optional: true` section has none."""
+    opt = {s["key"] for s in sections() if s.get("optional")}
+    return [k for k in asked_fields(cur, derived, today) if section_of(k) not in opt]
 
 
 def missing_required(cur: dict[str, dict], derived: dict[str, Any] | None, today: date, confirmed: bool) -> list[str]:
@@ -305,11 +316,11 @@ def needs_confirmation(key: str, f: dict[str, Any]) -> bool:
 
 def fallback_queue(cur: dict[str, dict], derived: dict[str, Any] | None, today: date,
                    deferred_sections: set[str] | None = None, limit: int = 80) -> list[dict[str, Any]]:
-    """Remaining required fields in catalog order, as briefing-style queue items."""
+    """Remaining asked fields in catalog order, as briefing-style queue items."""
     deferred_sections = deferred_sections or set()
     items: list[dict[str, Any]] = []
     biographics_pending = False
-    for key in required_fields(cur, derived, today):
+    for key in asked_fields(cur, derived, today):
         d = field_def(key) or {}
         if d.get("capture") == "E":
             continue

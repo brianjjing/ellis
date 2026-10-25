@@ -15,7 +15,8 @@ sections:
   - {key: contact, label_es: "Contacto", label_en: "Contact", stage: 2}
   - {key: addresses, label_es: "Domicilios", label_en: "Addresses", stage: 2}
   - {key: employment, label_es: "Trabajo y estudios", label_en: "Employment and school", stage: 2}
-  - {key: travel, label_es: "Viajes fuera del país", label_en: "Time outside the US", stage: 2}
+  # optional: Ellis still asks every trip question, but none counts toward progress or signing
+  - {key: travel, label_es: "Viajes fuera del país", label_en: "Time outside the US", stage: 2, optional: true}
   - {key: marital, label_es: "Estado civil", label_en: "Marital history", stage: 2}
   - {key: children, label_es: "Hijos", label_en: "Children", stage: 2}
   - {key: background, label_es: "Preguntas de antecedentes", label_en: "Background questions", stage: 2}

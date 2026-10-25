@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { type FormEvent, useEffect, useState } from 'react'
 import Shell from './Shell'
-import { api } from './api'
+import { api, ApiError } from './api'
 import { Icon } from './icons'
 import { useCase } from './applicant/ApplicantApp'
 import { Sheet } from './applicant/Sheets'
@@ -14,6 +14,52 @@ const statusMeta: Record<string, { label: string; cls: string }> = {
 }
 const segment: Record<string, string> = { done: 'green', partial: 'gold', blocked: 'gold', not_started: 'segment-idle' }
 const chipColor: Record<string, string> = { confirmed: 'green', review: 'blue', deferred: 'rust' }
+const saveErrors: Record<string, string> = {
+  invalid_value: 'Check this answer and try again.',
+  consent_required: 'Agree to the notice in the chat with Ellis first, then answer here.',
+  deferred_to_professional: 'Your professional will go over this part with you.',
+}
+const tag = (required: boolean) => (
+  <span className="small" style={{ marginLeft: 8, fontWeight: 700, color: required ? 'var(--rust)' : undefined }}>{required ? 'Required' : 'Optional'}</span>
+)
+
+// A question not answered yet, filled in right on the form. It goes through the same checks as a spoken answer.
+function Blank({ q, onSaved }: { q: any; onSaved: () => void }) {
+  const [v, setV] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const id = `q-${q.field}`
+  const save = async (e: FormEvent) => {
+    e.preventDefault()
+    setBusy(true)
+    setError('')
+    try {
+      await api('/api/a/answer', { body: { field: q.field, value: q.options ? q.options[+v].value : v.trim() } })
+      onSaved()
+    } catch (err) {
+      setError((err instanceof ApiError && saveErrors[err.code]) || "This answer couldn't be saved. Try again.")
+      setBusy(false)
+    }
+  }
+  const box = { flex: '1 1 220px', height: 44, fontSize: 15 }
+  return (
+    <form className="row" style={{ padding: '16px 0' }} onSubmit={save}>
+      <label htmlFor={id} style={{ flex: '1 1 220px', fontSize: 17, fontWeight: 700 }}>{q.label}{tag(q.required)}</label>
+      {q.options ? (
+        <select id={id} className="input sm" style={box} value={v} onChange={(e) => setV(e.target.value)}>
+          <option value="" disabled>Choose…</option>
+          {q.options.map((o: any, n: number) => <option key={n} value={n}>{o.label}</option>)}
+        </select>
+      ) : (
+        <input id={id} className="input sm mono" style={box} autoComplete="off" value={v} onChange={(e) => setV(e.target.value)}
+          type={q.type === 'date' ? 'date' : 'text'} inputMode={q.type === 'int' || q.type === 'ssn' ? 'numeric' : undefined}
+          placeholder={q.type === 'string_list' || q.type === 'optional_name' ? 'Type "none" if none' : undefined} />
+      )}
+      <button type="submit" className="btn" disabled={busy || !v.trim()}>{busy ? 'Saving…' : 'Save'}</button>
+      {error && <p className="small" role="alert" style={{ flexBasis: '100%', color: 'var(--rust)' }}>{error}</p>}
+    </form>
+  )
+}
 
 export default function Form() {
   const { data, reload, upload, filling } = useCase()
@@ -23,6 +69,8 @@ export default function Form() {
   const question = view === 'question'
   const part = parts[i]
   const items = data.facts.find((g: any) => g.section === part?.section)?.items ?? []
+  const missing: any[] = part?.missing ?? []
+  const required = missing.filter((q) => q.required).length
   const done = parts.filter((p: any) => p.state === 'done').length
   const open = (n: number) => { setI(n); setView('question'); scrollTo(0, 0) }
   useEffect(() => { if (filling) setView('parts') }, [filling]) // an N-400 upload fills the parts view live
@@ -53,16 +101,19 @@ export default function Form() {
             <button type="button" className="btn primary" onClick={() => upload('n400')}><Icon name="upload" />Fill from a document</button>
           </div>
         </header>
-        <div aria-hidden="true" className="progress" style={{ gridTemplateColumns: `repeat(${parts.length}, minmax(0, 1fr))` }}>
-          {parts.map((p: any) => <div key={p.section} style={{ background: `var(--${segment[p.state]})` }} />)}
-        </div>
+        <nav aria-label="Form parts" className="progress" style={{ gridTemplateColumns: `repeat(${parts.length}, minmax(0, 1fr))` }}>
+          {parts.map((p: any, n: number) => (
+            <button key={p.section} type="button" title={p.label} aria-label={`Part ${n + 1} of ${parts.length}: ${p.label}`}
+              aria-current={question && n === i ? 'step' : undefined} style={{ backgroundColor: `var(--${segment[p.state]})` }} onClick={() => open(n)} />
+          ))}
+        </nav>
 
         {question && part ? (
           <div key={i} className="content enter" style={{ padding: '48px 24px', gap: 28 }}>
-            <div className="label">Part {i + 1} · {part.label} · {part.done} of {part.total} confirmed</div>
+            <div className="label">Part {i + 1} · {part.label} · {part.total ? `${part.done} of ${part.total} required confirmed` : 'Nothing required'}</div>
             <h2 className="display" style={{ marginTop: -14 }}>{part.label}</h2>
 
-            {items.length === 0 ? (
+            {items.length === 0 && missing.length === 0 ? (
               // empty part: the note and every action sit in the one white box
               <div className="panel" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 32 }}>
                 <p className="lead soft" style={{ margin: 0 }}>Nothing here yet. Ellis asks these questions in the chat, one at a time.</p>
@@ -72,20 +123,28 @@ export default function Form() {
                 </div>
               </div>
             ) : <>
-              <section aria-labelledby="answers" className="stack enter">
+              {missing.length > 0 && (
+                <section aria-labelledby="unanswered" className="stack enter">
+                  <h3 id="unanswered" className="rule" style={{ fontSize: 17, lineHeight: '24px', fontWeight: 700 }}>
+                    <span className="rust" style={{ fontWeight: 700 }}>Still to answer</span> · {[required && `${required} required`, missing.length - required && `${missing.length - required} optional`].filter(Boolean).join(', ')}
+                  </h3>
+                  {missing.map((q) => <Blank key={q.field} q={q} onSaved={() => reload().catch(() => undefined)} />)}
+                </section>
+              )}
+              {items.length > 0 && <section aria-labelledby="answers" className="stack enter">
                 <h3 id="answers" className="rule" style={{ fontSize: 17, lineHeight: '24px', fontWeight: 700 }}>
                   <span className="green" style={{ fontWeight: 700 }}>Ellis</span> · I have {items.length} answer{items.length > 1 ? 's' : ''} for this part
                 </h3>
                 {items.map((t: any) => (
                   <div key={t.field} className="row" style={{ padding: '16px 0' }}>
-                    <span style={{ flex: '1 1 220px', fontSize: 17, fontWeight: 700 }}>{t.label}</span>
+                    <span style={{ flex: '1 1 220px', fontSize: 17, fontWeight: 700 }}>{t.label}{part.optional?.includes(t.field) && tag(false)}</span>
                     <span className="mono" style={{ flex: '1 1 220px', fontSize: 15 }}>
                       {t.corrected_from && <><s>{t.corrected_from}</s> → </>}{t.value}{t.days !== undefined && ` · ${t.days} days`}
                     </span>
                     <span className={`status ${chipColor[t.chip.key] ?? ''}`}>{t.chip.label}</span>
                   </div>
                 ))}
-              </section>
+              </section>}
               <div className="btns" style={{ alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                 <a href="/" data-nav className="talk">Continue with Ellis<Icon name="mic" /></a>
                 {nav}
@@ -103,7 +162,7 @@ export default function Form() {
                   <span className="mono" style={{ flex: '0 0 28px', fontSize: 13, fontWeight: 700, color: 'var(--ink-soft)' }}>{String(n + 1).padStart(2, '0')}</span>
                   <span style={{ flex: '1 1 200px', fontSize: 17, fontWeight: 700 }}>{p.label}</span>
                   {filling && p.done < p.total && <span className="dots" aria-hidden="true" />}
-                  <span className="soft small">{p.done} of {p.total}</span>
+                  <span className="soft small">{p.total ? `${p.done} of ${p.total}` : 'Optional'}</span>
                   <span className={`status ${meta.cls}`}>{meta.label}</span>
                   <div className="btns" style={{ gap: 6, flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
                     <a href="/" data-nav className="btn sm">Answer<Icon name="mic" size={14} /></a>

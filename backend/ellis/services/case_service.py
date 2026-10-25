@@ -465,7 +465,9 @@ def record_fact(s: Session, case: Case, field: str, value: Any, *, hedge: bool =
             return "disputed"
         if third_party or hedge or doc_conflicts:
             return "proposed"
-        if d.get("confirm") == "readback" or source == "applicant_typed":
+        if source == "applicant_typed":
+            return "confirmed"  # typed into the form by the applicant: nothing for a read-back to catch
+        if d.get("confirm") == "readback":
             return "proposed"
         return "confirmed"
 
