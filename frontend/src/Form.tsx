@@ -120,6 +120,14 @@ export default function Form() {
                 </div>
               </div>
             ) : <>
+              {missing.length > 0 && (
+                <section aria-labelledby="unanswered" className="stack enter">
+                  <h3 id="unanswered" className="rule" style={{ fontSize: 17, lineHeight: '24px', fontWeight: 700 }}>
+                    <span className="rust" style={{ fontWeight: 700 }}>Still to answer</span> · {[required && `${required} required`, missing.length - required && `${missing.length - required} optional`].filter(Boolean).join(', ')}
+                  </h3>
+                  {missing.map((q) => <Blank key={q.field} q={q} onSaved={() => reload().catch(() => undefined)} />)}
+                </section>
+              )}
               {items.length > 0 && <section aria-labelledby="answers" className="stack enter">
                 <h3 id="answers" className="rule" style={{ fontSize: 17, lineHeight: '24px', fontWeight: 700 }}>
                   <span className="green" style={{ fontWeight: 700 }}>Ellis</span> · I have {items.length} answer{items.length > 1 ? 's' : ''} for this part
@@ -134,14 +142,6 @@ export default function Form() {
                   </div>
                 ))}
               </section>}
-              {missing.length > 0 && (
-                <section aria-labelledby="unanswered" className="stack enter">
-                  <h3 id="unanswered" className="rule" style={{ fontSize: 17, lineHeight: '24px', fontWeight: 700 }}>
-                    <span className="rust" style={{ fontWeight: 700 }}>Still to answer</span> · {[required && `${required} required`, missing.length - required && `${missing.length - required} optional`].filter(Boolean).join(', ')}
-                  </h3>
-                  {missing.map((q) => <Blank key={q.field} q={q} onSaved={() => reload().catch(() => undefined)} />)}
-                </section>
-              )}
               <div className="btns" style={{ alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                 <a href="/" data-nav className="talk">Continue with Ellis<Icon name="mic" /></a>
                 {nav}
