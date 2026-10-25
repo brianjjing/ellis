@@ -169,6 +169,13 @@ main, .enter, .dialog::backdrop { animation: enter .18s ease-out; }
 .part { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; width: 100%; min-height: 64px; padding: 14px 0; border: 0; border-bottom: 1px solid var(--line); background: transparent; color: var(--ink); cursor: pointer; text-align: left; }
 .talk { display: inline-flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; }
 .icon-btn.mic.pulse { animation: ellis-pulse 1.4s ease-in-out infinite; }
+.dots { display: inline-flex; align-items: center; gap: 6px; height: 30px; } /* one .lead line tall */
+.dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-soft); opacity: .45; animation: dot .8s ease-in-out infinite; }
+.dots i:nth-child(2) { animation-delay: .13s; }
+.dots i:nth-child(3) { animation-delay: .26s; }
+.dots.sm { align-items: flex-end; gap: 3px; height: auto; margin-left: 3px; } /* sits on the text's baseline */
+.dots.sm i { width: 4px; height: 4px; }
+@keyframes dot { 20% { transform: scale(1.6); opacity: 1; } 40% { transform: none; opacity: .45; } }
 @keyframes ellis-pulse { 50% { box-shadow: 0 0 0 6px var(--green-tint); } }
 .demo-tools { display: flex; flex-direction: column; gap: 8px; }
 .demo-tools summary { list-style: none; cursor: pointer; }

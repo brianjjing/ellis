@@ -22,6 +22,11 @@ export function Icon({ name, size = 16, color = 'currentColor', weight = 1.75 }:
   )
 }
 
+// Typing-style dots, one swelling at a time: Ellis is connecting or working on a reply. sm sits on a line of text.
+export function Dots({ sm }: { sm?: boolean }) {
+  return <span className={sm ? 'dots sm' : 'dots'} aria-hidden="true"><i /><i /><i /></span>
+}
+
 // The Ellis K1 lockup (mark + wordmark), from frontend/public; alt carries the name.
 export function Logo() {
   return <img className="logo" src="/ellis-logo-horizontal.svg" alt="Ellis" width={107} height={32} />

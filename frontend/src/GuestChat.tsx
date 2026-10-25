@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import Shell from './Shell'
-import { Icon } from './icons'
+import { Dots, Icon } from './icons'
 import { navigate } from './main'
 import { api } from './api'
 import { goSignIn } from './auth'
@@ -69,6 +69,7 @@ export default function GuestChat() {
                   )}
                 </div>
               ))}
+              {busy && <div className="msg" aria-hidden="true"><div className="label green">{t(lang, 'ellis')}</div><Dots /></div>}
             </div>
             <div className="composer">
               <div>

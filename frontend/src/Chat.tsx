@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import Shell from './Shell'
-import { Flag, Icon } from './icons'
+import { Dots, Flag, Icon } from './icons'
 import { daysToFile, useCase, type CaseView } from './applicant/ApplicantApp'
 import { GuideFoot, GuideStart } from './applicant/Guide'
 import { langOf, t } from './applicant/i18n'
@@ -259,6 +259,13 @@ export default function Chat() {
                   ) : null}
                 </div>
               ))}
+              {/* Ellis's pending turn. No dots while speaking: the line's text is already shown. Screen readers get the state from the status line below. */}
+              {!viewing && composerOn && (state === 'connecting' || state === 'thinking' || (voice && state === 'listening')) && (
+                <div className={`msg${shown.at(-1)?.who === 'ellis' ? ' cont' : ''}`} aria-hidden="true">
+                  {shown.at(-1)?.who !== 'ellis' && <div className="label green">{t(lang, 'ellis')}</div>}
+                  {state === 'listening' ? <p className="lead soft">{t(lang, 'listening').replace(/…$/, '')}<Dots sm /></p> : <Dots />}
+                </div>
+              )}
             </div>
 
             {!showConsent && <div className="composer">
