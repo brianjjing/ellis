@@ -58,6 +58,7 @@ class VoiceSession:
         self.want_voice = True  # talking (vs. typing): silence only means "gone" when they talk
         self.talk: dict[str, Any] | None = None  # transcript so far while the talk button is held (+ tail)
         self.nudges = 0  # silence check-ins since the applicant last did something
+        self.seq = 0  # turns sent so far: a reply that a newer turn overtook is never spoken
         self.lock = asyncio.Lock()
         self.last_line_end = time.time()
         self.user_active = False
@@ -260,8 +261,14 @@ class VoiceSession:
             field, word = li["field"], li["word"]
         self.last_interrupt = None
         self.nudges = 0
+        self.seq += 1
+        seq, unheard = self.seq, self.lock.locked()  # locked: the reply to their last turn isn't out yet
         async with self.lock:
-            lines = await asyncio.to_thread(self.liaison.handle, text, field, word, uncertain)
+            lines = await asyncio.to_thread(self.liaison.handle, text, field, word, uncertain, unheard)
+        if seq != self.seq:
+            # they spoke again while this reply was being prepared: the newer turn answers both.
+            # ponytail: the dropped reply stays in the transcript; mark it there if it misleads a reviewer
+            return
         for ln in lines:
             await self.q.put(ln)
 

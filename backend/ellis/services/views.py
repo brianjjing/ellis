@@ -361,7 +361,9 @@ def agent_context(s: Session, case: Case, focus: dict[str, Any]) -> dict[str, An
             return out
         need = items([it for it in fallback if it.get("section") == sec] + fallback, 12)
         ctx.update(still_needed=need, case_team_asks=items(b.get("queue", []), 4),
-                   open_flag_categories=b.get("open_flag_categories"), rules=b.get("derived"))
+                   open_flag_categories=b.get("open_flag_categories"), rules=b.get("derived"),
+                   # what's already saved (validated, masked), so nothing said once is asked again
+                   answers={k: v for k, v in b["facts"].items() if k not in ("consent", "eligibility_basis")})
     elif task == "interview_prep":
         ctx.update(practice=yaml_config("practice.yaml"), my_answers=_my_answers(s, case))
     elif task == "reminders":

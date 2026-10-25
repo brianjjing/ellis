@@ -153,3 +153,54 @@ def test_resume_remembers_the_last_question_not_the_check_in():
     assert last_question(past) == ("Where do you work?", False)
     assert last_question(past + [("applicant", "At a packing plant", None)]) == ("Where do you work?", True)
     assert last_question(past[:1]) is None
+
+
+def test_dates_are_not_sensitive_numbers():
+    from ellis.services.keywords import has_sensitive_number, redact_numbers
+    for said in ("I was born 09/11/1995", "since 1995-09-11", "from 2015-2019", "el 05 02 1988", "9 11 1995"):
+        assert not has_sensitive_number(said), said
+    for said in ("my A number is 123456789", "123-45-6789", "A 12345678", "uno dos tres cuatro cinco seis siete"):
+        assert has_sensitive_number(said), said
+    assert redact_numbers("born 1995-09-11, A 123456789") == "born 1995-09-11, A [REDACTED_NUMBER]"
+
+
+def test_a_reply_overtaken_by_a_newer_turn_is_never_spoken():
+    import threading
+    from ellis.api.routes.voice import VoiceSession
+    from ellis.voice.liaison import Say
+    thinking, calls = threading.Event(), []
+
+    def handle(text, field, word, uncertain, unheard):
+        calls.append((text, unheard))
+        if text == "first":
+            thinking.wait(2)  # still preparing this reply when the second turn comes in
+        return [Say(f"reply to {text}")]
+    vs = VoiceSession(ws=None, case_id="c_maria")
+    vs.liaison = SimpleNamespace(ended=False, handle=handle)
+
+    async def run():
+        first = asyncio.create_task(vs.turn("first"))
+        await asyncio.sleep(0.05)
+        second = asyncio.create_task(vs.turn("second"))
+        await asyncio.sleep(0.05)
+        thinking.set()
+        await asyncio.gather(first, second)
+    asyncio.run(run())
+    assert calls == [("first", False), ("second", True)]
+    assert vs.q.get_nowait().text == "reply to second" and vs.q.empty()
+
+
+def test_the_model_sees_what_was_withheld_or_unheard(seeded):
+    from ellis.voice.llm_liaison import STOP_NOTE
+    a = agent("c_maria", use("record_fact", field="consent", value=True), say("¿Empezamos?"), say("Bien."))
+    a.start()
+    a.handle("Sí, de acuerdo")
+    a.handle("Mi número es 123456789 y me mudé el 2021-03-01")  # the number is taken out, the date still counts
+    assert "123456789" not in str(a.history) and "me mudé el 2021-03-01" in str(a.history)
+    a.handle("No", interrupted_at_word="viajado")
+    assert a.history[-2]["content"] == 'No\n[they cut you off at "viajado": they never heard the rest of your last reply]'
+    a.handle("No, porque me arrestaron en 2016")  # stored as [STOP:arrest]
+    b = agent("c_maria", say("Hola de nuevo."))
+    b.start()  # a resume: memory comes from the stored transcript
+    texts = [m["content"] for m in b.history if isinstance(m["content"], str)]
+    assert not any("STOP:" in t for t in texts) and any(STOP_NOTE in t for t in texts)

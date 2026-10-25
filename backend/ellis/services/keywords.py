@@ -13,6 +13,11 @@ from functools import lru_cache
 from ..config import yaml_config
 
 DIGIT_RUN = re.compile(r"(?:\d[\s\-.]?){7,}\d")
+# a full date or a year range ("1995-09-11", "09/11/1995", "2015-2019") is not an ID number; the month, day and
+# year ranges keep SSN (3-2-4) and A-number shapes out
+_MD = r"(?:0?[1-9]|[12]\d|3[01])"
+DATE = re.compile(rf"\b(?:(?:19|20)\d\d[-/. ]{_MD}[-/. ]{_MD}|{_MD}[-/. ]{_MD}[-/. ](?:19|20)\d\d"
+                  rf"|(?:19|20)\d\d ?[-–] ?(?:19|20)\d\d)\b")
 SPOKEN_DIGITS = {
     "cero", "uno", "una", "dos", "tres", "cuatro", "cinco", "seis", "siete", "ocho", "nueve",
     "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
@@ -56,7 +61,8 @@ def flag_hits(text: str) -> list[str]:
 
 
 def has_sensitive_number(text: str) -> bool:
-    """A run of 7+ digits (typed or spoken word-by-word) looks like an A-number, SSN or case number."""
+    """A run of 7+ digits (typed or spoken word-by-word) looks like an A-number, SSN or case number; a date doesn't."""
+    text = DATE.sub(" date ", text)
     if DIGIT_RUN.search(text):
         return True
     words = fold(text).split()
@@ -72,7 +78,7 @@ def has_sensitive_number(text: str) -> bool:
 
 
 def redact_numbers(text: str) -> str:
-    t = DIGIT_RUN.sub("[REDACTED_NUMBER]", text)
+    t = DIGIT_RUN.sub(lambda m: m[0] if DATE.fullmatch(m[0]) else "[REDACTED_NUMBER]", text)
     if has_sensitive_number(t):
         return "[REDACTED_NUMBER]"
     return t

@@ -35,6 +35,9 @@ log = logging.getLogger("ellis.llm_liaison")
 PROMPT_PATH = Path(__file__).resolve().parents[2] / "prompts" / "liaison.md"
 MAX_TOOL_ROUNDS = 6
 PAGES = ["/form", "/interview", "/reminders", "/profile", "/review"]
+# what the model gets in place of a stop-list turn, live or on resume: never the topic itself
+STOP_NOTE = ("[the applicant raised a topic only a licensed professional can review; the fixed stop message was "
+             "played. Don't refer to it.]")
 
 TOOLS = [
     {"name": "set_focus", "description": "Set what the applicant is working on now. Call it whenever their goal "
@@ -137,6 +140,8 @@ class LlmLiaison:
         # thread back up instead of feeling like a fresh form.
         past = self.c.recent_transcript()
         for speaker, text, _ in past:
+            if text.startswith("[STOP:"):  # a stored stop turn: the model gets the live note, never the category
+                text = STOP_NOTE
             self._append("assistant" if speaker == "liaison" else "user", text)
         if self.history and self.history[0]["role"] == "assistant":
             self.history.insert(0, {"role": "user", "content": "[session started]"})
@@ -145,7 +150,7 @@ class LlmLiaison:
         where = "" if asked is None else (f' Before the break you asked: "{asked[0]}" -- ' + (
             "they answered it." if asked[1] else "they never answered it."))
         lines = self._turn_model(f"[system] {self.cfg.get('first_name') or 'The applicant'} just opened the chat "
-                                 f"(returning; consent was given before).{where} Give the opening.", None, False)
+                                 f"(returning; consent was given before).{where} Give the opening.", None)
         lines[0].meta = {**meta, **lines[0].meta}
         return self._said(lines)
 
@@ -189,8 +194,8 @@ class LlmLiaison:
 
     # ------------------------------------------------------------ turns
 
-    def handle(self, text: str, interrupted_field: str | None = None,
-               interrupted_at_word: str | None = None, turn_uncertain: bool = False) -> list[Say]:
+    def handle(self, text: str, interrupted_field: str | None = None, interrupted_at_word: str | None = None,
+               turn_uncertain: bool = False, unheard: bool = False) -> list[Say]:
         if self.ended:
             return []
         text = (text or "").strip()
@@ -201,15 +206,27 @@ class LlmLiaison:
         t = self.c.applicant_turn(text)
         if t.get("stop"):
             self.c.stop_spoken()
-            self._append("user", "[the applicant raised a topic only a licensed professional can review; the "
-                         "fixed stop message was played. Don't refer to it.]")
+            self._append("user", STOP_NOTE)
             self._append("assistant", script("stop", lang=self.language).text)
             return self._said([script("stop", lang=self.language)])
         if t.get("redacted"):
             self.c.request_secure_entry("a_number")
-            return self._said([script("secure_entry_repeat", lang=self.language)])
+            line = script("secure_entry_repeat", lang=self.language)
+            # the rest of the turn still counts: the model sees it with the number taken out
+            self._append("user", f"{t.get('text', '')}\n[a sensitive number was taken out before you saw this; "
+                         "the secure entry was opened for it]")
+            self._append("assistant", line.text)
+            return self._said([line])
         self.flags = list(t.get("flags") or [])  # keyword backstop (layer 4)
-        return self._said(self._turn_model(text, t.get("utterance_id"), turn_uncertain))
+        # what they didn't hear: a bare "yes" must never answer a question that didn't reach them
+        hints = []
+        if unheard:
+            hints.append("they said this before your last reply reached them: they never heard it")
+        elif interrupted_at_word:
+            hints.append(f'they cut you off at "{interrupted_at_word}": they never heard the rest of your last reply')
+        if turn_uncertain:
+            hints.append("the speech model flagged this as hesitant/unsure")
+        return self._said(self._turn_model(text, t.get("utterance_id"), "; ".join(hints)))
 
     def permission(self, pid: str, allow: bool) -> list[Say]:
         """The applicant tapped Allow / Don't allow on a card. The only path that applies what the model asked."""
@@ -233,10 +250,10 @@ class LlmLiaison:
                 log.exception("permission %s failed", p["kind"])
                 note = (f"[system] The applicant allowed {p['title']}, but it didn't go through "
                         f"({getattr(e, 'message', e)}). Say so plainly; they can try again or ask their clinic.")
-        return self._said(self._turn_model(note, None, False))
+        return self._said(self._turn_model(note, None))
 
-    def _turn_model(self, text: str, uid: str | None, hedge_hint: bool) -> list[Say]:
-        self._append("user", text if not hedge_hint else f"{text}\n[the speech model flagged this as hesitant/unsure]")
+    def _turn_model(self, text: str, uid: str | None, hint: str = "") -> list[Say]:
+        self._append("user", f"{text}\n[{hint}]" if hint else text)
         end_call = False
         texts: list[str] = []
         meta: dict[str, Any] = {}
@@ -374,7 +391,7 @@ class LlmLiaison:
             return []
         lines = self._turn_model("[system] The applicant is ending the session for today. Say a brief, warm "
                                  "goodbye: what got done today and what's left, from the live case data, without "
-                                 "reading lists. Everything is saved. Then call end_call.", None, False)
+                                 "reading lists. Everything is saved. Then call end_call.", None)
         self.ended = True
         return self._said(lines)
 
@@ -385,7 +402,7 @@ class LlmLiaison:
             "This is the last check-in: say in one short sentence that everything is saved and they can pick this "
             "up any time." if last else "Gently check in, in a few words; don't repeat your last question word "
             "for word, and don't say \"take your time\" if you said it already."))
-        lines = self._turn_model(nudge, None, False)
+        lines = self._turn_model(nudge, None)
         for ln in lines:
             ln.kind = "checkin"
         return self._said(lines)
