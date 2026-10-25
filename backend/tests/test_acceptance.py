@@ -265,6 +265,9 @@ def test_n400_upload_overrides_form(client, monkeypatch):
     monkeypatch.setattr(cs, "push", lambda s, case, kind, payload: pushes.append((kind, payload.get("section"))))
     png = io.BytesIO()
     Image.new("RGB", (8, 8)).save(png, format="PNG")
+    with session_scope() as s:  # an earlier N-400 that couldn't be read
+        bad = docs.store_upload(s, s.get(Case, "c_maria"), "n400", "bad.png", png.getvalue())
+        docs.apply_extraction(s, s.get(Case, "c_maria"), bad, {"ok": False, "error": "test"})
     with session_scope() as s:
         did = docs.store_upload(s, s.get(Case, "c_maria"), "n400", "n400.png", png.getvalue()).id
     docs.extract_async(did)
@@ -277,6 +280,8 @@ def test_n400_upload_overrides_form(client, monkeypatch):
         assert cs.vault_lookup(s, cur["ssn"].id) == "987-65-4321" and cs.vault_lookup(s, cur["fee.income"].id) == "72000"
         assert "987654321" not in json.dumps([x.data for x in s.scalars(select(Extraction))])
         assert s.get(Document, did).status == "extracted"
+        from ellis.services.views import reminders
+        assert not [r for r in reminders(s, s.get(Case, "c_maria")) if r["kind"] == "retake"]  # the good one retires it
     assert [sec for kind, sec in pushes if kind == "n400.fill"] == ["identity", "marital", "children", "fee", None]
 
 
@@ -285,11 +290,14 @@ def test_clear_all_empties_the_form(client):
     consent(client)
     tool(client, "c_maria", "record_fact", {"field": "marital.status", "value": "single"})
     tool(client, "c_maria", "record_fact", {"field": "trips.any", "value": True})
+    with session_scope() as s:
+        cs.set_state(s, s.get(Case, "c_maria"), "ready", "test")
     assert client.post("/api/a/session", json={"token": "demo-maria"}).status_code == 200
     r = client.post("/api/a/clear")
     assert r.status_code == 200 and r.json()["cleared"] >= 2
     with session_scope() as s:
         assert set(cs.current_facts(s, "c_maria")) == {"consent"}
+        assert s.get(Case, "c_maria").state == "intake"  # not left waiting to be signed with an empty form
 
 
 # AT14 --------------------------------------------------------------------------------------------------------

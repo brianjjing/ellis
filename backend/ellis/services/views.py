@@ -271,10 +271,16 @@ def reminders(s: Session, case: Case) -> list[dict[str, Any]]:
             continue  # past appointments drop off
         add("appointment", APPOINTMENTS[d.kind], 92 if days <= 3 else 82 if days <= 7 else 60 if days <= 30 else 35,
             d.note or "", on=d.date)
-    for doc in s.scalars(select(Document).where(Document.case_id == case.id)):
+    # ponytail: only the latest upload of each type counts, so a good upload retires an earlier failed one (two
+    # different "other" letters share a type: a failed one is hidden by any later one)
+    latest = {d.document_type: d for d in s.scalars(select(Document).where(Document.case_id == case.id)
+                                                     .order_by(Document.ts))}
+    for doc in latest.values():
         if doc.status == "failed" or (doc.status == "extracted" and doc.quality == "low"):
-            add("retake", f"Retake the photo of your {document_label(doc.document_type, 'en')}", 70,
-                "We couldn't read it clearly.", action={"upload": doc.document_type}, when="when you can")
+            title = ("Upload your N-400 again" if doc.document_type == "n400"
+                     else f"Retake the photo of your {document_label(doc.document_type, 'en')}")
+            add("retake", title, 70, "We couldn't read it clearly.", action={"upload": doc.document_type},
+                when="when you can")
     for g in cs.open_gaps(s, case.id):
         add("upload", f"Upload: {g.label_es or g.reason}", 60, "You need it before you file.",
             action={"upload": g.document_type}, when="before you file")

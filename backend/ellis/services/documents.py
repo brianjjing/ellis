@@ -391,6 +391,7 @@ def _set_n400_field(s: Session, case: Case, doc: Document, field: str, value: An
         if others:
             cs._supersede(others, None, "cleared by N-400 upload")
             cs.emit(s, case, "fact.cleared", {"field": field, "document_id": doc.id}, "system", "extraction_worker")
+            cs._mark_material(case, field)
             facts[field] = []
         return False
     masked = catalog.is_masked(field)

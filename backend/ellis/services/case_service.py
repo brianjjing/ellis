@@ -624,6 +624,7 @@ def clear_form(s: Session, case: Case) -> int:
         if field == "consent" or any(f.value == catalog.DEFERRED for f in fs):
             continue
         _supersede(fs, None, "cleared by applicant")  # updates go out together at commit
+        _mark_material(case, field)
         cleared.append(field)
     if cleared:
         emit(s, case, "fact.cleared", {"fields": cleared}, "applicant", "applicant")
@@ -1082,15 +1083,13 @@ def after_fact_change(s: Session, case: Case) -> None:
                 p.status = "stale"
             emit(s, case, "signoff.invalidated", {"signoff_id": so.id, "reason": "fact changed after sign-off"})
             set_state(s, case, "review", "fact changed after sign-off")
-        return
     if case.state == "ready":
         if case.material_changed_at and case.signed_at is None:
             ready_ev = s.scalars(select(Event).where(Event.case_id == case.id, Event.kind == "case.state_changed")
                                  .order_by(Event.id.desc()).limit(1)).first()
             if ready_ev and _aware(case.material_changed_at) > _aware(ready_ev.ts):
                 set_state(s, case, "review", "new material fact")
-        return
-    if case.state not in ("intake", "evidence", "review"):
+    if case.state not in ("intake", "evidence", "review"):  # still signed or ready: nothing more to do
         return
     der = latest_derived(s, case.id)
     view = cur_view(s, case.id)
