@@ -280,6 +280,18 @@ def test_n400_upload_overrides_form(client, monkeypatch):
     assert [sec for kind, sec in pushes if kind == "n400.fill"] == ["identity", "marital", "children", "fee", None]
 
 
+# "Clear all" on the form: every answer goes, consent stays -----------------------------------------------------
+def test_clear_all_empties_the_form(client):
+    consent(client)
+    tool(client, "c_maria", "record_fact", {"field": "marital.status", "value": "single"})
+    tool(client, "c_maria", "record_fact", {"field": "trips.any", "value": True})
+    assert client.post("/api/a/session", json={"token": "demo-maria"}).status_code == 200
+    r = client.post("/api/a/clear")
+    assert r.status_code == 200 and r.json()["cleared"] >= 2
+    with session_scope() as s:
+        assert set(cs.current_facts(s, "c_maria")) == {"consent"}
+
+
 # AT14 --------------------------------------------------------------------------------------------------------
 def test_at14_mark_ready_blocked(client):
     maria_trip(client)

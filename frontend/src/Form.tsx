@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import Shell from './Shell'
+import { api } from './api'
 import { Icon } from './icons'
 import { useCase } from './applicant/ApplicantApp'
+import { Sheet } from './applicant/Sheets'
 
 // Section states from the Case API → the design's status words and colors.
 const statusMeta: Record<string, { label: string; cls: string }> = {
@@ -14,7 +16,7 @@ const segment: Record<string, string> = { done: 'green', partial: 'gold', blocke
 const chipColor: Record<string, string> = { confirmed: 'green', review: 'blue', deferred: 'rust' }
 
 export default function Form() {
-  const { data, upload, filling } = useCase()
+  const { data, reload, upload, filling } = useCase()
   const parts = data.progress
   const [i, setI] = useState(Math.max(0, parts.findIndex((p: any) => p.state !== 'done')))
   const [view, setView] = useState<'question' | 'parts'>('question')
@@ -25,6 +27,11 @@ export default function Form() {
   const open = (n: number) => { setI(n); setView('question'); scrollTo(0, 0) }
   useEffect(() => { if (filling) setView('parts') }, [filling]) // an N-400 upload fills the parts view live
   const n400 = data.documents.filter((d: any) => d.document_type === 'n400').at(-1)
+  const [clearing, setClearing] = useState<'confirm' | 'busy' | 'failed' | null>(null)
+  const clearAll = async () => {
+    setClearing('busy')
+    try { await api('/api/a/clear', { body: {} }); await reload(); setClearing(null) } catch { setClearing('failed') }
+  }
   const nav = (
     <div style={{ display: 'flex', gap: 8 }}>
       <button type="button" className="btn lg" disabled={i === 0} onClick={() => open(i - 1)}>Back</button>
@@ -109,6 +116,17 @@ export default function Form() {
             )}
             {(data.state === 'ready' || data.state === 'signed') && (
               <a href="/review" data-nav className="btn lg primary" style={{ marginTop: 28, alignSelf: 'flex-start' }}>{data.state === 'ready' ? 'Review and sign' : 'Open my packet'}</a>
+            )}
+            {parts.length > 0 && <button type="button" className="btn lg danger clear-all" style={{ marginTop: 28, alignSelf: 'flex-start' }} disabled={!!filling} onClick={() => setClearing('confirm')}>Clear all</button>}
+            {clearing && (
+              <Sheet title="Clear all answers?" onClose={() => setClearing(null)}>
+                <p className="lead">Every answer in all parts of your form will be cleared. You can't undo this.</p>
+                {clearing === 'failed' && <p className="rust" role="alert">Your form couldn't be cleared. Try again.</p>}
+                <div className="btns">
+                  <button type="button" className="btn lg danger clear-all" disabled={clearing === 'busy'} onClick={clearAll}>{clearing === 'busy' ? 'Clearing…' : 'Clear all'}</button>
+                  <button type="button" className="btn lg" onClick={() => setClearing(null)}>Cancel</button>
+                </div>
+              </Sheet>
             )}
           </div>
         )}

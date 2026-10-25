@@ -612,6 +612,22 @@ def secure_entry(s: Session, case: Case, field: str, value: Any, actor: str = "a
     return {"saved": True, "fact": fact_dict(f)}
 
 
+def clear_form(s: Session, case: Case) -> int:
+    """The applicant's "Clear all": every answer on the form is superseded by nothing. Consent stays (without it
+    nothing can be saved again), and so do sections the clinic deferred to a licensed professional."""
+    cleared = []
+    for field, f in current_facts(s, case.id).items():
+        if field == "consent" or f.value == catalog.DEFERRED:
+            continue
+        _supersede(facts_for(s, case.id, field), None, "cleared by applicant")
+        cleared.append(field)
+    if cleared:
+        emit(s, case, "fact.cleared", {"fields": cleared}, "applicant", "applicant")
+    evaluate_rules(s, case)
+    after_fact_change(s, case)
+    return len(cleared)
+
+
 def vault_lookup(s: Session, fact_id: str) -> str | None:
     v = s.get(VaultValue, fact_id)
     return vault.decrypt(v.ciphertext) if v else None
