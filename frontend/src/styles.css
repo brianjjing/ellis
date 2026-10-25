@@ -81,7 +81,7 @@ main, .enter, .dialog::backdrop { animation: enter .18s ease-out; }
 .wordmark { display: inline-flex; align-self: flex-start; text-decoration: none; }
 .logo { display: block; height: 32px; width: auto; }
 .main { flex: 999 1 560px; min-width: 0; }
-.bar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding: 9px 24px; }
+.bar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding: 13.5px 24px; }
 .content { max-width: 800px; margin: 0 auto; box-sizing: border-box; display: flex; flex-direction: column; }
 
 /* Sidebar: sticky so it stays put while long pages scroll; at rest it sits exactly where the design puts it. */
