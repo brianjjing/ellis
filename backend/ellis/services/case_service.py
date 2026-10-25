@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 from ..config import fee_config, rule_config, settings
 from ..db import (
     Briefing, CallSession, Case, Derived, Document, Event, Extraction, Fact, Flag, Gap, Memo, Packet, ReviewItem,
-    Signoff, Task, Utterance, VaultValue, now,
+    Signoff, Task, Utterance, VaultValue, new_id, now,
 )
 from ..rules import engine as rules
 from . import catalog, keywords, vault
@@ -55,12 +55,13 @@ def emit(s: Session, case: Case | None, kind: str, payload: dict[str, Any] | Non
          actor_type: str = "system", actor: str = "case_api", clinic_id: str | None = None) -> Event:
     ev = Event(clinic_id=case.clinic_id if case else clinic_id, case_id=case.id if case else None, kind=kind,
                payload=payload or {}, actor_type=actor_type, actor=actor, ts=now())
-    s.add(ev)
-    s.flush()
+    s.add(ev)  # no flush: events go out with the transaction (one batch, not one round trip each)
     if case is not None:
         case.last_event_at = ev.ts
-    queue_after_commit(s, {"id": ev.id, "clinic_id": ev.clinic_id, "case_id": ev.case_id, "kind": kind,
-                           "payload": ev.payload, "actor_type": actor_type, "actor": actor, "ts": ev.ts.isoformat()})
+    # built after commit, when ev.id exists
+    queue_after_commit(s, lambda: {"id": ev.id, "clinic_id": ev.clinic_id, "case_id": ev.case_id, "kind": kind,
+                                   "payload": ev.payload, "actor_type": actor_type, "actor": actor,
+                                   "ts": ev.ts.isoformat()})
     return ev
 
 
@@ -137,13 +138,13 @@ def _insert_fact(s: Session, case: Case, field: str, value: Any, status: str, so
                  provenance: dict | None = None, proposed_by: str = "applicant", supersedes: str | None = None,
                  third_party: bool = False, matches_document: str | None = None, note: str | None = None,
                  confidence: str | None = None) -> Fact:
-    f = Fact(clinic_id=case.clinic_id, case_id=case.id, field=field, value=value, status=status, source=source,
-             hedge=hedge, provenance=provenance or {}, proposed_by=proposed_by, supersedes=supersedes,
+    # the id is set here, not at flush, so the row can wait for the transaction's one batched insert
+    f = Fact(id=new_id("f"), clinic_id=case.clinic_id, case_id=case.id, field=field, value=value, status=status,
+             source=source, hedge=hedge, provenance=provenance or {}, proposed_by=proposed_by, supersedes=supersedes,
              third_party=third_party, matches_document=matches_document, note=note, confidence=confidence, ts=now())
     if status == "confirmed":
         f.confirmed_at = f.ts
     s.add(f)
-    s.flush()
     return f
 
 

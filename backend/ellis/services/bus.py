@@ -45,7 +45,8 @@ def _put(q: asyncio.Queue, msg: dict) -> None:
         q.put_nowait(msg)
 
 
-def queue_after_commit(s: Session, msg: dict[str, Any]) -> None:
+def queue_after_commit(s: Session, msg: dict[str, Any] | Callable[[], dict[str, Any]]) -> None:
+    """msg, or a function building it once the commit has assigned ids."""
     s.info.setdefault("bus_pending", []).append(msg)
 
 
@@ -53,7 +54,7 @@ def queue_after_commit(s: Session, msg: dict[str, Any]) -> None:
 def _after_commit(s: Session) -> None:
     pending = s.info.pop("bus_pending", [])
     for m in pending:
-        publish(m)
+        publish(m() if callable(m) else m)
 
 
 @sa_event.listens_for(Session, "after_rollback")
