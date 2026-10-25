@@ -60,7 +60,12 @@ export function ReviewSignoff({ data, reload, onSigned, onBack }: { data: CaseVi
   }
   return (
     <main className="a-main">
-      <div className="panel ok">{lang === 'en' ? 'Your clinic reviewed your case. Now review each answer yourself.' : 'Su clínica revisó su caso. Ahora revise usted cada respuesta.'}</div>
+      <div className="panel ok">
+        <div className="stack" style={{ gap: 4 }}>
+          <strong>{lang === 'en' ? 'Your clinic reviewed your case.' : 'Su clínica revisó su caso.'}</strong>
+          <span className="small">{lang === 'en' ? 'Read each answer below. If anything is wrong, tap "Something\'s wrong here" and Ellis will ask you about it again.' : 'Lea cada respuesta. Si algo está mal, toque "Algo está mal aquí" y Ellis le preguntará de nuevo.'}</span>
+        </div>
+      </div>
       {view.sections.map((sec: any) => (
         <section key={sec.key} className="acc">
           <button className="acc-head" aria-expanded={open === sec.key} onClick={() => setOpen(open === sec.key ? null : sec.key)}>
@@ -89,8 +94,15 @@ export function ReviewSignoff({ data, reload, onSigned, onBack }: { data: CaseVi
       <label htmlFor="nm" className="field">{lang === 'en' ? 'Type your full legal name, as it appears on your documents' : 'Escriba su nombre completo, como aparece en sus documentos'}</label>
       <input id="nm" className="input" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
       {err && <p className="rust">{err}</p>}
-      <button className="btn lg primary a-big" disabled={!checked || !name.trim() || busy} onClick={sign}>{busy ? (lang === 'en' ? 'Preparing your packet…' : 'Preparando su paquete…') : (lang === 'en' ? 'Sign' : 'Firmar')}</button>
-      <p className="small">{lang === 'en' ? "Ellis doesn't send anything. You file in your USCIS account, or your clinic files for you." : 'Ellis no envía nada. Usted presenta la solicitud en su cuenta de USCIS, o su clínica la presenta por usted.'}</p>
+      <button className="btn lg primary a-big" disabled={!checked || !name.trim() || busy} onClick={sign}>{busy ? (lang === 'en' ? 'Preparing your packet…' : 'Preparando su paquete…') : (lang === 'en' ? 'Sign and send to clinic' : 'Firmar y enviar a la clínica')}</button>
+      <div className="panel" style={{ flexDirection: 'column', gap: 4 }}>
+        <strong className="small">{lang === 'en' ? 'What happens after you sign' : '¿Qué pasa después de firmar?'}</strong>
+        <p className="small soft" style={{ margin: 0 }}>
+          {lang === 'en'
+            ? 'Your answers go to your clinic for final review. Your clinic reviews everything before anything is filed. Ellis never submits your application — your clinic will contact you about next steps.'
+            : 'Sus respuestas van a su clínica para revisión final. Su clínica revisa todo antes de que se presente algo. Ellis nunca envía su solicitud — su clínica le contactará sobre los próximos pasos.'}
+        </p>
+      </div>
     </main>
   )
 }

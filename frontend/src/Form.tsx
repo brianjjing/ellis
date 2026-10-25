@@ -80,7 +80,7 @@ export default function Form() {
             {parts.map((p: any, n: number) => {
               const meta = statusMeta[p.state] ?? statusMeta.not_started
               return (
-                <div key={p.section} className="form-section-row" onClick={() => open(n)}>
+                <div key={p.section} className="form-section-row" role="button" tabIndex={0} onClick={() => open(n)} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && open(n)}>
                   <span className="mono" style={{ flex: '0 0 28px', fontSize: 13, fontWeight: 700, color: 'var(--ink-soft)' }}>{String(n + 1).padStart(2, '0')}</span>
                   <span style={{ flex: '1 1 200px', fontSize: 17, fontWeight: 700 }}>{p.label}</span>
                   <span className="soft small">{p.done} of {p.total}</span>
