@@ -197,14 +197,14 @@ export default function Chat() {
 
               {shown.map((m, i) => m.who === 'you' ? (
                 <div key={i} className={`you${cont(i) ? ' cont' : ''}`}>
-                  {!cont(i) && <div className="label">{m.spoken ? 'YOU · SPOKEN' : 'YOU'}</div>}
+                  {!cont(i) && <div className="label">{m.spoken ? `${t(lang, 'you')} · spoken` : t(lang, 'you')}</div>}
                   <div className="bubble">{m.text}</div>
                 </div>
               ) : m.kind?.startsWith('readback') ? (
                 <div key={i} className={`msg${cont(i) ? ' cont' : ''}`}>
-                  {!cont(i) && <div className="label green">ELLIS</div>}
+                  {!cont(i) && <div className="label green">{t(lang, 'ellis')}</div>}
                   <div className="draft">
-                    <div className="mono" style={{ fontSize: 12, fontWeight: 700 }}>ADD TO N-400{sectionOf(data, m.field) ? ` · ${sectionOf(data, m.field).toUpperCase()}` : ''}</div>
+                    <div className="label" style={{ fontSize: 12 }}>Add to N-400{sectionOf(data, m.field) ? ` · ${sectionOf(data, m.field)}` : ''}</div>
                     <div style={{ fontSize: 20, lineHeight: '28px' }}>{m.text}</div>
                     <div className="btns">
                       {m.approved ? (
@@ -221,14 +221,14 @@ export default function Chat() {
                 </div>
               ) : (
                 <div key={i} className={`msg${cont(i) && m.kind !== 'official_question' ? ' cont' : ''}`}>
-                  {(!cont(i) || m.kind === 'official_question') && <div className="label green">{m.kind === 'official_question' ? 'ELLIS · OFFICIAL N-400 QUESTION' : 'ELLIS'}</div>}
+                  {(!cont(i) || m.kind === 'official_question') && <div className="label green">{m.kind === 'official_question' ? `${t(lang, 'ellis')} · Official N-400 question` : t(lang, 'ellis')}</div>}
                   <p className="lead">{m.text}</p>
                   {m.en && <div className="small" lang={lang === 'en' ? 'es' : 'en'}>{m.en}</div>}
                   {m.perms?.map((p) => (
                     <div key={p.id} className="perm" role="group" aria-label="Ellis needs your OK">
                       <div className="perm-head label">
                         <Icon name={p.kind === 'ask_clinic' ? 'send' : 'lock'} />
-                        {p.kind === 'ask_clinic' ? 'SEND TO YOUR CLINIC' : 'CHANGE A SETTING'} · NEEDS YOUR OK
+                        {p.kind === 'ask_clinic' ? 'Send to your clinic' : 'Change a setting'} · needs your OK
                       </div>
                       <div className="perm-body">
                         <div style={{ fontWeight: 700 }}>{p.title}</div>
@@ -254,7 +254,7 @@ export default function Chat() {
                     <div className="margin-notes">
                       {m.flags.map((f) => (
                         <a key={f.id} href="/profile?tab=flags" data-nav className="margin-note">
-                          <span className="label" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Flag size={13} pole="#0e192b" />CLINIC WILL CHECK</span>
+                          <span className="label" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Flag size={13} pole="#0e192b" />Clinic will check</span>
                           <strong>{f.label}</strong>
                           <span className="soft">Nothing is decided yet.</span>
                         </a>

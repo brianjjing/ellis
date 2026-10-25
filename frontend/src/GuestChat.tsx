@@ -62,7 +62,9 @@ export default function GuestChat() {
                 <div key={i} className="msg">
                   <div className="label green">{t(lang, 'ellis')}</div>
                   <p className="lead">{m.text}</p>
-                  <p className="small">{t(lang, 'saveAccount')} <a href="/signup" data-nav className="link-btn">{t(lang, 'signUp')}</a></p>
+                  {msgs.findIndex(x => x.who === 'ellis') === i && (
+                    <p className="small">{t(lang, 'saveAccount')} <a href="/signup" data-nav className="link-btn">{t(lang, 'signUp')}</a></p>
+                  )}
                 </div>
               ))}
             </div>
