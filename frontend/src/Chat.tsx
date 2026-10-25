@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import Shell from './Shell'
 import { Flag, Icon } from './icons'
 import { daysToFile, useCase, type CaseView } from './applicant/ApplicantApp'
-import { langOf } from './applicant/i18n'
+import { GuideStart } from './applicant/Guide'
+import { langOf, t } from './applicant/i18n'
 import { VoiceClient, type VoiceState } from './applicant/voice'
+import { api } from './api'
 
 // A permission card: Ellis asked to do something only the applicant can approve (a setting, a question to the clinic).
 type Perm = { id: string; kind: 'setting' | 'ask_clinic'; title: string; detail?: string | null; allowed?: boolean }
@@ -32,8 +34,10 @@ function greeting() {
   return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'
 }
 
+const VOICE_KEY = { connecting: 'connecting', listening: 'listening', thinking: 'thinking', speaking: 'ellisSpeaking', idle: 'paused', ended: 'voiceEnded' } as const
+
 export default function Chat() {
-  const { data, upload } = useCase()
+  const { data, upload, reload } = useCase()
   const lang = langOf(data)
   const [msgs, setMsgs] = useState(live)
   const [focus, setFocus] = useState(liveFocus)
@@ -48,6 +52,8 @@ export default function Chat() {
   const [viewing, setViewing] = useState<Thread | null>(null)
   const [typed, setTyped] = useState('')
   const [holding, setHolding] = useState(false)
+  const [consentLater, setConsentLater] = useState(false)
+  const [started, setStarted] = useState(live.length > 0)
   const [sound, setSound] = useState(soundOn)
   const vc = useRef<VoiceClient | null>(null)
   const add = (m: Msg) => setMsgs((ms) => (live = [...ms, m]))
@@ -59,7 +65,7 @@ export default function Chat() {
     setSince(live.length)
     const c: VoiceClient = new VoiceClient({
       // A stopped client still reports 'ended' when its socket finally closes; only the current one counts.
-      onState: (s) => { if (vc.current === c) setState(s) },
+      onState: (s) => { if (vc.current === c) { setState(s); if (s !== 'listening') setHolding(false) } },
       onCaption: (cap) => { if (cap.who === 'usted') add({ who: 'you', text: cap.text, spoken: cap.spoken }) },
       onPartial: setPartial,
       onReady: (info) => {
@@ -94,8 +100,15 @@ export default function Chat() {
     setHolding(false)
     vc.current?.setVoice(v)
   }
-  const hold = () => { if (vc.current?.hold()) setHolding(true); else setNotice('No microphone: you can type your answers.') }
-  const release = () => { vc.current?.release(); setHolding(false) }
+  const tap = () => {
+    const r = vc.current?.toggle()
+    if (r === 'unavailable') setNotice(t(lang, 'micDeniedTitle'))
+    setHolding(r === 'on')
+  }
+  const agree = async () => {
+    await api('/api/a/consent', { body: { agree: true } })
+    await reload()
+  }
   const toggleSound = () => { setSound((soundOn = !sound)); vc.current?.setSound(soundOn) }
 
   const send = (text = typed.trim()) => {
@@ -149,6 +162,22 @@ export default function Chat() {
             <div className="thread" aria-live="polite">
               {/* the page's greeting, not something Ellis said */}
               {!viewing && <p className="lead" style={{ fontFamily: 'var(--serif)', fontSize: 32, lineHeight: '40px' }}>{greeting()}, {data.first_name}.{canFile}</p>}
+              {!viewing && !data.consent_given && (
+                <section className="panel" aria-label={t(lang, 'iAgree')}>
+                  <p className="lead">{data.disclosure}</p>
+                  {consentLater ? <p>{t(lang, 'consentLater')}</p> : (
+                    <div className="btns">
+                      <button type="button" className="btn lg primary" onClick={agree}>{t(lang, 'iAgree')}</button>
+                      <button type="button" className="btn" onClick={() => setConsentLater(true)}>{t(lang, 'notNow')}</button>
+                    </div>
+                  )}
+                </section>
+              )}
+              {!viewing && data.consent_given && !started && msgs.length === 0 && (
+                <GuideStart lang={lang} onLocale={async (code) => { await api('/api/a/language', { body: { locale: code } }); await reload() }}
+                  onTalk={() => { setStarted(true); setMode(true) }} onType={() => { setStarted(true); setMode(false) }}
+                  onChip={(text) => { setStarted(true); send(text) }} />
+              )}
 
               {shown.map((m, i) => m.who === 'you' ? (
                 <div key={i} className={`you${cont(i) ? ' cont' : ''}`}>
@@ -237,23 +266,21 @@ export default function Chat() {
                     )}
                   </div>
                 )}
+                <p className="voice-state" aria-live="polite">{voice ? t(lang, VOICE_KEY[state]) : t(lang, 'paused')}</p>
                 <form className="ask" onSubmit={(e) => { e.preventDefault(); send() }}>
                   <span className="tools">
-                    <button type="button" aria-label="Upload a document" className="icon-btn" onClick={() => upload()}><Icon name="clip" size={20} /></button>
-                    {voice
-                      ? <button type="button" aria-label="Type instead" className="icon-btn" onClick={() => setMode(false)}><Icon name="keyboard" size={22} /></button>
-                      : <button type="button" aria-label="Talk instead" className="icon-btn" onClick={() => setMode(true)}><Icon name="talk" size={22} /></button>}
+                    <button type="button" aria-label={t(lang, 'uploadDoc')} className="icon-btn" onClick={() => upload()}><Icon name="clip" size={20} /></button>
+                    <button type="button" className="btn" onClick={() => setMode(!voice)}>{voice ? t(lang, 'typeWord') : t(lang, 'talk')}</button>
                   </span>
-                  <label htmlFor="msg" className="sr-only">{voice ? 'What you are saying' : 'Message Ellis'}</label>
-                  {/* talking: the words appear here as they're recognized, and go when the button is let go */}
+                  <label htmlFor="msg" className="sr-only">{voice ? t(lang, 'listening') : 'Message Ellis'}</label>
                   <input id="msg" type="text" autoComplete="off" readOnly={voice} value={voice ? partial : typed} onChange={(e) => setTyped(e.target.value)}
-                    placeholder={!voice ? 'Ask anything, in any language' : holding ? "Listening… let go to send." : 'Hold on the green microphone button to the right and talk!'} />
+                    placeholder={!voice ? 'Ask anything, in any language' : t(lang, VOICE_KEY[state])} />
                   {voice ? (
-                    <button type="button" aria-label="Hold to talk" aria-pressed={holding} className="icon-btn talk"
-                      onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); hold() }} onPointerUp={release} onPointerCancel={release}
-                      onKeyDown={(e) => { if ((e.key === ' ' || e.key === 'Enter') && !e.repeat) { e.preventDefault(); hold() } }}
-                      onKeyUp={(e) => { if (e.key === ' ' || e.key === 'Enter') release() }} onContextMenu={(e) => e.preventDefault()}>
+                    <button type="button" aria-label={holding || state === 'speaking' ? t(lang, 'stop') : t(lang, 'talk')} aria-pressed={holding || state === 'listening'}
+                      className={`btn primary talk-btn${state === 'listening' || state === 'speaking' ? ' pulse' : ''}`}
+                      onClick={tap}>
                       <Icon name="mic" size={22} />
+                      {holding || state === 'speaking' ? t(lang, 'stop') : t(lang, 'talk')}
                     </button>
                   ) : (
                     <button type="submit" aria-label="Send" className="icon-btn" style={{ background: 'var(--ink)', color: 'var(--white)' }}><Icon name="send" size={20} /></button>
