@@ -15,7 +15,8 @@ type Overlay =
   | { kind: 'biographics' }
   | null
 
-// filling: the part an N-400 upload is filling right now (from the server's n400.fill pushes), else null
+// filling: the part an N-400 upload is filling right now (from the server's n400.fill pushes), 'reading' from the
+// moment the file is stored until the first part starts, else null
 type Ctx = { data: CaseView; reload: () => Promise<CaseView>; upload: (documentType?: string) => void; filling: string | null }
 const CaseCtx = createContext<Ctx>(null!)
 export const useCase = () => useContext(CaseCtx)
@@ -54,6 +55,7 @@ export default function ApplicantApp({ children }: { children: ReactNode }) {
       else if (m.type === 'open_upload') setOverlay({ kind: 'upload', documentType: p.document_type })
       else if (m.type === 'open_biographics') setOverlay({ kind: 'biographics' })
       else if (m.type === 'n400.fill') setFilling(p.section ?? null)
+      else if (m.type === 'document.status' && p.document_type === 'n400') setFilling(p.status === 'extracting' ? 'reading' : null)
       else if (m.type === 'referral_card' && p.variant === 'stop_now') setCards((c) => [...c.filter((x) => x.flag_id !== p.flag_id), p]) // other flags: a note beside the chat reply
       refresh()
     })

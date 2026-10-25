@@ -27,6 +27,9 @@ from .values import ValueError_, equal, normalize
 MAX_BYTES = 10 * 1024 * 1024
 MAX_PAGES = 5
 N400_MAX_PAGES = 30  # the whole form in one PDF
+# ponytail: a just-stored file handed to its own extraction in this process, so it isn't downloaded back from
+# storage; an entry lives until that extraction pops it (a store whose request then fails leaves one behind)
+_fresh: dict[str, bytes] = {}
 MAGIC = [
     (b"\xff\xd8\xff", "image/jpeg", "jpg"),
     (b"\x89PNG\r\n\x1a\n", "image/png", "png"),
@@ -97,6 +100,7 @@ def store_upload(s: Session, case: Case, document_type: str, filename: str, data
     s.flush()
     doc.storage_path = f"{case.id}/{doc.id}.{ext}"
     storage.put(doc.storage_path, clean, mime)
+    _fresh[doc.id] = clean
     cs.emit(s, case, "doc.uploaded", {"document_id": doc.id, "document_type": document_type}, actor_type, uploaded_by)
     cs.push(s, case, "document.status", {"document_id": doc.id, "status": "extracting",
                                          "document_type": document_type})
@@ -114,7 +118,7 @@ def run_extraction_subprocess(doc: Document, on_field: Callable[[dict], None] | 
                                                          "HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY",
                                                          "REQUESTS_CA_BUNDLE")}
     try:
-        with storage.local_file(doc.storage_path) as path:
+        with storage.local_file(doc.storage_path, _fresh.pop(doc.id, None)) as path:
             proc = subprocess.Popen(
                 # -E -s, not -I: -I also drops the cwd from sys.path, and then `ellis` only imports when it is
                 # pip-installed in a way isolated mode still sees (true of uv's backend/.venv, not the repo .venv)
@@ -277,23 +281,29 @@ def _apply_fields(s: Session, case: Case, doc: Document, data: dict, vaulted: di
 
 
 def schema_problem() -> str | None:
-    """Checked before an N-400 fills anything: every table and column the models expect exists in the live database."""
-    from sqlalchemy import inspect
+    """Checked before an N-400 fills anything: every table and column the models expect exists in the live database.
+    One query for the whole schema, not one per table: on a hosted database every round trip shows."""
+    from sqlalchemy import text
     from ..db import Base, engine
-    insp = inspect(engine())
-    live = set(insp.get_table_names())
+    with engine().connect() as con:
+        q = ("select table_name, column_name from information_schema.columns where table_schema = current_schema()"
+             if con.dialect.name == "postgresql" else
+             "select m.name, p.name from sqlite_master m join pragma_table_info(m.name) p where m.type = 'table'")
+        live: dict[str, set[str]] = {}
+        for table, column in con.execute(text(q)):
+            live.setdefault(table, set()).add(column)
     for table in Base.metadata.sorted_tables:
         if table.name not in live:
             return f"table {table.name} is missing"
-        cols = {c["name"] for c in insp.get_columns(table.name)}
-        if missing := [c.name for c in table.columns if c.name not in cols]:
+        if missing := [c.name for c in table.columns if c.name not in live[table.name]]:
             return f"{table.name} is missing {', '.join(missing)}"
     return None
 
 
 def fill_n400(doc_id: str) -> None:
     """An uploaded N-400 fills the form in one sweep: the worker reads the file once and streams each app field as it
-    passes it; each is written (or cleared) and committed at once, so the parts view fills as the sweep moves."""
+    passes it; each is written (or cleared) as it arrives and each part is committed as the sweep leaves it, so the
+    parts view fills part by part. The case's answers are read once up front, not once per field."""
     with session_scope() as s:
         doc = s.get(Document, doc_id)
         case = s.get(Case, doc.case_id)
@@ -303,18 +313,23 @@ def fill_n400(doc_id: str) -> None:
         answers: dict[str, Any] = {}
         applied: list[str] = []
         state = {"section": None, "owner_ok": True}
+        facts: dict[str, list[Fact]] | None = None  # None: no consent yet, values wait in the prefill bag
+        if cs.consent_given(s, case):
+            facts = {}
+            for f in cs.facts_for(s, case.id):
+                facts.setdefault(f.field, []).append(f)
 
         def on_field(m: dict) -> None:
             field, value = m["field"], m["value"]
             if m["section"] != state["section"]:
                 state["section"] = m["section"]
                 cs.push(s, case, "n400.fill", {"document_id": doc.id, "section": m["section"]})
+                s.commit()  # the finished part's answers and the spinner's move reach the screen together
             if field == "name.given" and value:  # fills either way; someone else's name is flagged for the clinic
                 state["owner_ok"] = _belongs_to_applicant(s, case, doc, {"answers": {field: value}})
-            if _set_n400_field(s, case, doc, field, value):
+            if _set_n400_field(s, case, doc, field, value, facts):
                 applied.append(field)
             answers[field] = catalog.mask_token(field) if value and catalog.is_masked(field) else value
-            s.commit()
 
         result = run_extraction_subprocess(doc, on_field)
         if not result.get("ok"):
@@ -354,35 +369,38 @@ def _coerce(field: str, value: Any) -> Any:
     return value
 
 
-def _set_n400_field(s: Session, case: Case, doc: Document, field: str, value: Any) -> bool:
-    """The upload overrides the online form: its value replaces the answer; a blank or unreadable one clears it."""
-    if not cs.consent_given(s, case):  # no fact rows before consent: the value waits in the prefill bag
+def _set_n400_field(s: Session, case: Case, doc: Document, field: str, value: Any,
+                    facts: dict[str, list[Fact]] | None) -> bool:
+    """The upload overrides the online form: its value replaces the answer; a blank or unreadable one clears it.
+    facts is the case's live answers by field (kept current here), or None before consent."""
+    if facts is None:  # no fact rows before consent: the value waits in the prefill bag
         if value in (None, "", []):
             return False
         from .accounts import stash_extracted
         stash_extracted(s, case, field, value, document_id=doc.id)
         return True
-    cur = cs.current_facts(s, case.id).get(field)
+    others = facts.get(field, [])
+    cur = ([f for f in others if f.status != "disputed"] or others or [None])[-1]  # as cs.current_facts picks
     if cur is not None and cur.value == catalog.DEFERRED:
         return False  # deferred to a licensed professional: not the upload's to undo
     try:
         value = None if value in (None, "", []) else normalize(field, _coerce(field, value))
     except ValueError_:
         value = None  # can't tell what the form says: fill it with nothing
-    others = cs.facts_for(s, case.id, field)
     if value is None:
         if others:
             cs._supersede(others, None, "cleared by N-400 upload")
             cs.emit(s, case, "fact.cleared", {"field": field, "document_id": doc.id}, "system", "extraction_worker")
+            facts[field] = []
         return False
     masked = catalog.is_masked(field)
-    if cur is not None and cur.status == "confirmed" and (
-            cs.vault_lookup(s, cur.id) == str(value) if masked else equal(field, cur.value, value)):
-        return True
+    if cur is not None and cur.status == "confirmed" and not masked and equal(field, cur.value, value):
+        return True  # unchanged (a masked value is rewritten rather than read back out of the vault)
     f = cs._insert_fact(s, case, field, catalog.mask_token(field) if masked else value, "confirmed", "document",
                         provenance={"document_id": doc.id, "document_type": "n400"}, proposed_by="extraction",
                         supersedes=cur.id if cur else None, confidence="high")
     cs._supersede(others, f, "replaced by N-400 upload")
+    facts[field] = [f]
     if masked:
         s.add(VaultValue(fact_id=f.id, clinic_id=case.clinic_id, case_id=case.id, field=field,
                          ciphertext=vault.encrypt(str(value)), last4=str(value)[-4:]))

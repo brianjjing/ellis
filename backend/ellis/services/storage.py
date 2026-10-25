@@ -88,15 +88,16 @@ def get(key: str) -> bytes:
 
 
 @contextmanager
-def local_file(key: str) -> Iterator[str]:
-    """A filesystem path holding the object, for code that needs a path (the extraction subprocess)."""
+def local_file(key: str, data: bytes | None = None) -> Iterator[str]:
+    """A filesystem path holding the object, for code that needs a path (the extraction subprocess). Pass data when
+    the caller already has the bytes, to skip downloading them again."""
     if not _supabase():
         yield str(_local_path(key))
         return
     fd, tmp = tempfile.mkstemp(suffix=Path(key).suffix, prefix="ellis-")
     try:
         with os.fdopen(fd, "wb") as f:
-            f.write(get(key))
+            f.write(get(key) if data is None else data)
         yield tmp
     finally:
         os.unlink(tmp)
