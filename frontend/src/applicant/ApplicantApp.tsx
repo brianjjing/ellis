@@ -32,6 +32,8 @@ export function daysToFile(data: CaseView) {
   return Math.max(1, Math.ceil((Date.parse(f.earliest_filing) - Date.now()) / 864e5))
 }
 
+const NO_CASE_CHANGE = new Set(['caption', 'open_secure_entry', 'open_upload', 'open_biographics'])
+
 export default function ApplicantApp({ children }: { children: ReactNode }) {
   const [data, setData] = useState<CaseView | null>(null)
   const [failed, setFailed] = useState(false)
@@ -47,14 +49,30 @@ export default function ApplicantApp({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!data) return
-    const refresh = debounce(() => reload().catch(() => undefined), 250)
+    // One reload at a time: updates that arrive while one runs fold into a single reload after it. A reload reads
+    // the whole case (15 queries), so a burst of updates must not stack them up.
+    let running = false
+    let again = false
+    const run = () => {
+      if (running) { again = true; return }
+      running = true
+      reload().catch(() => undefined).finally(() => {
+        running = false
+        if (again) { again = false; run() }
+      })
+    }
+    const refresh = debounce(run, 250)
     return stream('/api/a/stream', (m) => {
       if (m.type === 'ping') return
+      // Ellis's captions are already in the chat, and the sheet signals only open a sheet: no case data changed.
+      if (NO_CASE_CHANGE.has(m.type)) {
+        if (m.type === 'open_secure_entry') setOverlay({ kind: 'secure', field: m.payload?.field, label: m.payload?.label })
+        else if (m.type === 'open_upload') setOverlay({ kind: 'upload', documentType: m.payload?.document_type })
+        else if (m.type === 'open_biographics') setOverlay({ kind: 'biographics' })
+        return
+      }
       const p = m.payload || {}
-      if (m.type === 'open_secure_entry') setOverlay({ kind: 'secure', field: p.field, label: p.label })
-      else if (m.type === 'open_upload') setOverlay({ kind: 'upload', documentType: p.document_type })
-      else if (m.type === 'open_biographics') setOverlay({ kind: 'biographics' })
-      else if (m.type === 'n400.fill') setFilling(p.section ?? null)
+      if (m.type === 'n400.fill') setFilling(p.section ?? null)
       else if (m.type === 'document.status' && p.document_type === 'n400') setFilling(p.status === 'extracting' ? 'reading' : null)
       else if (m.type === 'referral_card' && p.variant === 'stop_now') setCards((c) => [...c.filter((x) => x.flag_id !== p.flag_id), p]) // other flags: a note beside the chat reply
       refresh()
