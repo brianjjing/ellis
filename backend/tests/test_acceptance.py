@@ -541,3 +541,18 @@ def test_applicant_deletes_all_chat_history(client):
     with session_scope() as s:
         assert not s.scalars(select(Utterance).where(Utterance.case_id == "c_maria")).first()
         assert s.scalars(select(Fact).where(Fact.case_id == "c_maria", Fact.field == "names.used")).first()  # answers stay
+
+
+def test_applicant_confirms_an_answer_waiting_for_its_read_back_on_the_form(client):
+    client.post("/api/a/session", json={"token": "demo-maria"})
+    client.post("/api/a/consent", json={"agree": True})
+    tool(client, "c_maria", "record_fact", {"field": "trips.any", "value": True})
+    tool(client, "c_maria", "record_fact", {"field": "trips[0].departure", "value": "2024-03-01"})  # readback: proposed
+
+    def item():
+        facts = client.get("/api/a/case").json()["facts"]
+        return next(i for g in facts for i in g["items"] if i["field"] == "trips[0].departure")
+    assert item()["chip"]["key"] == "needs_ok"
+    assert client.post("/api/a/confirm", json={"field": "trips[0].departure"}).json()["status"] == "confirmed"
+    assert item()["status"] == "confirmed"
+    assert client.post("/api/a/confirm", json={"field": "dob_nope"}).status_code == 404

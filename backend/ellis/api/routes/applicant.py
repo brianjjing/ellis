@@ -15,7 +15,8 @@ from sqlalchemy import select
 
 from ...config import settings
 from ...db import Case, Gap, Packet, session_scope
-from ...services import auth, bus, case_service as cs, documents as docsvc, languages, review, signoff, storage, views
+from ...services import (auth, bus, case_service as cs, catalog, documents as docsvc, languages, review, signoff,
+                         storage, views)
 from ...services.flags import STOP_NOW
 from ..deps import APPLICANT_COOKIE, applicant_case, err
 
@@ -202,6 +203,28 @@ def answer(body: AnswerReq, request: Request) -> dict[str, Any]:
             raise err(e.status, e.code, e.message, e.field) from None
         cs.push(s, case, "fact.saved", {"field": body.field})
         return {"saved": bool(res.get("saved", True)), "field": body.field}
+
+
+class ConfirmReq(BaseModel):
+    field: str
+
+
+@router.post("/confirm")
+def confirm(body: ConfirmReq, request: Request) -> dict[str, Any]:
+    """The form's "Yes, that's right": the applicant confirms the answer Ellis has, as if typed again. A document
+    conflict or an open flag still sends it to the clinic, so the status comes back."""
+    with session_scope() as s:
+        case = applicant_case(request, s)
+        cur = cs.current_facts(s, case.id).get(body.field)
+        if cur is None or catalog.is_masked(body.field):
+            raise err(404, "no_fact", "There's no answer to confirm here.", body.field)
+        try:
+            res = cs.record_fact(s, case, body.field, cur.value, source="applicant_typed", actor="applicant",
+                                 actor_type="applicant")
+        except cs.CaseError as e:
+            raise err(e.status, e.code, e.message, e.field) from None
+        cs.push(s, case, "fact.saved", {"field": body.field})
+        return {"field": body.field, "status": (res.get("fact") or {}).get("status")}
 
 
 @router.post("/clear")

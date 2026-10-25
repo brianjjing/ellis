@@ -55,6 +55,7 @@ CHIP_LABELS = {
     "confirmed": {"es": "Confirmado ✓", "en": "Confirmed ✓"},
     "document": {"es": "De su documento", "en": "From your document"},
     "spoken": {"es": "Usted lo dijo", "en": "You said it"},
+    "needs_ok": {"es": "Falta su confirmación", "en": "Needs your OK"},
 }
 
 
@@ -67,6 +68,8 @@ def chip(f: dict, open_fields: set[str], corrected: bool, lang: str = "es") -> d
         key = "deferred"
     elif f["status"] == "confirmed":
         key = "confirmed"
+    elif f["status"] == "proposed":
+        key = "needs_ok"  # waiting for the applicant's yes: a read-back, or the form's confirm button
     elif f["source"] == "document":
         key = "document"
     else:
