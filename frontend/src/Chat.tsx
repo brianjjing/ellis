@@ -156,7 +156,7 @@ export default function Chat() {
   // Same speaker twice in a row: one label over the run.
   const cont = (i: number) => i > 0 && shown[i - 1].who === shown[i].who
   const days = daysToFile(data)
-  const canFile = data.filing_window ? (days ? ` You can file in ${days} days.` : ' You can file now.') : ''
+  const canFile = data.filing_window ? (days ? ` Earliest filing: ${days} days away — your clinic will confirm.` : ' Your clinic will confirm when you are ready to file.') : ''
   const title = viewing ? titleOf(viewing) : sectionOf(data, [...msgs].reverse().find((m) => m.field)?.field) ?? 'Chat with Ellis'
 
   return (
