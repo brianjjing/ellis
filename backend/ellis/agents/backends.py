@@ -214,26 +214,35 @@ class CreaoBackend:
             raise BackendError(f"Creao not configured for {agent} ({prefix}_API_KEY / {prefix}_APP_ID)")
         base = os.environ.get("CREAO_BASE_URL", "https://agent.creao.ai")
         headers = {"Authorization": f"Bearer {key}"}
-        r = httpx.post(f"{base}/api/v1/apps/{app_id}/runs", headers=headers, timeout=30,
-                       json={"inputs": {"case_id": ctx["case"]["id"], "trigger": "staff_round_done",
-                                        "case_bundle": _to_case_bundle(ctx)}})
-        r.raise_for_status()
-        creao_run_id = r.json()["id"]
-        deadline = time.time() + POLL_TIMEOUT_S
-        result = None
-        while time.time() < deadline:
-            time.sleep(POLL_INTERVAL_S)
-            rr = httpx.get(f"{base}/api/v1/apps/{app_id}/runs/{creao_run_id}", headers=headers, timeout=30)
-            rr.raise_for_status()
-            d = rr.json()
-            if d["status"] not in ("pending", "running"):
-                result = d
-                break
+        try:
+            r = httpx.post(f"{base}/api/v1/apps/{app_id}/runs", headers=headers, timeout=30,
+                           json={"inputs": {"case_id": ctx["case"]["id"], "trigger": "staff_round_done",
+                                            "case_bundle": _to_case_bundle(ctx)}})
+            r.raise_for_status()
+            creao_run_id = r.json()["id"]
+            deadline = time.time() + POLL_TIMEOUT_S
+            result = None
+            while time.time() < deadline:
+                time.sleep(POLL_INTERVAL_S)
+                rr = httpx.get(f"{base}/api/v1/apps/{app_id}/runs/{creao_run_id}", headers=headers, timeout=30)
+                rr.raise_for_status()
+                d = rr.json()
+                if d["status"] not in ("pending", "running"):
+                    result = d
+                    break
+        except httpx.HTTPError as e:
+            # network blip, rate limit, transient 5xx, expired key, etc. -- surfaced to run_job() as a
+            # BackendError so the job fails cleanly (Task + agent.run_failed event) instead of leaving
+            # the job stuck in "running" forever with an uncaught exception.
+            raise BackendError(f"Creao call failed for {agent}: {e}") from e
         if result is None:
             raise BackendError(f"Creao run {creao_run_id} ({agent}) timed out after {POLL_TIMEOUT_S}s")
         if result["status"] != "completed":
             raise BackendError(f"Creao run {creao_run_id} ({agent}) ended with status {result['status']}")
-        items = _translate(agent, result["result"], headers, ctx.get("language", "es"))
+        try:
+            items = _translate(agent, result["result"], headers, ctx.get("language", "es"))
+        except httpx.HTTPError as e:
+            raise BackendError(f"Creao artifact fetch failed for {agent}: {e}") from e
         return {"agent": agent, "run_id": run_id, "case_id": ctx["case"]["id"],
                 "based_on_event_id": ctx.get("latest_event_id"), "items": items}
 
