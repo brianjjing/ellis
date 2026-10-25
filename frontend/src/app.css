@@ -158,6 +158,16 @@ button { font-family: inherit; }
 .more-menu-body { position: absolute; right: 0; top: calc(100% + 4px); z-index: 30; min-width: 200px; background: var(--white); border: 1px solid var(--line-strong); border-radius: 6px; box-shadow: 0 4px 16px rgba(14,25,43,.12); display: flex; flex-direction: column; gap: 2px; padding: 4px; }
 .more-menu-body .btn { justify-content: flex-start; text-align: left; }
 
+/* Chat start screen (guest and signed-in): greeting + box centered, chips under the box, language bottom-right */
+.convo.empty { justify-content: center; padding-bottom: 72px; } /* padding keeps content clear of the language button */
+.convo.empty .thread { flex-grow: 0; padding-bottom: 8px; text-align: center; }
+.convo.empty .composer { position: static; border: 0; }
+.convo.empty .composer .btns { justify-content: center; }
+.convo.empty .composer .small { text-align: center; }
+.lang-menu { position: fixed; right: 24px; bottom: 24px; z-index: 5; }
+.lang-menu .more-menu-body { top: auto; bottom: calc(100% + 4px); }
+@media (max-width: 800px) { .lang-menu { right: 16px; bottom: 80px; } } /* above the bottom nav */
+
 /* ---------- Ready gate ---------- */
 .gate-blocker { padding: 8px 0; border-bottom: 1px solid var(--line); }
 .gate-blocker:last-child { border-bottom: 0; }

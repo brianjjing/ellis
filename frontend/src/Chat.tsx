@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import Shell from './Shell'
 import { Flag, Icon } from './icons'
 import { daysToFile, useCase, type CaseView } from './applicant/ApplicantApp'
-import { GuideStart } from './applicant/Guide'
+import { GuideStart, LangMenu } from './applicant/Guide'
 import { langOf, t } from './applicant/i18n'
 import { VoiceClient, type VoiceState } from './applicant/voice'
 import { api } from './api'
@@ -65,6 +65,8 @@ export default function Chat() {
   const showGuide = !viewing && !!data.consent_given && !started && msgs.length === 0
   // The liaison waits until they leave the consent screen and the start screen. A chip can be typed before the socket opens.
   const composerOn = !showConsent && !showGuide
+  // On the start screen the centered box types; its Talk button starts a voice session, like "Start talking" did.
+  const talking = voice && !showGuide
 
   // One liaison session per chat; only "New chat" starts a fresh one. Typing vs. talking shares it.
   useEffect(() => {
@@ -125,6 +127,7 @@ export default function Chat() {
 
   const send = (text = typed.trim()) => {
     if (!text) return
+    if (showGuide) { setMode(false); queued.current = text; setTyped(''); return setStarted(true) } // leaves the start screen; sent once the socket opens
     setViewing(null)
     if (state === 'ended') return setSession((s) => s + 1) // reconnect first; the typed text stays to send again
     if (vc.current?.ws?.readyState === WebSocket.OPEN) vc.current.sendText(text)
@@ -174,7 +177,7 @@ export default function Chat() {
         </header>
 
         <div className="chat-body">
-          <section aria-label="Conversation" className="convo">
+          <section aria-label="Conversation" className={showGuide ? 'convo empty' : 'convo'}>
             <div className="thread" aria-live="polite">
               {/* the page's greeting, not something Ellis said */}
               {!viewing && <p className="lead" style={{ fontFamily: 'var(--serif)', fontSize: 32, lineHeight: '40px' }}>{greeting()}, {data.first_name}.{canFile}</p>}
@@ -188,11 +191,6 @@ export default function Chat() {
                     </div>
                   )}
                 </section>
-              )}
-              {showGuide && (
-                <GuideStart lang={lang} onLocale={async (code) => { await api('/api/a/language', { body: { locale: code } }); await reload() }}
-                  onTalk={() => { setMode(true); setStarted(true) }} onType={() => { setMode(false); setStarted(true) }}
-                  onChip={(text) => { setMode(false); queued.current = text; setStarted(true) }} />
               )}
 
               {shown.map((m, i) => m.who === 'you' ? (
@@ -265,7 +263,7 @@ export default function Chat() {
               ))}
             </div>
 
-            {composerOn && <div className="composer">
+            {!showConsent && <div className="composer">
               <div>
                 {notice && <p className="small rust" role="status">{notice}</p>}
                 {focus?.next_step && !viewing && (
@@ -282,16 +280,16 @@ export default function Chat() {
                     )}
                   </div>
                 )}
-                <p className="voice-state" aria-live="polite">{voice ? t(lang, VOICE_KEY[state]) : t(lang, 'paused')}</p>
+                {!showGuide && <p className="voice-state" aria-live="polite">{voice ? t(lang, VOICE_KEY[state]) : t(lang, 'paused')}</p>}
                 <form className="ask" onSubmit={(e) => { e.preventDefault(); send() }}>
                   <span className="tools">
                     <button type="button" aria-label={t(lang, 'uploadDoc')} className="icon-btn" onClick={() => upload()}><Icon name="clip" size={20} /></button>
-                    <button type="button" className="btn" onClick={() => setMode(!voice)}>{voice ? t(lang, 'typeWord') : t(lang, 'talk')}</button>
+                    <button type="button" className="btn" onClick={() => showGuide ? (setMode(true), setStarted(true)) : setMode(!voice)}>{talking ? t(lang, 'typeWord') : t(lang, 'talk')}</button>
                   </span>
-                  <label htmlFor="msg" className="sr-only">{voice ? t(lang, 'listening') : 'Message Ellis'}</label>
-                  <input id="msg" type="text" autoComplete="off" readOnly={voice} value={voice ? partial : typed} onChange={(e) => setTyped(e.target.value)}
-                    placeholder={!voice ? 'Ask anything, in any language' : t(lang, VOICE_KEY[state])} />
-                  {voice ? (
+                  <label htmlFor="msg" className="sr-only">{talking ? t(lang, 'listening') : 'Message Ellis'}</label>
+                  <input id="msg" type="text" autoComplete="off" readOnly={talking} value={talking ? partial : typed} onChange={(e) => setTyped(e.target.value)}
+                    placeholder={!talking ? 'Ask anything, in any language' : t(lang, VOICE_KEY[state])} />
+                  {talking ? (
                     <button type="button" aria-label={holding || state === 'speaking' ? t(lang, 'stop') : t(lang, 'talk')} aria-pressed={holding || state === 'listening'}
                       className={`btn primary talk-btn${state === 'listening' || state === 'speaking' ? ' pulse' : ''}`}
                       onClick={tap}>
@@ -302,14 +300,17 @@ export default function Chat() {
                     <button type="submit" aria-label="Send" className="icon-btn" style={{ background: 'var(--ink)', color: 'var(--white)' }}><Icon name="send" size={20} /></button>
                   )}
                 </form>
-                <div className="btns suggest">
-                  <button type="button" className="btn" onClick={() => send("What's my next step?")}>What's my next step?</button>
-                  <button type="button" className="btn" onClick={() => send('I want to practice my interview')}>Practice my interview</button>
-                  <button type="button" className="btn" onClick={() => upload()}>Read a document for me</button>
-                </div>
+                {showGuide ? <GuideStart lang={lang} onChip={send} /> : (
+                  <div className="btns suggest">
+                    <button type="button" className="btn" onClick={() => send("What's my next step?")}>What's my next step?</button>
+                    <button type="button" className="btn" onClick={() => send('I want to practice my interview')}>Practice my interview</button>
+                    <button type="button" className="btn" onClick={() => upload()}>Read a document for me</button>
+                  </div>
+                )}
               </div>
             </div>}
           </section>
+          {showGuide && <LangMenu lang={lang} onLocale={async (code) => { await api('/api/a/language', { body: { locale: code } }); await reload() }} />}
 
           {history && (
             <aside aria-label="Past chats" className="history enter">

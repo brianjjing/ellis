@@ -4,7 +4,7 @@ import { Icon } from './icons'
 import { navigate } from './main'
 import { api } from './api'
 import { goSignIn } from './auth'
-import { GuideStart } from './applicant/Guide'
+import { GuideStart, LangMenu } from './applicant/Guide'
 import { t, type Lang } from './applicant/i18n'
 
 type Msg = { who: 'you' | 'ellis'; text: string }
@@ -41,6 +41,7 @@ export default function GuestChat() {
     setBusy(false)
   }
   const pick = (code: string) => { guestLang = code.startsWith('es') ? 'es' : 'en'; setLang(guestLang) }
+  const empty = msgs.length === 0
   return (
     <Shell active="chat" guest>
       <main className="main chat">
@@ -52,10 +53,10 @@ export default function GuestChat() {
           </div>
         </header>
         <div className="chat-body">
-          <section aria-label="Conversation" className="convo">
+          {/* Empty: CSS centers the greeting and box, like other chat home pages. Same DOM either way, so the input keeps focus on first send. */}
+          <section aria-label="Conversation" className={empty ? 'convo empty' : 'convo'}>
             <div className="thread" aria-live="polite">
               <p className="lead" style={{ fontFamily: 'var(--serif)', fontSize: 32, lineHeight: '40px' }}>{greeting()}. I help people get ready to apply for U.S. citizenship.</p>
-              {msgs.length === 0 && <GuideStart lang={lang} onLocale={pick} onTalk={() => goSignIn('/')} onType={() => document.getElementById('msg')?.focus()} onChip={send} />}
               {msgs.map((m, i) => m.who === 'you' ? (
                 <div key={i} className="you"><div className="label">{t(lang, 'you')}</div><div className="bubble">{m.text}</div></div>
               ) : (
@@ -79,9 +80,11 @@ export default function GuestChat() {
                   <input id="msg" type="text" autoComplete="off" placeholder="Ask anything, in any language" value={typed} onChange={(e) => setTyped(e.target.value)} />
                   <button type="submit" aria-label="Send" className="icon-btn" style={{ background: 'var(--ink)', color: 'var(--white)' }}><Icon name="send" size={20} /></button>
                 </form>
+                {empty && <GuideStart lang={lang} onChip={send} />}
               </div>
             </div>
           </section>
+          {empty && <LangMenu lang={lang} onLocale={pick} />}
         </div>
       </main>
     </Shell>
