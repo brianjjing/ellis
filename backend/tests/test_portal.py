@@ -312,6 +312,52 @@ def test_activity_sentence_and_unknown(seeded):
         assert unknown.kind and describe(s, unknown).startswith("Case updated:")
 
 
+def test_activity_voice_fact(seeded):
+    """A fact saved by the applicant voice session."""
+    from ellis.db import Event
+    from ellis.services.activity import describe
+    with session_scope() as s:
+        ev = Event(clinic_id="cl_valle", case_id="c_rosa", kind="fact.recorded",
+                   payload={"field": "marital.status"}, actor_type="applicant", actor="applicant")
+        sentence = describe(s, ev)
+        assert sentence == "Client saved Marital status."
+
+
+def test_activity_correction(seeded):
+    """A fact confirmation by the liaison (read-back approved)."""
+    from ellis.db import Event
+    from ellis.services.activity import describe
+    with session_scope() as s:
+        ev = Event(clinic_id="cl_valle", case_id="c_rosa", kind="fact.confirmed",
+                   payload={"field": "lpr_since"}, actor_type="liaison", actor="liaison")
+        sentence = describe(s, ev)
+        assert sentence == "Client liaison confirmed Resident since."
+
+
+def test_activity_document_upload(seeded):
+    """A document uploaded by a staff member."""
+    from ellis.db import Event
+    from ellis.services.activity import describe
+    with session_scope() as s:
+        ev = Event(clinic_id="cl_valle", case_id="c_rosa", kind="doc.uploaded",
+                   payload={"document_type": "green_card"}, actor_type="staff", actor="staff")
+        sentence = describe(s, ev)
+        assert "uploaded" in sentence.lower()
+
+
+def test_activity_unknown_kind_uses_label(seeded):
+    """An event kind not in the template dict falls back to a readable label."""
+    from ellis.db import Event
+    from ellis.services.activity import describe
+    with session_scope() as s:
+        ev = Event(clinic_id="cl_valle", case_id="c_rosa", kind="future.thing",
+                   payload={}, actor_type="system", actor="case_api")
+        sentence = describe(s, ev)
+        assert sentence.startswith("Case updated:")
+        # The label is title-cased, not a raw key with dots
+        assert "future.thing" not in sentence
+
+
 def test_logged_in_link_attach_and_taken(client):
     case_id, token = new_clinic_case(client)
     signup(client)
