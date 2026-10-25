@@ -4,8 +4,11 @@ import { Icon } from './icons'
 import { useCase } from './applicant/ApplicantApp'
 
 // Section states from the Case API → the design's status words and colors.
-const status: Record<string, [string, string]> = {
-  done: ['Done', 'green'], partial: ['In progress', ''], blocked: ['With your professional', 'rust'], not_started: ['Not started', 'soft'],
+const statusMeta: Record<string, { label: string; cls: string }> = {
+  done: { label: 'Done', cls: 'green' },
+  partial: { label: 'In progress', cls: '' },
+  blocked: { label: 'With your professional', cls: 'rust' },
+  not_started: { label: 'Not started', cls: 'soft' },
 }
 const segment: Record<string, string> = { done: 'green', partial: 'gold', blocked: 'gold', not_started: 'segment-idle' }
 const chipColor: Record<string, string> = { confirmed: 'green', review: 'blue', deferred: 'rust' }
@@ -41,25 +44,31 @@ export default function Form() {
           <div key={i} className="content enter" style={{ padding: '48px 24px', gap: 28 }}>
             <div className="label">Part {i + 1} · {part.label} · {part.done} of {part.total} confirmed</div>
             <h2 className="display" style={{ marginTop: -14 }}>{part.label}</h2>
-            <p className="lead soft pull">Ellis asks these questions in the chat, one at a time. Here is what you have so far.</p>
 
-            <section aria-labelledby="answers" className="stack enter">
-              <h3 id="answers" className="rule" style={{ fontSize: 17, lineHeight: '24px', fontWeight: 700 }}>
-                <span className="green" style={{ fontWeight: 700 }}>Ellis</span> · {items.length ? `I have ${items.length} answer${items.length > 1 ? 's' : ''} for this part` : 'Nothing for this part yet'}
-              </h3>
-              {items.map((t: any) => (
-                <div key={t.field} className="row" style={{ padding: '16px 0' }}>
-                  <span style={{ flex: '1 1 220px', fontSize: 17, fontWeight: 700 }}>{t.label}</span>
-                  <span className="mono" style={{ flex: '1 1 220px', fontSize: 15 }}>
-                    {t.corrected_from && <><s>{t.corrected_from}</s> → </>}{t.value}{t.days !== undefined && ` · ${t.days} days`}
-                  </span>
-                  <span className={`status ${chipColor[t.chip.key] ?? ''}`}>{t.chip.label}</span>
-                </div>
-              ))}
-            </section>
+            {items.length === 0 ? (
+              <div className="panel" style={{ flexDirection: 'column', gap: 12 }}>
+                <p className="lead soft" style={{ margin: 0 }}>Nothing here yet. Ellis asks these questions in the chat, one at a time.</p>
+                <a href="/" data-nav className="btn md primary" style={{ alignSelf: 'flex-start' }}><Icon name="mic" />Answer with Ellis</a>
+              </div>
+            ) : (
+              <section aria-labelledby="answers" className="stack enter">
+                <h3 id="answers" className="rule" style={{ fontSize: 17, lineHeight: '24px', fontWeight: 700 }}>
+                  <span className="green" style={{ fontWeight: 700 }}>Ellis</span> · I have {items.length} answer{items.length > 1 ? 's' : ''} for this part
+                </h3>
+                {items.map((t: any) => (
+                  <div key={t.field} className="row" style={{ padding: '16px 0' }}>
+                    <span style={{ flex: '1 1 220px', fontSize: 17, fontWeight: 700 }}>{t.label}</span>
+                    <span className="mono" style={{ flex: '1 1 220px', fontSize: 15 }}>
+                      {t.corrected_from && <><s>{t.corrected_from}</s> → </>}{t.value}{t.days !== undefined && ` · ${t.days} days`}
+                    </span>
+                    <span className={`status ${chipColor[t.chip.key] ?? ''}`}>{t.chip.label}</span>
+                  </div>
+                ))}
+              </section>
+            )}
 
             <div className="btns" style={{ alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-              <a href="/" data-nav className="talk"><Icon name="mic" />Answer by talking to Ellis</a>
+              <a href="/" data-nav className="talk"><Icon name="mic" />{items.length ? 'Continue with Ellis' : 'Answer with Ellis'}</a>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button type="button" className="btn lg" disabled={i === 0} onClick={() => open(i - 1)}>Back</button>
                 <button type="button" className="btn lg primary" style={{ padding: '0 32px' }} onClick={() => (i + 1 < parts.length ? open(i + 1) : setView('parts'))}>{i + 1 < parts.length ? `Next: ${parts[i + 1].label}` : 'Done'}</button>
@@ -67,17 +76,30 @@ export default function Form() {
             </div>
           </div>
         ) : (
-          <div className="content enter" style={{ padding: '40px 24px 48px' }}>
-            {parts.map((p: any, n: number) => (
-              <button key={p.section} type="button" className="part" onClick={() => open(n)}>
-                <span className="mono" style={{ flex: '0 0 32px', fontSize: 14, fontWeight: 700 }}>{String(n + 1).padStart(2, '0')}</span>
-                <span style={{ flex: '1 1 240px', fontSize: 17, fontWeight: 700 }}>{p.label}</span>
-                <span className={`status ${status[p.state][1]}`}>{status[p.state][0]}</span>
-              </button>
-            ))}
-            {data.state === 'ready' || data.state === 'signed' ? (
+          <div className="content enter" style={{ padding: '40px 24px 48px', gap: 0 }}>
+            {parts.map((p: any, n: number) => {
+              const meta = statusMeta[p.state] ?? statusMeta.not_started
+              return (
+                <div key={p.section} className="form-section-row" onClick={() => open(n)}>
+                  <span className="mono" style={{ flex: '0 0 28px', fontSize: 13, fontWeight: 700, color: 'var(--ink-soft)' }}>{String(n + 1).padStart(2, '0')}</span>
+                  <span style={{ flex: '1 1 200px', fontSize: 17, fontWeight: 700 }}>{p.label}</span>
+                  <span className="soft small">{p.done} of {p.total}</span>
+                  <span className={`status ${meta.cls}`}>{meta.label}</span>
+                  <div className="btns" style={{ gap: 6, flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
+                    <a href="/" data-nav className="btn sm"><Icon name="mic" size={14} />Answer</a>
+                    <button type="button" className="btn sm" onClick={() => open(n)}>Edit</button>
+                  </div>
+                </div>
+              )
+            })}
+            {parts.length === 0 && (
+              <div className="panel" style={{ margin: '20px 0' }}>
+                <p className="lead soft" style={{ margin: 0 }}>No sections yet. Your form will appear here after your first session with Ellis.</p>
+              </div>
+            )}
+            {(data.state === 'ready' || data.state === 'signed') && (
               <a href="/review" data-nav className="btn lg primary" style={{ marginTop: 28, alignSelf: 'flex-start' }}>{data.state === 'ready' ? 'Review and sign' : 'Open my packet'}</a>
-            ) : null}
+            )}
           </div>
         )}
       </main>
