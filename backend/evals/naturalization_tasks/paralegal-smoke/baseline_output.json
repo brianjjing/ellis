@@ -1,0 +1,120 @@
+{
+  "case_id": "case_test_001",
+  "items": [
+    {
+      "type": "doc_checks",
+      "document_id": "doc_passport",
+      "exhibit": 1,
+      "checks": {
+        "legible": "not_checked: no file",
+        "document_type": "passport — matches listed type; data page fields present (holder_name, expiration_date, stamps)",
+        "pages_complete": "not_checked: no file",
+        "not_expired": "valid — expires 2031-08-14",
+        "belongs_to_client": "not_checked: no file; holder_name token [NAME_1] matches the case full_name fact",
+        "consistent_with_facts": "exit stamp 2023-03-03 matches trip_3_departure; entry stamp 2023-06-02 does not match trip_3_return 2023-05-20 (13 days later)",
+        "supports_or_closes": "supports the departure leg of trip 3; does not close flag:citation:"
+      }
+    },
+    {
+      "type": "doc_checks",
+      "document_id": "doc_green_card",
+      "exhibit": 2,
+      "checks": {
+        "legible": "not_checked: no file",
+        "document_type": "permanent resident card — fields present (holder_name, a_number, resident_since, card_expires)",
+        "pages_complete": "not_checked: no file; card front only in extraction, back not listed",
+        "not_expired": "valid — card expires 2029-04-10",
+        "belongs_to_client": "not_checked: no file; a_number [ANUM_1] matches the case a_number fact, holder_name token [NAME_2] does not match [NAME_1]",
+        "consistent_with_facts": "a_number consistent; holder_name conflicts with full_name fact; resident_since 2019-04-10 is not currently in the case facts",
+        "supports_or_closes": "supports residence since 2019-04-10; does not close flag:citation:"
+      }
+    },
+    {
+      "type": "review_item",
+      "category": "name_mismatch",
+      "field": "full_name",
+      "severity": "High",
+      "source_document_ids": ["doc_passport", "doc_green_card"],
+      "note": "Passport holder_name is [NAME_1]; permanent resident card holder_name is [NAME_2]; case fact full_name is [NAME_1]. A-Number [ANUM_1] matches on the card, so this reads as a name variance on the card rather than a different holder, but it is unresolved and blocks a complete binder."
+    },
+    {
+      "type": "review_item",
+      "category": "document_conflict",
+      "field": "trip_3_return",
+      "severity": "High",
+      "source_document_ids": ["doc_passport"],
+      "note": "Stated trip_3_return is 2023-05-20 (source voice, medium confidence, hedged). Passport entry stamp is 2023-06-02. A 13-day gap is not a normal receipt-versus-mailing variance and changes the length of trip 3; the two sources cannot both stand as recorded."
+    },
+    {
+      "type": "gap",
+      "document_type": "name_bridging_record",
+      "reason": "Passport holder_name ([NAME_1]) and permanent resident card holder_name ([NAME_2]) differ; a record connecting the two names would resolve the name variance flagged for the attorney.",
+      "label": "Un documento que explique la diferencia entre el nombre en su pasaporte y el nombre en su tarjeta de residente permanente (por ejemplo, acta de matrimonio o documento de la corte)",
+      "label_language": "es",
+      "key": "review:name_mismatch:full_name"
+    },
+    {
+      "type": "evidence",
+      "category": "identity",
+      "field": "full_name",
+      "document_id": "doc_passport"
+    },
+    {
+      "type": "evidence",
+      "category": "identity",
+      "field": "a_number",
+      "document_id": "doc_green_card"
+    },
+    {
+      "type": "evidence",
+      "category": "immigration_status",
+      "field": "resident_since",
+      "document_id": "doc_green_card"
+    },
+    {
+      "type": "evidence",
+      "category": "travel",
+      "field": "trip_3_departure",
+      "document_id": "doc_passport"
+    },
+    {
+      "type": "evidence",
+      "category": "document_validity",
+      "field": "expiration_date",
+      "document_id": "doc_passport"
+    },
+    {
+      "type": "evidence",
+      "category": "document_validity",
+      "field": "card_expires",
+      "document_id": "doc_green_card"
+    },
+    {
+      "type": "task",
+      "kind": "finding",
+      "title": "Trip 3 return date unresolved: stated 2023-05-20, passport entry stamp 2023-06-02",
+      "severity": "High",
+      "source_document_ids": ["doc_green_card", "doc_passport"],
+      "impact": "Trip 3 length and any continuous-residence arithmetic built on it are unsettled; the recorded fact is hedged and 13 days earlier than the only documentary entry date in the file.",
+      "next_step": "Case manager to confirm the actual return date and the port or manner of entry, then correct or confirm trip_3_return before the binder is treated as consistent."
+    },
+    {
+      "type": "task",
+      "kind": "finding",
+      "title": "Open citation flag has no supporting document; criminal_history_detail is stop-now",
+      "severity": "High",
+      "source_document_ids": [],
+      "impact": "flag:citation: (2022 traffic fine) remains unsupported by any document in the file. The section it sits in, criminal_history_detail, is listed in stop_now_sections, so no client-facing gap was raised for it and the binder cannot be called complete on that flag.",
+      "next_step": "Attorney decision required on how to handle the 2022 citation under the stop-now hold; no request to the client until the hold is lifted."
+    },
+    {
+      "type": "task",
+      "kind": "finding",
+      "title": "New fact from doc_green_card not yet in case facts: resident_since 2019-04-10",
+      "severity": "Low",
+      "source_document_ids": ["doc_green_card"],
+      "impact": "The residence start date carried by the card is not recorded in the case facts, so nothing in the fact set currently cross-checks it.",
+      "next_step": "Case manager to add resident_since 2019-04-10 from doc_green_card to the case facts."
+    }
+  ]
+}

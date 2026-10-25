@@ -9,8 +9,8 @@ import pytest
 from sqlalchemy import select, text
 
 from ellis.db import (
-    AgentRun, Briefing, Case, Event, Fact, Flag, Job, Packet, ReviewItem, Signoff, StaffUser, Task, Utterance,
-    VaultValue, session_scope,
+    AgentRun, Briefing, Case, Document, Event, Fact, Flag, Gap, Job, Packet, ReviewItem, Signoff, StaffUser, Task,
+    Utterance, VaultValue, session_scope,
 )
 from ellis.services import case_service as cs, storage
 from ellis.voice.client import InProcessClient
@@ -323,6 +323,43 @@ def test_at20_duplicate_run_applied_once(client):
         assert res["duplicate"] is True
     with session_scope() as s:
         assert len(s.scalars(select(Task).where(Task.title == "dup test")).all()) == 1
+
+
+@pytest.mark.parametrize("key,document_type", [
+    ("flag:citation:", "court_record"),
+    ("review:name_mismatch:full_name", "marriage_certificate"),
+    ("doc:passport:", "passport"),
+])
+def test_gap_key_formats_store_and_close(client, key, document_type):
+    from ellis.agents.proposals import apply_proposal, validate_envelope
+    consent(client)
+    with session_scope() as s:
+        doc = Document(clinic_id="cl_valle", case_id="c_maria", document_type=document_type, filename="t.txt",
+                       mime="text/plain", storage_path="t", sha256="abc", size=1, status="extracted")
+        s.add(doc)
+        s.flush()
+        doc_id = doc.id
+    run = "run_gap_" + key.replace(":", "_").replace("[", "").replace("]", "")
+    opened = {"agent": "doc_paralegal", "run_id": run, "case_id": "c_maria", "items": [
+        {"type": "gap", "payload": {"document_type": document_type, "reason": "needed", "label_es": "Documento",
+                                    "key": key}}]}
+    with session_scope() as s:
+        res = apply_proposal(s, validate_envelope(opened, "doc_paralegal", "c_maria"))
+    assert res["rejected"] == []
+    assert any(item["type"] == "gap" for item in res["accepted"])
+    with session_scope() as s:
+        gap = s.scalars(select(Gap).where(Gap.case_id == "c_maria", Gap.key == key)).one()
+        assert gap.status == "open"
+    closed = {"agent": "doc_paralegal", "run_id": run + "_close", "case_id": "c_maria", "items": [
+        {"type": "gap_close", "payload": {"key": key, "document_id": doc_id}}]}
+    with session_scope() as s:
+        res = apply_proposal(s, validate_envelope(closed, "doc_paralegal", "c_maria"))
+    assert res["rejected"] == []
+    assert any(item["type"] == "gap_close" for item in res["accepted"])
+    with session_scope() as s:
+        gap = s.scalars(select(Gap).where(Gap.case_id == "c_maria", Gap.key == key)).one()
+        assert gap.status == "closed"
+        assert gap.closed_by_document == doc_id
 
 
 def test_authority_limits_reject_out_of_scope_items(client):

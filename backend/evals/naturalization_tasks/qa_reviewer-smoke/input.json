@@ -1,0 +1,27 @@
+{
+  "instructions": "TEST RUN. The case tools are not connected yet, so use this data as if get_case, get_derived, recompute, and list_tasks returned it. recompute is an independent second run of the firm's own rules engine from the raw facts -- compare it to get_derived; do not recompute anything yourself beyond that comparison.",
+  "get_case": {
+    "case_id": "case_test_301",
+    "facts": [
+      {"field": "trips[2].return", "value": "2023-05-20", "source": "voice", "confidence": "medium", "hedged": true,
+       "status": "proposed"},
+      {"field": "background.citation", "value": true, "source": "voice", "status": "confirmed"},
+      {"field": "employment[0].to", "value": "2021-03-01", "source": "voice", "status": "confirmed"},
+      {"field": "employment[1].from", "value": "2021-06-15", "source": "voice", "status": "confirmed"},
+      {"field": "a_number", "value": "[ANUM_1]", "source": "document", "status": "confirmed"},
+      {"field": "lpr_since", "value": "2019-04-10", "source": null, "status": "confirmed"}
+    ],
+    "open_flags": [
+      {"key": "flag:document_conflict:trips[2].return", "type": "document_conflict", "field": "trips[2].return"},
+      {"key": "flag:citation:", "type": "citation", "field": "background.citation"}
+    ]
+  },
+  "get_derived": {"trip_days": 44, "presence_days": 1200, "earliest_filing": "2024-01-15"},
+  "recompute": {"trip_days": 58, "presence_days": 1186, "earliest_filing": "2024-01-15"},
+  "list_tasks": [
+    {"agent": "qa_reviewer", "kind": "challenge", "round": 1, "status": "open", "field": "background.detail.other_citations",
+     "title": "Confirm no other citations anywhere, ever"},
+    {"agent": "qa_reviewer", "kind": "challenge", "round": 2, "status": "open", "field": "background.detail.other_citations",
+     "title": "Confirm no other citations anywhere, ever"}
+  ]
+}

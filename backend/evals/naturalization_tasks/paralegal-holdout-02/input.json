@@ -1,0 +1,45 @@
+{
+  "instructions": "TEST RUN. The case tools are not connected yet, so use this data as if get_case and list_documents returned it. There are no file URLs in this test; mark legibility, pages and owner checks as \"not_checked: no file\".",
+  "get_case": {
+    "case_id": "case_holdout_02",
+    "client_language": "vi",
+    "stop_now_sections": [],
+    "open_flags": [],
+    "facts": [
+      {"field": "name.given", "value": "[GIVEN_2]", "source": "voice", "confidence": "high"},
+      {"field": "name.middle", "value": "[MIDDLE_3]", "source": "voice", "confidence": "high"},
+      {"field": "name.family", "value": "[FAMILY_2]", "source": "voice", "confidence": "high"},
+      {"field": "a_number", "value": "[ANUM_1]", "source": "voice", "confidence": "high"}
+    ],
+    "gap_list": [],
+    "evidence_index": [],
+    "review_items": []
+  },
+  "list_documents": [
+    {
+      "document_id": "doc_passport",
+      "type": "passport",
+      "extraction": {
+        "given_name": "[GIVEN_2]",
+        "middle_name": "[MIDDLE_3]",
+        "family_name": "[FAMILY_2]",
+        "family_name_as_printed": "Lumina",
+        "a_number": "[ANUM_1]"
+      }
+    },
+    {
+      "document_id": "doc_green_card",
+      "type": "green_card",
+      "extraction": {
+        "sides_in_file": ["front"],
+        "given_name": "[GIVEN_2]",
+        "middle_name": "[MIDDLE_3]",
+        "family_name": "[FAMILY_2]",
+        "family_name_as_printed": "LUMINA",
+        "a_number": "[ANUM_2]",
+        "a_number_vs_passport": "one digit transposed relative to [ANUM_1]",
+        "resident_since": "2017-02-09"
+      }
+    }
+  ]
+}

@@ -12,3 +12,4 @@ dist/
 frontend/e2e-shots/
 frontend/test-results/
 frontend/playwright-report/
+backend/evals/vendor/

@@ -38,6 +38,9 @@ def _trigger_kinds(ctx) -> set[str]:
 # ------------------------------------------------------------------------------------------- case manager
 
 def case_manager(ctx: dict) -> list[dict]:
+    # title_es/question_es fields below hold pre-resolved text in this case's language (not necessarily
+    # Spanish); team_cards() and the liaison's task-reading loop just display/relay it as-is.
+    lang = ctx.get("language", "es")
     items: list[dict] = []
     facts = ctx["facts"]
     queue: list[dict] = []

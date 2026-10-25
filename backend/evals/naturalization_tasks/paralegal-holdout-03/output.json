@@ -1,0 +1,131 @@
+{
+    "case_id": "case_holdout_03",
+    "items": [
+      {
+        "type": "doc_checks",
+        "document_id": "doc_marriage_original",
+        "exhibit": 1,
+        "checks": {
+          "legible": "not_checked: no file",
+          "document_type": "marriage certificate — matches listed type; parties, date and place all captured",
+          "pages_complete": "not_checked: no file",
+          "not_expired": "not applicable — a marriage certificate has no validity period",
+          "belongs_to_client": "not_checked: no file; applicant [GIVEN_3] [FAMILY_3] and spouse [GIVEN_4] [FAMILY_4] match the case facts",
+          "consistent_with_facts": "marriage_date 2015-09-01 matches the case fact exactly; both party names match; place [PLACE_1] captured",
+          "supports_or_closes": "supports the marriage date, place and both party names; does not address flag:arrest:"
+        }
+      },
+      {
+        "type": "doc_checks",
+        "document_id": "doc_marriage_translation",
+        "exhibit": 2,
+        "checks": {
+          "legible": "not_checked: no file",
+          "document_type": "English translation of doc_marriage_original — translation_of names the original, so it is the right document type for the original",
+          "pages_complete": "not_checked: no file",
+          "not_expired": "not applicable — a translation has no validity period",
+          "belongs_to_client": "not_checked: no file; applicant and spouse names match the original and the case facts",
+          "consistent_with_facts": "marriage_date prints 2015-09-10 against 2015-09-01 on the original and in the case fact; all names and place [PLACE_1] match the original",
+          "supports_or_closes": "supports the party names and place; the date as translated does not support the marriage date fact"
+        }
+      },
+      {
+        "type": "review_item",
+        "category": "document_conflict",
+        "field": "marriage_date",
+        "severity": "High",
+        "source_document_ids": ["doc_marriage_original", "doc_marriage_translation"],
+        "source_facts": ["marriage_date"],
+        "note": "doc_marriage_original prints marriage_date 2015-09-01, which matches case fact marriage_date 2015-09-01. Its English translation, doc_marriage_translation (translation_of doc_marriage_original), prints marriage_date 2015-09-10. The day and month digits are transposed between the two documents. Every other field compared — applicant given and family name, spouse given and family name, place [PLACE_1] — matches across the pair, so the disagreement is confined to the date. The original is not to be altered; the translation is the document in error."
+      },
+      {
+        "type": "gap",
+        "document_type": "certified_translation",
+        "reason": "The English translation of the marriage certificate prints the marriage date as 2015-09-10 while the original prints 2015-09-01. A corrected translation is needed; the original stays as issued.",
+        "label": "Una traducción certificada al inglés de su acta de matrimonio con la fecha correcta (1 de septiembre de 2015)",
+        "label_language": "es",
+        "key": "doc:certified_translation:"
+      },
+      {
+        "type": "evidence",
+        "category": "identity",
+        "field": "name.given",
+        "document_id": "doc_marriage_original"
+      },
+      {
+        "type": "evidence",
+        "category": "identity",
+        "field": "name.family",
+        "document_id": "doc_marriage_original"
+      },
+      {
+        "type": "evidence",
+        "category": "relationship",
+        "field": "spouse.given",
+        "document_id": "doc_marriage_original"
+      },
+      {
+        "type": "evidence",
+        "category": "relationship",
+        "field": "spouse.family",
+        "document_id": "doc_marriage_original"
+      },
+      {
+        "type": "evidence",
+        "category": "relationship",
+        "field": "marriage_date",
+        "document_id": "doc_marriage_original"
+      },
+      {
+        "type": "task",
+        "kind": "finding",
+        "title": "Open arrest flag has no document and its section is stop-now",
+        "severity": "High",
+        "source_document_ids": [],
+        "impact": "flag:arrest: (old arrest, section criminal_history_detail) has no supporting record in the file. criminal_history_detail is listed in stop_now_sections, so no client-facing gap was raised for it and the binder cannot be treated as complete on that flag.",
+        "next_step": "Attorney decision on how to handle the arrest under the stop-now hold; no request to the client and no gap item until the hold is lifted."
+      },
+      {
+        "type": "non_issue",
+        "field": "name.given",
+        "source_document_ids": ["doc_marriage_original", "doc_marriage_translation"],
+        "note": "Applicant given name [GIVEN_3] matches on the original, the translation and the case fact."
+      },
+      {
+        "type": "non_issue",
+        "field": "name.family",
+        "source_document_ids": ["doc_marriage_original", "doc_marriage_translation"],
+        "note": "Applicant family name [FAMILY_3] matches on the original, the translation and the case fact."
+      },
+      {
+        "type": "non_issue",
+        "field": "spouse.given",
+        "source_document_ids": ["doc_marriage_original", "doc_marriage_translation"],
+        "note": "Spouse given name [GIVEN_4] matches on the original, the translation and the case fact."
+      },
+      {
+        "type": "non_issue",
+        "field": "spouse.family",
+        "source_document_ids": ["doc_marriage_original", "doc_marriage_translation"],
+        "note": "Spouse family name [FAMILY_4] matches on the original, the translation and the case fact."
+      },
+      {
+        "type": "non_issue",
+        "field": "marriage_date",
+        "source_document_ids": ["doc_marriage_original"],
+        "note": "The original prints 2015-09-01, matching the case fact exactly. The original stands as issued; the conflict is with the translation only."
+      },
+      {
+        "type": "non_issue",
+        "field": "place",
+        "source_document_ids": ["doc_marriage_original", "doc_marriage_translation"],
+        "note": "Place [PLACE_1] matches between the original and the translation."
+      },
+      {
+        "type": "non_issue",
+        "field": "translation_coverage",
+        "source_document_ids": ["doc_marriage_translation"],
+        "note": "A separate English translation of the foreign-language original is in the file and identifies the document it translates, so the translation requirement is met in form; only the marriage date inside it needs correction."
+      }
+    ]
+  }

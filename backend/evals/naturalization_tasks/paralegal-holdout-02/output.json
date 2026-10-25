@@ -1,0 +1,125 @@
+{
+    "case_id": "case_holdout_02",
+    "items": [
+      {
+        "type": "doc_checks",
+        "document_id": "doc_passport",
+        "exhibit": 1,
+        "checks": {
+          "legible": "not_checked: no file",
+          "document_type": "passport — matches listed type; biographical fields present (given_name, middle_name, family_name, a_number)",
+          "pages_complete": "not_checked: no file; extraction lists no stamps section, so no travel pages are captured",
+          "not_expired": "not determinable — extraction carries no expiration date field; staleness could not be checked",
+          "belongs_to_client": "not_checked: no file; given, middle and family name and A-Number [ANUM_1] all match the case facts",
+          "consistent_with_facts": "given [GIVEN_2], middle [MIDDLE_3], family [FAMILY_2] and a_number [ANUM_1] all match; family_name_as_printed reads Lumina against [FAMILY_2] on the card",
+          "supports_or_closes": "supports the name and A-Number facts; no open flags in this case to close"
+        }
+      },
+      {
+        "type": "doc_checks",
+        "document_id": "doc_green_card",
+        "exhibit": 2,
+        "checks": {
+          "legible": "not_checked: no file",
+          "document_type": "green card — matches listed type; front only, sides_in_file lists [\"front\"]",
+          "pages_complete": "front only — the back side is not in the file",
+          "not_expired": "not determinable — the side carrying the expiration date is missing, so staleness could not be checked",
+          "belongs_to_client": "not_checked: no file; all three name elements match the case facts, but a_number prints [ANUM_2] against [ANUM_1]",
+          "consistent_with_facts": "given, middle and family tokens match; a_number [ANUM_2] does not match the passport and the case fact [ANUM_1], extraction records one digit transposed relative to [ANUM_1]; resident_since 2017-02-09 is not a case fact",
+          "supports_or_closes": "shows permanent residence since 2017-02-09; no open flags in this case to close"
+        }
+      },
+      {
+        "type": "review_item",
+        "category": "identifier_mismatch",
+        "field": "a_number",
+        "severity": "Critical",
+        "source_document_ids": ["doc_passport", "doc_green_card"],
+        "source_facts": ["a_number"],
+        "note": "Passport prints A-Number [ANUM_1], which matches the case fact a_number [ANUM_1]. Green card prints A-Number [ANUM_2], and its extraction records the difference as one digit transposed relative to [ANUM_1]. A single transposed digit is a discrepancy under the playbook, not a rounding or formatting difference. All three name elements match across the two documents, so this reads as a transcription or capture error rather than a different holder, but the identifiers cannot both stand as recorded."
+      },
+      {
+        "type": "gap",
+        "document_type": "green_card_back",
+        "reason": "doc_green_card lists sides_in_file as front only. The back side is missing, and it carries the card expiration date, so the card cannot be checked for staleness or read in full.",
+        "label": "Mặt sau của thẻ xanh (thẻ thường trú nhân) của quý vị",
+        "label_language": "vi",
+        "key": "doc:green_card_back:"
+      },
+      {
+        "type": "evidence",
+        "category": "identity",
+        "field": "name.given",
+        "document_id": "doc_passport"
+      },
+      {
+        "type": "evidence",
+        "category": "identity",
+        "field": "name.middle",
+        "document_id": "doc_passport"
+      },
+      {
+        "type": "evidence",
+        "category": "identity",
+        "field": "name.family",
+        "document_id": "doc_passport"
+      },
+      {
+        "type": "evidence",
+        "category": "identity",
+        "field": "a_number",
+        "document_id": "doc_passport"
+      },
+      {
+        "type": "evidence",
+        "category": "immigration_status",
+        "field": "resident_since",
+        "document_id": "doc_green_card"
+      },
+      {
+        "type": "task",
+        "kind": "finding",
+        "title": "Travel history cannot be reconciled: no trip facts and no passport stamps in the file",
+        "severity": "Low",
+        "source_document_ids": ["doc_passport"],
+        "impact": "The case facts contain no trip entries and doc_passport carries no stamps section, so the trip set reconciles at 0 recorded, 0 documented, and 0 that could be checked. Whether the travel history is genuinely empty or simply not yet captured is not determinable from this data.",
+        "next_step": "Staff to confirm with the case manager whether trips exist for this matter; if they do, obtain the travel dates and a passport with entry and exit stamps before the next pass."
+      },
+      {
+        "type": "task",
+        "kind": "finding",
+        "title": "Passport expiration date is not in the extraction, so staleness was not checked",
+        "severity": "Low",
+        "source_document_ids": ["doc_passport"],
+        "impact": "doc_passport carries no expiration date field, so the passport could not be compared against any use date, and a timing risk would not surface in this pass.",
+        "next_step": "Staff to read the expiration date off the passport biographical page and add it to the extraction."
+      },
+      {
+        "type": "task",
+        "kind": "finding",
+        "title": "Residence start date on the green card is not in the case facts",
+        "severity": "Low",
+        "source_document_ids": ["doc_green_card"],
+        "impact": "doc_green_card prints resident_since 2017-02-09 and no case fact carries that date, so nothing in the fact set cross-checks the residence start.",
+        "next_step": "Case manager to record resident_since 2017-02-09 from doc_green_card as a case fact."
+      },
+      {
+        "type": "non_issue",
+        "field": "name.given",
+        "source_document_ids": ["doc_passport", "doc_green_card"],
+        "note": "Given name [GIVEN_2] appears identically on both documents and matches the case fact."
+      },
+      {
+        "type": "non_issue",
+        "field": "name.middle",
+        "source_document_ids": ["doc_passport", "doc_green_card"],
+        "note": "Middle name [MIDDLE_3] appears identically on both documents and matches the case fact."
+      },
+      {
+        "type": "non_issue",
+        "field": "name.family",
+        "source_document_ids": ["doc_passport", "doc_green_card"],
+        "note": "Family name is [FAMILY_2] on both documents and matches the case fact. The printed strings differ only in capitalisation (Lumina on the passport, LUMINA on the card), which is the same spelling; the card's all-caps surname is normal card printing, so this is not a name discrepancy and no styling finding is raised."
+      }
+    ]
+  }

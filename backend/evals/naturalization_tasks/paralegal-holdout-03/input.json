@@ -1,0 +1,55 @@
+{
+  "instructions": "TEST RUN. The case tools are not connected yet, so use this data as if get_case and list_documents returned it. There are no file URLs in this test; mark legibility, pages and owner checks as \"not_checked: no file\".",
+  "get_case": {
+    "case_id": "case_holdout_03",
+    "client_language": "es",
+    "stop_now_sections": ["criminal_history_detail"],
+    "open_flags": [
+      {
+        "key": "flag:arrest:",
+        "type": "arrest",
+        "section": "criminal_history_detail",
+        "note": "Client mentioned an old arrest"
+      }
+    ],
+    "facts": [
+      {"field": "name.given", "value": "[GIVEN_3]", "source": "voice", "confidence": "high"},
+      {"field": "name.family", "value": "[FAMILY_3]", "source": "voice", "confidence": "high"},
+      {"field": "spouse.given", "value": "[GIVEN_4]", "source": "voice", "confidence": "high"},
+      {"field": "spouse.family", "value": "[FAMILY_4]", "source": "voice", "confidence": "high"},
+      {"field": "marriage_date", "value": "2015-09-01", "source": "voice", "confidence": "high"}
+    ],
+    "gap_list": [],
+    "evidence_index": [],
+    "review_items": []
+  },
+  "list_documents": [
+    {
+      "document_id": "doc_marriage_original",
+      "type": "marriage_certificate",
+      "extraction": {
+        "language": "original",
+        "person_given": "[GIVEN_3]",
+        "person_family": "[FAMILY_3]",
+        "spouse_given": "[GIVEN_4]",
+        "spouse_family": "[FAMILY_4]",
+        "marriage_date": "2015-09-01",
+        "place": "[PLACE_1]"
+      }
+    },
+    {
+      "document_id": "doc_marriage_translation",
+      "type": "marriage_certificate_translation",
+      "extraction": {
+        "language": "en",
+        "translation_of": "doc_marriage_original",
+        "person_given": "[GIVEN_3]",
+        "person_family": "[FAMILY_3]",
+        "spouse_given": "[GIVEN_4]",
+        "spouse_family": "[FAMILY_4]",
+        "marriage_date": "2015-09-10",
+        "place": "[PLACE_1]"
+      }
+    }
+  ]
+}

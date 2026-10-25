@@ -27,7 +27,9 @@ from .context import build_context, context_hash
 from .proposals import ValidationError, apply_proposal, validate_envelope
 
 log = logging.getLogger("ellis.agents")
-RUN_TIMEOUT_S = 45
+# CreaoBackend polls a real external run for up to backends.POLL_TIMEOUT_S (90s); this must stay
+# comfortably above that or the job gets killed as "timeout" before the poll loop ever finishes.
+RUN_TIMEOUT_S = 120
 MAX_PER_CASE = 2
 
 

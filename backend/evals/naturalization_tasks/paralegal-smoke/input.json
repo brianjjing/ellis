@@ -1,0 +1,49 @@
+{
+  "instructions": "TEST RUN. The case tools are not connected yet, so use this data as if get_case and list_documents returned it. There are no file URLs in this test; mark legibility, pages and owner checks as \"not_checked: no file\".",
+  "get_case": {
+    "case_id": "case_test_001",
+    "client_language": "es",
+    "stop_now_sections": ["criminal_history_detail"],
+    "open_flags": [
+      {
+        "key": "flag:citation:",
+        "type": "citation",
+        "section": "traffic_citations",
+        "note": "Client mentioned a traffic fine in 2022"
+      }
+    ],
+    "facts": [
+      {"field": "trip_3_departure", "value": "2023-03-03", "source": "voice", "confidence": "high"},
+      {"field": "trip_3_return", "value": "2023-05-20", "source": "voice", "confidence": "medium", "hedged": true},
+      {"field": "full_name", "value": "[NAME_1]", "source": "voice"},
+      {"field": "a_number", "value": "[ANUM_1]", "source": "voice"}
+    ],
+    "gap_list": [],
+    "evidence_index": [],
+    "review_items": []
+  },
+  "list_documents": [
+    {
+      "document_id": "doc_passport",
+      "type": "passport",
+      "extraction": {
+        "holder_name": "[NAME_1]",
+        "expiration_date": "2031-08-14",
+        "stamps": [
+          {"type": "exit", "date": "2023-03-03"},
+          {"type": "entry", "date": "2023-06-02"}
+        ]
+      }
+    },
+    {
+      "document_id": "doc_green_card",
+      "type": "permanent_resident_card",
+      "extraction": {
+        "holder_name": "[NAME_2]",
+        "a_number": "[ANUM_1]",
+        "resident_since": "2019-04-10",
+        "card_expires": "2029-04-10"
+      }
+    }
+  ]
+}
