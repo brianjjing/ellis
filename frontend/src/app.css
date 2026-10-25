@@ -137,7 +137,7 @@ button { font-family: inherit; }
 @media (max-width: 800px) { .kv { grid-template-columns: 1fr; } .thumb { width: 100px; } }
 .btn:disabled, .btn[disabled] { opacity: .45; cursor: not-allowed; }
 /* The profile link at the foot of the sidebar marks its page like the nav links above it. */
-.account[aria-current='page'] { background: var(--white); box-shadow: inset 3px 0 0 var(--green); }
+.account[aria-current='page'] { background: var(--white); }
 @media (min-width: 800px) { .sidebar { min-height: 100vh; } } /* side by side: profile pinned to the bottom */
 
 /* Sign-in: "or" divider between the email login and the clinic link/code path (existing tokens only). */

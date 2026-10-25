@@ -94,7 +94,7 @@ main, .enter, .dialog::backdrop { animation: enter .18s ease-out; }
 .navlink[aria-current='page'] { background: var(--white); box-shadow: inset 3px 0 0 var(--green); font-weight: 700; }
 .badge { font-family: var(--mono); font-size: 12px; font-weight: 400; color: var(--ink-soft); }
 .badge.alert { font-weight: 700; color: var(--rust); }
-.account { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 12px; border-radius: 4px; text-decoration: none; color: var(--ink); background: color-mix(in srgb, var(--white) 50%, transparent); } /* always boxed; the current page goes full white + green bar */
+.account { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 12px; border-radius: 4px; text-decoration: none; color: var(--ink); background: color-mix(in srgb, var(--white) 50%, transparent); } /* always boxed; full white on the current page */
 .avatar { flex: 0 0 32px; height: 32px; border-radius: 4px; background: var(--green-tint); color: var(--green); font-family: var(--serif); font-size: 16px; line-height: 32px; font-weight: 600; text-align: center; }
 
 /* Sign in */
