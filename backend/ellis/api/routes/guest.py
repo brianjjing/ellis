@@ -17,6 +17,7 @@ router = APIRouter(prefix="/api/guest", tags=["guest"])
 class ChatReq(BaseModel):
     messages: list[Turn] = []
     answers: dict[str, Any] = {}
+    language: str = "en"
 
 
 @router.post("/chat")
@@ -25,4 +26,4 @@ def chat(body: ChatReq, request: Request) -> dict[str, Any]:
     if auth.rate_limited(f"guest:{ip}", limit=30):
         raise err(429, "rate_limited", "Too many messages. Please wait a minute.")
     msgs = [{"who": m.who, "text": m.text[:2000]} for m in body.messages[-30:]]
-    return guest.respond(msgs, body.answers, cs.today())
+    return guest.respond(msgs, body.answers, cs.today(), body.language)
