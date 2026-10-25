@@ -32,7 +32,12 @@ export default function CaseDetail({ id, me, tick }: { id: string; me: Me; tick:
           <select className="input sm" value={c.assigned_reviewer?.id ?? ''} aria-label="Reassign reviewer" onChange={(e) => act(() => api(`/api/clinic/cases/${id}`, { method: 'PATCH', body: { assigned_reviewer: e.target.value } }), 'Reassigned')}>
             {reviewers.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
           </select>
-          {d.clinic.is_demo && <button className="btn" title="Fills the remaining intake with the seeded synthetic answers, labeled simulated" onClick={() => act(() => api(`/api/clinic/cases/${id}/demo_autofill`, { body: {} }), 'Simulated answers written')}>Simulate remaining intake (demo)</button>}
+          {d.clinic.is_demo && (
+            <details className="demo-tools">
+              <summary className="btn">Demo tools</summary>
+              <button className="btn" title="Fills the remaining intake with the seeded synthetic answers, labeled simulated" onClick={() => act(() => api(`/api/clinic/cases/${id}/demo_autofill`, { body: {} }), 'Simulated answers written')}>Simulate remaining intake (demo)</button>
+            </details>
+          )}
           {(me.role === 'reviewer' || me.role === 'admin') && <button className="btn primary" disabled={!d.gate.passes || !['review', 'evidence', 'intake'].includes(c.state)} onClick={() => act(() => api(`/api/clinic/cases/${id}/ready`, { body: {} }), 'Marked ready: the applicant sees the sign-off screen on next visit')}>Mark ready</button>}
           <button className="btn danger" onClick={() => confirm('Close this case?') && act(() => api(`/api/clinic/cases/${id}`, { method: 'PATCH', body: { close: true } }), 'Closed')}>Close case</button>
         </div>
@@ -40,7 +45,7 @@ export default function CaseDetail({ id, me, tick }: { id: string; me: Me; tick:
       {msg && <div className="panel" role="status" style={{ margin: '12px 24px' }}>{msg}</div>}
       <div className="panel gate" style={{ margin: '12px 24px' }}>
         <strong>Ready gate: {d.gate.passes ? 'passes' : 'blocked'}</strong>
-        {!d.gate.passes && <ul className="small">{d.gate.failing.map((f: any) => <li key={f.code}>{f.message}{f.fields ? ` (${f.fields.slice(0, 6).join(', ')}${f.fields.length > 6 ? '…' : ''})` : ''}</li>)}</ul>}
+        {!d.gate.passes && <ul className="small">{d.gate.failing.map((f: any) => <li key={f.code}>{f.message}{f.fields ? ` (${f.fields.slice(0, 6).map((k: string) => labelOf(d, k)).join(', ')}${f.fields.length > 6 ? '…' : ''})` : ''}</li>)}</ul>}
         {d.derived?.earliest_filing && <span className="small">Rules engine ({d.derived.rule_config_version}): earliest filing {d.derived.earliest_filing}; presence {d.derived.presence_days ?? '—'} days{d.derived.civics_version ? `; civics ${d.derived.civics_version}` : ''}</span>}
       </div>
       <div className="tabs" role="tablist" style={{ margin: '0 24px' }}>
@@ -94,8 +99,8 @@ function Docs({ d, id, reload }: { d: any; id: string; reload: () => void }) {
   return (
     <div className="stack" style={{ gap: 16 }}>
       <div className="btns">
-        <select className="input sm" value={type} onChange={(e) => setType(e.target.value)}>
-          {['green_card', 'passport', 'marriage_certificate', 'lease', 'court_record', 'tax_transcript', 'benefit_letter', 'other'].map((t) => <option key={t}>{t}</option>)}
+        <select className="input sm" value={type} onChange={(e) => setType(e.target.value)} aria-label="Document type">
+          {(d.document_types || []).map((t: { key: string; label: string }) => <option key={t.key} value={t.key}>{t.label}</option>)}
         </select>
         <label className="btn">Upload on applicant's behalf<input type="file" hidden onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} /></label>
       </div>
@@ -103,9 +108,9 @@ function Docs({ d, id, reload }: { d: any; id: string; reload: () => void }) {
         <div key={doc.id} className="doc-card">
           <a href={`/api/clinic/documents/${doc.id}/file`} target="_blank" rel="noreferrer"><img src={`/api/clinic/documents/${doc.id}/file`} alt={doc.document_type} className="thumb" onError={(e) => ((e.target as HTMLImageElement).style.display = 'none')} /></a>
           <div className="stack grow" style={{ gap: 6 }}>
-            <strong>{doc.exhibit ? `Exhibit ${doc.exhibit} · ` : ''}{doc.document_type.replace(/_/g, ' ')}</strong>
+            <strong>{doc.exhibit ? `Exhibit ${doc.exhibit} · ` : ''}{doc.document_label || labelOf(d, doc.document_type)}</strong>
             <span className="small">{doc.filename} · {doc.status} · quality {doc.quality ?? '—'} · {doc.extractor ?? ''} · uploaded by {doc.uploaded_by} {fmtTime(doc.ts)}</span>
-            {doc.extraction && <table className="table mini"><tbody>{Object.entries(doc.extraction).filter(([, v]) => v !== null && v !== '' && !(Array.isArray(v) && !v.length)).map(([k, v]) => <tr key={k}><td>{k}</td><td>{typeof v === 'object' ? JSON.stringify(v) : String(v)}</td></tr>)}</tbody></table>}
+            {doc.extraction && <table className="table mini"><tbody>{Object.entries(doc.extraction).filter(([, v]) => v !== null && v !== '' && !(Array.isArray(v) && !v.length)).map(([k, v]) => <tr key={k}><td>{labelOf(d, k)}</td><td>{typeof v === 'object' ? JSON.stringify(v) : String(v)}</td></tr>)}</tbody></table>}
             {doc.checks && <span className="small">Checks: {Object.entries(doc.checks).filter(([k]) => !['applied_fields', 'supports', 'quality_reasons'].includes(k)).map(([k, v]) => `${k}: ${String(v)}`).join(' · ')}{doc.checks.supports?.length ? ` · supports ${doc.checks.supports.join(', ')}` : ''}</span>}
           </div>
         </div>
@@ -135,19 +140,53 @@ function ReviewItems({ d }: { d: any }) {
 }
 
 function Activity({ d }: { d: any }) {
-  const [actor, setActor] = useState('')
-  const actors = Array.from(new Set(d.events.map((e: any) => e.actor_type)))
+  const events = d.events
   return (
-    <div className="stack" style={{ gap: 8 }}>
-      <select className="input sm" value={actor} onChange={(e) => setActor(e.target.value)} style={{ alignSelf: 'flex-start' }}>
-        <option value="">All actors</option>{actors.map((a: any) => <option key={a}>{a}</option>)}
-      </select>
-      <table className="table">
-        <thead><tr><th>Time</th><th>Event</th><th>Actor</th><th>Payload</th></tr></thead>
-        <tbody>{d.events.filter((e: any) => !actor || e.actor_type === actor).map((e: any) => (
-          <tr key={e.id}><td className="small">{fmtTime(e.ts)}</td><td><strong>{e.kind}</strong></td><td className="small">{e.actor_type} · {e.actor}</td><td className="small mono-s">{JSON.stringify(e.payload)}</td></tr>
-        ))}</tbody>
-      </table>
+    <div className="stack" style={{ gap: 12 }}>
+      {events.length === 0 && <p className="soft">No activity yet.</p>}
+      {events.map((e: any) => (
+        <article key={e.id} className="panel">
+          <p>{e.sentence}</p>
+          <span className="small">{fmtTime(e.ts)}</span>
+          <details>
+            <summary>Raw event</summary>
+            <pre className="memo">{JSON.stringify({ kind: e.kind, actor_type: e.actor_type, actor: e.actor, payload: e.payload }, null, 1)}</pre>
+          </details>
+        </article>
+      ))}
+    </div>
+  )
+}
+
+function labelOf(d: any, key: string) {
+  if (!key) return ''
+  if (d.labels?.[key]) return d.labels[key]
+  const base = key.split('.').pop()!.replace(/[\[\]]/g, ' ').replace(/_/g, ' ')
+  return base.replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+function Briefing({ d }: { d: any }) {
+  const [raw, setRaw] = useState(false)
+  const b = d.briefing
+  if (!b) return <p className="soft">No briefing yet.</p>
+  const queue = b.queue || []
+  return (
+    <div className="stack" style={{ gap: 10 }}>
+      {queue.length === 0 ? <p className="soft">Nothing queued.</p> : (
+        <ol>
+          {queue.map((q: any, i: number) => (
+            <li key={i}>
+              <strong>{labelOf(d, q.field || q.document_type || q.section || q.kind)}</strong>
+              {q.reason ? ` — ${q.reason}` : ''}
+            </li>
+          ))}
+        </ol>
+      )}
+      <p>Flags the client can see: {(b.applicant_visible_flags || []).join(', ') || 'none'}.</p>
+      <p>Topics Ellis must not mention: {(b.do_not_mention || []).join(', ') || 'none'}.</p>
+      {b.tone_hint && <p>Tone: {b.tone_hint}</p>}
+      <button type="button" className="btn" onClick={() => setRaw(!raw)}>{raw ? 'Hide raw data' : 'Show raw data'}</button>
+      {raw && <pre className="memo">{JSON.stringify(b, null, 1)}</pre>}
     </div>
   )
 }
@@ -172,8 +211,8 @@ function Memos({ d, id, reload }: { d: any; id: string; reload: () => void }) {
         {tasks.map((t: any) => <div key={t.id} className="row" style={{ padding: '8px 0' }}><span className="label green" style={{ minWidth: 140 }}>{t.agent_label}</span><span className="grow">{t.title}</span><span className="pill">{t.kind}</span><span className="small">{fmtTime(t.ts)}</span></div>)}
       </section>
       <section>
-        <h3 className="h3 rule">Latest briefing (liaison queue)</h3>
-        <pre className="memo">{JSON.stringify(d.briefing, null, 1)}</pre>
+        <h3 className="h3 rule">What Ellis will ask next</h3>
+        <Briefing d={d} />
       </section>
     </div>
   )
