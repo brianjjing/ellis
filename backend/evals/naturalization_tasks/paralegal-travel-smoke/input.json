@@ -1,0 +1,61 @@
+{
+  "instructions": "TEST RUN. The case tools are not connected yet; use this data as if get_case and list_documents returned it. There are no file URLs; mark legibility, pages, and owner checks as 'not_checked: no file'.",
+  "get_case": {
+    "case_id": "case_travel_001",
+    "client_language": "es",
+    "stop_now_sections": [],
+    "open_flags": [],
+    "facts": [
+      {"field": "full_name", "value": "[NAME_1]", "source": "voice", "confidence": "high"},
+      {"field": "a_number", "value": "[ANUM_1]", "source": "voice", "confidence": "high"},
+      {"field": "lpr_since", "value": "2017-05-15", "source": "voice", "confidence": "high"}
+    ],
+    "gap_list": [],
+    "evidence_index": [],
+    "review_items": []
+  },
+  "list_documents": [
+    {
+      "document_id": "doc_i94",
+      "type": "i94",
+      "extraction": {
+        "holder_name": "[NAME_1]",
+        "a_number": "[ANUM_1]",
+        "trips": [
+          {
+            "departure_date": "2021-06-10",
+            "return_date": "2021-07-18",
+            "departure_source": "i94",
+            "return_source": "i94"
+          },
+          {
+            "departure_date": "2022-11-20",
+            "return_date": "2023-01-08",
+            "departure_source": "i94",
+            "return_source": "i94"
+          },
+          {
+            "departure_date": "2024-03-05",
+            "return_date": null,
+            "departure_source": "i94",
+            "return_source": "missing"
+          }
+        ]
+      }
+    },
+    {
+      "document_id": "doc_passport",
+      "type": "passport",
+      "extraction": {
+        "holder_name": "[NAME_1]",
+        "stamps": [
+          {"type": "exit", "date": "2021-06-10"},
+          {"type": "entry", "date": "2021-07-20"},
+          {"type": "exit", "date": "2022-11-20"},
+          {"type": "entry", "date": "2023-01-14"},
+          {"type": "exit", "date": "2024-03-05"}
+        ]
+      }
+    }
+  ]
+}

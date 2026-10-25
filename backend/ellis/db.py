@@ -245,6 +245,7 @@ class Task(Base):
     field: Mapped[str | None] = mapped_column(String(120), nullable=True)
     question_es: Mapped[str | None] = mapped_column(Text, nullable=True)
     links: Mapped[list] = mapped_column(JSONType, default=list)
+    citation: Mapped[dict | None] = mapped_column(JSONType, nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="open")  # open | done
     round: Mapped[int] = mapped_column(Integer, default=1)
     proposed_by: Mapped[str] = mapped_column(String(80))
@@ -284,6 +285,7 @@ class ReviewItem(Base):
     trigger: Mapped[str | None] = mapped_column(Text, nullable=True)
     facts_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     agent_notes: Mapped[list] = mapped_column(JSONType, default=list)
+    citation: Mapped[dict | None] = mapped_column(JSONType, nullable=True)
     evidence: Mapped[list] = mapped_column(JSONType, default=list)  # document ids
     decision: Mapped[str | None] = mapped_column(String(40), nullable=True)
     decision_note: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -343,6 +345,23 @@ class Gap(Base):
     status: Mapped[str] = mapped_column(String(20), default="open")  # open | closed | applicant_declined
     closed_by_document: Mapped[str | None] = mapped_column(String(40), nullable=True)
     review_item_id: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    proposed_by: Mapped[str] = mapped_column(String(80))
+    ts: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class TravelCandidate(Base):
+    __tablename__ = "travel_candidate"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("tc"))
+    clinic_id: Mapped[str] = mapped_column(String(40), index=True)
+    case_id: Mapped[str] = mapped_column(ForeignKey("cases.id"), index=True)
+    trip_index: Mapped[int] = mapped_column(Integer)
+    departure_date: Mapped[str] = mapped_column(String(10))
+    return_date: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    departure_source: Mapped[str] = mapped_column(String(20))  # i94 | passport_stamp | missing
+    return_source: Mapped[str] = mapped_column(String(20))  # i94 | passport_stamp | missing
+    source_document_ids: Mapped[list] = mapped_column(JSONType, default=list)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="pending")  # pending | confirmed | rejected
     proposed_by: Mapped[str] = mapped_column(String(80))
     ts: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 

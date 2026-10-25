@@ -10,8 +10,8 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..db import (
-    Briefing, Case, CaseLink, Clinic, Deadline, Derived, Document, Event, Extraction, Fact, Flag, Gap, Memo, Packet, ReviewItem,
-    StaffUser, Task, Utterance,
+    Briefing, Case, CaseLink, Clinic, Deadline, Derived, Document, Event, Extraction, Fact, Flag, Gap, Memo, Packet,
+    ReviewItem, StaffUser, Task, TravelCandidate, Utterance,
 )
 from ..extraction.schemas import LABELS_EN
 from . import activity, auth, case_service as cs, catalog
@@ -477,7 +477,8 @@ def clinic_case_detail(s: Session, case: Case, staff: StaffUser) -> dict[str, An
                        "redacted": u.redacted, "locked": u.locked, "ts": u.ts.isoformat()}
                       for u in s.scalars(select(Utterance).where(Utterance.case_id == case.id).order_by(Utterance.ts))]
     tasks = [{"id": t.id, "agent": t.agent, "agent_label": AGENT_LABELS_EN.get(t.agent, t.agent), "kind": t.kind,
-              "title": t.title, "status": t.status, "field": t.field, "ts": t.ts.isoformat()}
+              "title": t.title, "status": t.status, "field": t.field, "citation": t.citation,
+              "ts": t.ts.isoformat()}
              for t in s.scalars(select(Task).where(Task.case_id == case.id).order_by(Task.ts.desc()).limit(100))]
     gaps = [{"id": g.id, "document_type": g.document_type, "reason": g.reason, "status": g.status}
             for g in s.scalars(select(Gap).where(Gap.case_id == case.id).order_by(Gap.ts))]
@@ -488,11 +489,20 @@ def clinic_case_detail(s: Session, case: Case, staff: StaffUser) -> dict[str, An
     packets = [{"id": p.id, "kind": p.kind, "filename": p.filename, "status": p.status, "sha256": p.sha256,
                 "ts": p.ts.isoformat()}
                for p in s.scalars(select(Packet).where(Packet.case_id == case.id).order_by(Packet.ts.desc()))]
+    travel_candidates = [
+        {"id": tc.id, "trip_index": tc.trip_index, "departure_date": tc.departure_date,
+         "return_date": tc.return_date, "departure_source": tc.departure_source,
+         "return_source": tc.return_source, "source_document_ids": tc.source_document_ids,
+         "note": tc.note, "status": tc.status, "ts": tc.ts.isoformat()}
+        for tc in s.scalars(select(TravelCandidate).where(TravelCandidate.case_id == case.id)
+                            .order_by(TravelCandidate.trip_index, TravelCandidate.ts))
+    ]
     return {
         "case": case_row(s, case), "clinic": {"name": clinic.name, "is_demo": clinic.is_demo},
         "settings": case.settings, "gate": cs.gate_status(s, case), "facts": fact_history(s, case),
         "documents": docs, "events": events, "memos": memos, "transcript": transcript, "tasks": tasks,
-        "gaps": gaps, "review_items": items, "derived": der.data if der else None,
+        "gaps": gaps, "review_items": items, "travel_candidates": travel_candidates,
+        "derived": der.data if der else None,
         "briefing": b.body if b else None, "packets": packets,
         "labels": catalog.labels("en"),
         "document_types": [{"key": k, "label": v} for k, v in LABELS_EN.items()],
@@ -524,6 +534,6 @@ def review_item_view(s: Session, r: ReviewItem, staff: StaffUser | None) -> dict
                      "trigger": r.trigger, "resolution_required": r.resolution_required})
         return base
     base.update({"field": r.field, "trigger": r.trigger, "facts": r.facts_summary, "evidence": evidence,
-                 "agent_notes": r.agent_notes, "rule_id": fl.rule_id if fl else None,
-                 "layer": fl.layer if fl else None})
+                 "agent_notes": r.agent_notes, "citation": r.citation,
+                 "rule_id": fl.rule_id if fl else None, "layer": fl.layer if fl else None})
     return base

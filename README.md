@@ -114,6 +114,11 @@ Playbooks were adapted from Harvey's Legal Agent Benchmark task patterns. We do 
 | Civics test "12 of 20" passing threshold | `frontend/src/Interview.tsx` | 123 |
 | All fees and form editions shown to applicants | `backend/prompts/guest_faq.md` | — |
 
+### MCP tool integrations (Creao paralegal only)
+- **Firecrawl** is a third-party document-parsing service. When the paralegal calls it, document content leaves this system and is processed by Firecrawl's servers. Do not upload documents containing real client PII during testing.
+- **TinyFish Web Fetch** retrieves regulation text for citations. Its domain allowlist is hard-coded to `uscis.gov`, `ecfr.gov`, and `federalregister.gov` in the proposal envelope validator; fetches to other domains are blocked and the citation is dropped.
+- These integrations are configured in Creao (not in this repo). The skeleton agent backend (`ELLIS_AGENT_BACKEND=skeleton`) never calls either service.
+
 ### Skipped in this build
 - Applicant `/review` page has no Playwright coverage yet.
 - Full i18n pass on clinic, sign-in, sign-up: English only.
