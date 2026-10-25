@@ -4,6 +4,15 @@ import { Icon, Logo } from './icons'
 import { t } from './applicant/i18n'
 
 type Section = 'chat' | 'form' | 'interview' | 'reminders' | 'profile'
+// The N-400 badge's done count: red for the first few parts, a long run through amber, green when complete.
+// Lightness drops toward yellow so every step stays readable (≥4.5:1) on the sand sidebar.
+function progressColor(done: number, total: number) {
+  if (done >= total) return 'var(--green)'
+  const t = Math.max(0, done - 1) / Math.max(1, total - 2) // 0 at the first part, 1 at one short
+  const h = t <= 2 / 11 ? 4 + t * 99 : 22 + (t - 2 / 11) * 29.33 // hue 4 (red) → 22 by part 3 → 46 (dark yellow)
+  return `hsl(${h} 68% ${40 - (h - 4) / 4}%)`
+}
+
 const href: Record<Section, string> = { chat: '/', form: '/form', interview: '/interview', reminders: '/reminders', profile: '/profile' }
 
 // The app frame: shared sidebar on the left, the page's <main> beside it (they stack when narrower than 800px).
@@ -68,7 +77,7 @@ export default function Shell({ active, guest, children }: { active: Section; gu
           {data.clinic.is_demo && <span className="demo-tag" style={{ alignSelf: 'flex-start', margin: '-20px 12px 0' }}>Demo data</span>}
           <div className="nav-list">
             <a {...link('chat')}>Chat with Ellis</a>
-            <a {...link('form')}><span className="grow">N-400 form</span><span className="badge">{done} of {data.progress.length}</span></a>
+            <a {...link('form')}><span className="grow">N-400 form</span><span className="badge"><span style={{ color: progressColor(done, data.progress.length), fontWeight: 700 }}>{done}</span> of {data.progress.length}</span></a>
             <a {...link('interview')}>Interview prep</a>
             <a {...link('reminders')}><span className="grow">Reminders</span>{days > 0 && <span className="badge alert">{days} days</span>}</a>
           </div>
