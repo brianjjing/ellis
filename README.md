@@ -110,7 +110,15 @@ They cover planted hedges, barge-in corrections, an arrest disclosure, document 
 sign-off. They report planted-issue recall (currently 100%) and false alarms (currently none).
 
 `frontend/e2e/happy-path.cjs` is the Playwright happy path through the clinic UI, review queue and applicant
-sign-off.
+sign-off. With the app already running (`./scripts/dev.sh`):
+
+```bash
+cd frontend
+npm install
+npx playwright install chromium
+npm run e2e            # clinic happy path
+npm run screenshots    # 390px and 1280px shots of the Phase 1 screens, written to frontend/e2e-shots/ (gitignored)
+```
 
 ## NEEDS EXPERT CHECK / open questions
 
