@@ -8,8 +8,8 @@ export function LanguagePicker({ value, lang, onChange }: { value: string; lang:
   if (!list.length) return <p className="small soft">{t(lang, 'loading')}</p>
   return (
     <div className="stack" style={{ gap: 8 }}>
-      <label className="field">
-        {t(lang, 'chooseLanguage')}
+      <label className="field lang-row">
+        {t(lang, 'language')}
         <select className="input" value={cur?.code ?? ''} onChange={(e) => {
           const l = list.find((x) => x.code === e.target.value)
           if (l) onChange(l.locales[0].code)
@@ -21,8 +21,8 @@ export function LanguagePicker({ value, lang, onChange }: { value: string; lang:
         </select>
       </label>
       {cur && cur.locales.length > 1 && (
-        <label className="field">
-          {t(lang, 'chooseDialect')}
+        <label className="field lang-row">
+          {t(lang, 'country')}
           <select className="input" value={value} onChange={(e) => onChange(e.target.value)}>
             {cur.locales.map((l) => <option key={l.code} value={l.code} lang={l.code}>{l.label ?? l.code}</option>)}
           </select>

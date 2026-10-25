@@ -49,7 +49,8 @@ const STRINGS = {
   es: {
     chooseLanguage: 'Elija su idioma',
     chooseLanguageSub: 'Puede cambiarlo después si lo necesita.',
-    chooseDialect: '¿De qué país?',
+    language: 'Idioma',
+    country: 'País',
     continue: 'Continuar',
     preparedFor: 'Preparado para usted por',
     demoData: 'Datos de demostración',
@@ -109,7 +110,8 @@ const STRINGS = {
   en: {
     chooseLanguage: 'Choose language',
     chooseLanguageSub: 'You can change it later if you need to.',
-    chooseDialect: 'Which country?',
+    language: 'Language',
+    country: 'Country',
     continue: 'Continue',
     preparedFor: 'Prepared for you by',
     demoData: 'Demo data',

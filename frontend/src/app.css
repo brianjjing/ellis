@@ -183,6 +183,8 @@ button { font-family: inherit; }
 .ghost-row span:last-child { flex: 0 1 18%; margin-left: auto; }
 .lang-menu .more-menu-body { top: auto; bottom: calc(100% + 4px); }
 .more-menu-body.lang-picker { width: min(320px, calc(100vw - 32px)); padding: 12px; }
+.lang-row { display: grid; grid-template-columns: 80px minmax(0, 1fr); align-items: center; gap: 12px; } /* both rows share the columns, so the two selects match */
+.lang-row .input { height: 44px; font-size: 15px; }
 @media (max-width: 800px) { .guide-foot { grid-template-columns: 1fr; } .guide-foot .small { grid-column: auto; } }
 
 /* ---------- Ready gate ---------- */
