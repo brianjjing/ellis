@@ -95,10 +95,10 @@ export default function Interview() {
         <div key={tab} className="content enter" style={{ padding: '48px 24px', gap: 24 }}>
           {tab === 'interview' && <>
             <div className="label">Practice interview · question {(n % officer.length) + 1} of {officer.length}</div>
-            <section aria-label="Officer" className="card" style={{ padding: 32, gap: 16 }}>
+            <section aria-label="Officer" className="card" style={{ padding: '18.5px 32px 41px', gap: 12 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                 <span className="label">The officer asks</span>
-                <button type="button" className="btn" style={{ gap: 6 }} onClick={() => say(q)}><Icon name="speaker" />Hear it again</button>
+                <button type="button" className="btn" style={{ gap: 6, minHeight: 0, height: 32 }} onClick={() => say(q)}><Icon name="speaker" />Hear it again</button>
               </div>
               <p className="display">{q}</p>
             </section>
@@ -113,7 +113,7 @@ export default function Interview() {
               <p className="lead">Answer the way you answered on your form, in a full sentence. If you don't understand a question, ask the officer to repeat it.</p>
             </section>
             <div className="btns">
-              <button type="button" className="btn lg primary strong" disabled={mic} onClick={answerOutLoud}><Icon name="mic" color="#1e6b5b" />{mic ? 'Listening…' : heard ? 'Answer again out loud' : 'Answer out loud'}</button>
+              <button type="button" className="btn lg primary strong" disabled={mic} onClick={answerOutLoud}>{mic ? 'Listening…' : heard ? 'Answer again out loud' : 'Answer out loud'}<Icon name="mic" size={18} /></button>
               <button type="button" className="btn lg" onClick={next}>Next question</button>
             </div>
           </>}
@@ -126,7 +126,7 @@ export default function Interview() {
             </div>
             <h2 className="display">{c.q}</h2>
             <div className="btns">
-              <button type="button" className="btn lg primary strong" disabled={mic} onClick={answerOutLoud}><Icon name="mic" color="#1e6b5b" />{mic ? 'Listening…' : 'Answer out loud'}</button>
+              <button type="button" className="btn lg primary strong" disabled={mic} onClick={answerOutLoud}>{mic ? 'Listening…' : 'Answer out loud'}<Icon name="mic" size={18} /></button>
               <button type="button" className="btn lg" onClick={() => setShowChoices(!showChoices)}>{showChoices ? 'Hide choices' : 'Show choices'}</button>
             </div>
             {showChoices && (

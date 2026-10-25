@@ -14,7 +14,7 @@ test('phase 1 screens', async ({ page }) => {
   for (const width of widths) {
     await page.setViewportSize({ width, height: 900 })
     await page.goto('/')
-    await page.waitForSelector('text=Have these ready')
+    await page.waitForSelector('text=few short sessions')
     await page.screenshot({ path: `e2e-shots/guest-${width}.png`, fullPage: true })
   }
 
@@ -33,7 +33,7 @@ test('phase 1 screens', async ({ page }) => {
   for (const width of widths) {
     await page.setViewportSize({ width, height: 900 })
     await login(page, 'jorge@valle.demo')
-    await page.getByRole('button', { name: /Start talking|Empezar a hablar/ }).waitFor()
+    await page.getByText(/Choose language|Elija su idioma/).waitFor()
     await page.screenshot({ path: `e2e-shots/chat-${width}.png`, fullPage: true })
     await page.request.post('/api/auth/logout')
   }
@@ -61,7 +61,7 @@ test('phase 2-3 screens', async ({ page }) => {
   for (const width of widths) {
     await page.setViewportSize({ width, height: 900 })
     await login(page, 'jorge@valle.demo')
-    await page.getByRole('button', { name: /Start talking|Empezar a hablar/ }).waitFor()
+    await page.getByText(/Choose language|Elija su idioma/).waitFor()
 
     // Form page
     await page.goto('/form')

@@ -23,6 +23,12 @@ export default function Form() {
   const items = data.facts.find((g: any) => g.section === part?.section)?.items ?? []
   const done = parts.filter((p: any) => p.state === 'done').length
   const open = (n: number) => { setI(n); setView('question'); scrollTo(0, 0) }
+  const nav = (
+    <div style={{ display: 'flex', gap: 8 }}>
+      <button type="button" className="btn lg" disabled={i === 0} onClick={() => open(i - 1)}>Back</button>
+      <button type="button" className="btn lg primary" style={{ padding: '0 32px' }} onClick={() => (i + 1 < parts.length ? open(i + 1) : setView('parts'))}>{i + 1 < parts.length ? `Next: ${parts[i + 1].label}` : 'Done'}</button>
+    </div>
+  )
 
   return (
     <Shell active="form">
@@ -46,11 +52,15 @@ export default function Form() {
             <h2 className="display" style={{ marginTop: -14 }}>{part.label}</h2>
 
             {items.length === 0 ? (
-              <div className="panel" style={{ flexDirection: 'column', gap: 12 }}>
+              // empty part: the note and every action sit in the one white box
+              <div className="panel" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 32 }}>
                 <p className="lead soft" style={{ margin: 0 }}>Nothing here yet. Ellis asks these questions in the chat, one at a time.</p>
-                <a href="/" data-nav className="btn md primary" style={{ alignSelf: 'flex-start' }}><Icon name="mic" />Answer with Ellis</a>
+                <div className="btns" style={{ alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                  <a href="/" data-nav className="btn lg primary"><Icon name="mic" />Answer with Ellis</a>
+                  {nav}
+                </div>
               </div>
-            ) : (
+            ) : <>
               <section aria-labelledby="answers" className="stack enter">
                 <h3 id="answers" className="rule" style={{ fontSize: 17, lineHeight: '24px', fontWeight: 700 }}>
                   <span className="green" style={{ fontWeight: 700 }}>Ellis</span> · I have {items.length} answer{items.length > 1 ? 's' : ''} for this part
@@ -65,15 +75,11 @@ export default function Form() {
                   </div>
                 ))}
               </section>
-            )}
-
-            <div className="btns" style={{ alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-              <a href="/" data-nav className="talk"><Icon name="mic" />{items.length ? 'Continue with Ellis' : 'Answer with Ellis'}</a>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button type="button" className="btn lg" disabled={i === 0} onClick={() => open(i - 1)}>Back</button>
-                <button type="button" className="btn lg primary" style={{ padding: '0 32px' }} onClick={() => (i + 1 < parts.length ? open(i + 1) : setView('parts'))}>{i + 1 < parts.length ? `Next: ${parts[i + 1].label}` : 'Done'}</button>
+              <div className="btns" style={{ alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                <a href="/" data-nav className="talk"><Icon name="mic" />Continue with Ellis</a>
+                {nav}
               </div>
-            </div>
+            </>}
           </div>
         ) : (
           <div className="content enter" style={{ padding: '40px 24px 48px', gap: 0 }}>

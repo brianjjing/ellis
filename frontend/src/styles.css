@@ -81,20 +81,21 @@ main, .enter, .dialog::backdrop { animation: enter .18s ease-out; }
 .wordmark { display: inline-flex; align-self: flex-start; text-decoration: none; }
 .logo { display: block; height: 32px; width: auto; }
 .main { flex: 999 1 560px; min-width: 0; }
-.bar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding: 18px 24px; border-bottom: 1px solid var(--ink); }
+.bar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding: 13.5px 24px; }
 .content { max-width: 800px; margin: 0 auto; box-sizing: border-box; display: flex; flex-direction: column; }
 
 /* Sidebar: sticky so it stays put while long pages scroll; at rest it sits exactly where the design puts it. */
 .side { flex: 1 0 240px; background: var(--sand); border-right: 1px solid var(--line-strong); }
 .sidebar { position: sticky; top: 0; max-height: 100vh; overflow-y: auto; overscroll-behavior: contain; width: 100%; min-height: min(640px, 100vh); box-sizing: border-box; padding: 24px 14px; display: flex; flex-direction: column; gap: 28px; background: var(--sand); }
-.sidebar .wordmark { padding: 0 12px; }
+.sidebar .wordmark { padding: 0 12px; margin-top: -3.4px; }
+.sidebar .logo { height: 25.5px; } /* the wordmark's cap height (15.9px) and baseline (41.5px down) match the header .h1; retune both if .bar padding or .h1 changes */
 .nav-list { display: flex; flex-direction: column; gap: 4px; }
 .nav-foot { margin-top: auto; padding-top: 16px; border-top: 1px solid var(--line-strong); }
 .navlink { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 12px; border-radius: 4px; text-decoration: none; color: var(--ink); font-size: 16px; line-height: 22px; font-weight: 400; }
-.navlink[aria-current='page'] { background: var(--white); box-shadow: inset 3px 0 0 var(--green); font-weight: 700; }
+.navlink[aria-current='page'] { background: var(--white); box-shadow: inset 3px 0 0 var(--green), inset 0 0 0 2.5px var(--line); font-weight: 700; } /* green left, light gray on the rest */
 .badge { font-family: var(--mono); font-size: 12px; font-weight: 400; color: var(--ink-soft); }
 .badge.alert { font-weight: 700; color: var(--rust); }
-.account { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 12px; border-radius: 4px; text-decoration: none; color: var(--ink); }
+.account { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 12px; border-radius: 4px; text-decoration: none; color: var(--ink); background: color-mix(in srgb, var(--white) 50%, transparent); box-shadow: inset 0 0 0 1px var(--line); } /* always boxed with a gray hairline; full white on the current page */
 .avatar { flex: 0 0 32px; height: 32px; border-radius: 4px; background: var(--green-tint); color: var(--green); font-family: var(--serif); font-size: 16px; line-height: 32px; font-weight: 600; text-align: center; }
 
 /* Sign in */
@@ -151,8 +152,9 @@ main, .enter, .dialog::backdrop { animation: enter .18s ease-out; }
 .ask input:focus-visible { outline: none; } /* the bar is the box; it shows focus instead */
 .ask:focus-within { box-shadow: 0 0 0 3px var(--green-tint); }
 .ask input[readonly] { cursor: default; }
-.icon-btn.talk { background: var(--green); color: var(--white); touch-action: none; user-select: none; -webkit-user-select: none; transition: background-color .15s, box-shadow .15s; }
-.icon-btn.talk[aria-pressed='true'] { background: var(--ink); box-shadow: 0 0 0 4px var(--green-tint); }
+.ask:has(input[readonly]) { background: color-mix(in srgb, var(--line) 50%, var(--white)); } /* voice mode: slightly grayed, nothing to type */
+.icon-btn.mic { box-sizing: border-box; border: 2px solid var(--green); background: var(--white); color: var(--green); transition: background-color .15s, color .15s; } /* tap on, tap off */
+.icon-btn.mic[aria-pressed='true'] { background: var(--green); color: var(--white); }
 .suggest { gap: 6px; }
 .suggest .btn { min-height: 0; height: 30px; padding: 0 10px; font-size: 13px; }
 .history { flex: 1 1 320px; min-width: 0; box-sizing: border-box; padding: 24px; border-left: 1px solid var(--line); background: var(--white); display: flex; flex-direction: column; gap: 14px; }
@@ -168,11 +170,15 @@ main, .enter, .dialog::backdrop { animation: enter .18s ease-out; }
 .opt[aria-checked='true'] > .dot { border: 6px solid var(--green); }
 .part { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; width: 100%; min-height: 64px; padding: 14px 0; border: 0; border-bottom: 1px solid var(--line); background: transparent; color: var(--ink); cursor: pointer; text-align: left; }
 .talk { display: inline-flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; }
-.talk-btn { min-height: 56px; padding: 0 18px; gap: 8px; font-size: 16px; }
-.talk-btn.pulse { animation: ellis-pulse 1.4s ease-in-out infinite; }
+.icon-btn.mic.pulse { animation: ellis-pulse 1.4s ease-in-out infinite; }
+.dots { display: inline-flex; align-items: center; gap: 6px; height: 30px; } /* one .lead line tall */
+.dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-soft); opacity: .45; animation: dot .8s ease-in-out infinite; }
+.dots i:nth-child(2) { animation-delay: .13s; }
+.dots i:nth-child(3) { animation-delay: .26s; }
+.dots.sm { align-items: flex-end; gap: 3px; height: auto; margin-left: 3px; } /* sits on the text's baseline */
+.dots.sm i { width: 4px; height: 4px; }
+@keyframes dot { 20% { transform: scale(1.6); opacity: 1; } 40% { transform: none; opacity: .45; } }
 @keyframes ellis-pulse { 50% { box-shadow: 0 0 0 6px var(--green-tint); } }
-.voice-state { margin: 0; font-weight: 700; }
-.guide { display: flex; flex-direction: column; gap: 12px; margin: 8px 0 16px; }
 .demo-tools { display: flex; flex-direction: column; gap: 8px; }
 .demo-tools summary { list-style: none; cursor: pointer; }
 .demo-tools summary::-webkit-details-marker { display: none; }
