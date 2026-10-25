@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 import uuid
 from concurrent.futures import Future, ThreadPoolExecutor
 from pathlib import Path
@@ -300,10 +301,15 @@ class LlmLiaison:
         end_call = False
         texts: list[str] = []
         meta: dict[str, Any] = {}
+        t0, model_s, rounds = time.perf_counter(), 0.0, 0
         for _ in range(MAX_TOOL_ROUNDS):
+            system = self._payload()
             try:
-                resp = self._client_().messages.create(model=self.model, max_tokens=800, system=self._payload(),
+                t_model = time.perf_counter()
+                resp = self._client_().messages.create(model=self.model, max_tokens=800, system=system,
                                                         tools=TOOLS, messages=self.history)
+                model_s += time.perf_counter() - t_model
+                rounds += 1
             except Exception:  # noqa: BLE001
                 log.exception("conversation model call failed")
                 return [script("tool_failure", lang=self.language)]
@@ -348,6 +354,10 @@ class LlmLiaison:
             self.ended = True
         else:
             self._prefetch_context()
+        total = time.perf_counter() - t0
+        # "case data + tools" is the database time a reply waits on; it should stay well under the model's
+        log.info("turn: %.0f ms (model %.0f ms over %d rounds, case data + tools %.0f ms)",
+                 total * 1000, model_s * 1000, rounds, (total - model_s) * 1000)
         return [line]
 
     def _flag_notes(self) -> list[dict]:

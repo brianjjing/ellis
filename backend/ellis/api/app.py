@@ -61,6 +61,11 @@ def create_app(start_workers: bool | None = None) -> FastAPI:
 
     app = FastAPI(title="Ellis Case API", version="0.1.0", lifespan=lifespan)
     logging.getLogger("uvicorn.access").addFilter(NoToolBodies())
+    if not log.handlers:  # uvicorn configures only its own loggers: without this, ellis INFO lines (turn timings) drop
+        h = logging.StreamHandler()
+        h.setFormatter(logging.Formatter("%(levelname)s:     %(name)s: %(message)s"))
+        log.addHandler(h)
+        log.setLevel(logging.INFO)
 
     from .routes import applicant, auth, clinic, guest, tools, voice, webhooks
 
