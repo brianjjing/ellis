@@ -111,11 +111,12 @@ def run_extraction_subprocess(doc: Document) -> dict[str, Any]:
                                                          "ELLIS_EXTRACTION_MODEL", "SSL_CERT_FILE",
                                                          "HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY",
                                                          "REQUESTS_CA_BUNDLE")}
-    env["PYTHONPATH"] = str(BACKEND_DIR)
     try:
         with storage.local_file(doc.storage_path) as path:
             proc = subprocess.run(
-                [sys.executable, "-I", "-m", "ellis.extraction.worker", doc.document_type, path, doc.mime,
+                # -E -s, not -I: -I also drops the cwd from sys.path, and then `ellis` only imports when it is
+                # pip-installed in a way isolated mode still sees (true of uv's backend/.venv, not the repo .venv)
+                [sys.executable, "-E", "-s", "-m", "ellis.extraction.worker", doc.document_type, path, doc.mime,
                  doc.sha256],
                 capture_output=True, text=True, timeout=180 if doc.document_type == "n400" else 60, env=env,
                 cwd=str(BACKEND_DIR))
