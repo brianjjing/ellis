@@ -11,9 +11,12 @@ sign-off), built from [`docs/oneshot.md`](docs/oneshot.md). Phase 2 (study and m
 
 ## Quick start
 
-Requirements: Python 3.12+ with [uv](https://docs.astral.sh/uv/), Node 20+, and optionally Postgres 16.
+Requirements: Python 3.12+, Node 20+, and optionally Postgres (or a Supabase project). All Python runs from a
+virtualenv at the repo root, `.venv/` (gitignored).
 
 ```bash
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e "backend[llm,dev]"          # add ,line for the Cartesia Line app
 cp backend/.env.example backend/.env    # then fill in keys (see below)
 ./scripts/dev.sh                        # seeds demo data, runs the API on :8000 and the web app on :5173
 ```
@@ -83,7 +86,7 @@ Key invariants:
 - **Cartesia Line deployment** (`ellis/voice/line_app.py`) is the same liaison as a Line `Agent`:
   - Start calls with `metadata.case_id`.
   - `ELLIS_LINE_BRAIN=llm` uses a Claude `LlmAgent` with HTTP tools, behind the layer-4 keyword guard.
-  - Run it with `uv run --extra line python -m ellis.voice.line_app`.
+  - Run it with `python -m ellis.voice.line_app` (venv active; needs the `line` extra).
 
 ### Staff agents and Creao
 
@@ -96,10 +99,10 @@ Each agent is a prompt file (`backend/prompts/<agent>.md`) plus a typed proposal
 ## Tests and evals
 
 ```bash
-cd backend
-uv run --group dev pytest                      # rules T1–T18 + acceptance AT1–AT20 + flows F1–F4 (57 tests)
-TEST_DATABASE_URL=postgresql+psycopg://ellis:ellis@localhost/ellis_test uv run --group dev pytest   # on Postgres
-ELLIS_TODAY=2026-10-23 uv run python -m evals.flows all -v   # print the full Spanish conversations
+source .venv/bin/activate && cd backend
+pytest                      # rules T1–T18 + acceptance AT1–AT20 + flows F1–F4 (57 tests)
+TEST_DATABASE_URL=postgresql+psycopg://ellis:ellis@localhost/ellis_test pytest   # on Postgres
+ELLIS_TODAY=2026-10-23 python -m evals.flows all -v   # print the full Spanish conversations
 ```
 
 The flow evals drive the real liaison, Case API, agent runner and packet builder with a simulated applicant.

@@ -12,7 +12,7 @@ from ellis.db import (
     AgentRun, Briefing, Case, Event, Fact, Flag, Job, Packet, ReviewItem, Signoff, StaffUser, Task, Utterance,
     VaultValue, session_scope,
 )
-from ellis.services import case_service as cs
+from ellis.services import case_service as cs, storage
 from ellis.voice.client import InProcessClient
 from ellis.voice.liaison import Liaison
 
@@ -257,10 +257,10 @@ def test_at15_at16_signoff_packet_and_invalidation(seeded):
         kinds = {p.kind for p in packets}
         assert {"n400_pdf", "online_copy_sheet", "evidence_index", "fee_sheet", "filing_checklist"} <= kinds
         for p in packets:
-            txt = "".join(pg.extract_text() for pg in PdfReader(p.storage_path).pages)
+            txt = "".join(pg.extract_text() for pg in PdfReader(io.BytesIO(storage.get(p.storage_path))).pages)
             assert ("A123456789" in txt) == (p.kind == "n400_pdf"), p.kind
         fee = [p for p in packets if p.kind == "fee_sheet"][0]
-        assert "710" in "".join(pg.extract_text() for pg in PdfReader(fee.storage_path).pages)
+        assert "710" in "".join(pg.extract_text() for pg in PdfReader(io.BytesIO(storage.get(fee.storage_path))).pages)
         c = s.get(Case, "c_maria")
         cs.record_fact(s, c, "contact.email", "maria@example.com", source="applicant_typed") if False else \
             cs.secure_entry(s, c, "contact.email", "maria@example.com")

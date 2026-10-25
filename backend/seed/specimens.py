@@ -3,7 +3,7 @@
 Every image is stamped "SPECIMEN — NOT A REAL DOCUMENT". The extraction worker matches uploads by sha256
 against seed/fixtures/extractions.json, so the demo runs without a vision model.
 
-    uv run python -m seed.specimens
+    python -m seed.specimens
 """
 
 from __future__ import annotations

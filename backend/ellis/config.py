@@ -26,7 +26,32 @@ def env(name: str, default: str | None = None) -> str | None:
 class Settings:
     @property
     def database_url(self) -> str:
-        return env("DATABASE_URL", f"sqlite:///{BACKEND_DIR / 'ellis.db'}")
+        url = env("DATABASE_URL", f"sqlite:///{BACKEND_DIR / 'ellis.db'}")
+        # Connection strings copied from the Supabase dashboard say postgresql://, which SQLAlchemy maps to
+        # psycopg2; we ship psycopg 3. Supabase also requires TLS.
+        if url.startswith(("postgresql://", "postgres://")):
+            url = "postgresql+psycopg://" + url.split("://", 1)[1]
+        if ".supabase." in url and "sslmode=" not in url:
+            url += ("&" if "?" in url else "?") + "sslmode=require"
+        return url
+
+    @property
+    def supabase_url(self) -> str | None:
+        return env("SUPABASE_URL")
+
+    @property
+    def supabase_secret_key(self) -> str | None:
+        return env("SUPABASE_SECRET_KEY")
+
+    @property
+    def supabase_bucket(self) -> str:
+        return env("SUPABASE_BUCKET", "case-files")
+
+    @property
+    def storage_backend(self) -> str:
+        # local (files_dir) | supabase (private bucket, server-side secret key only)
+        default = "supabase" if self.supabase_url and self.supabase_secret_key else "local"
+        return env("ELLIS_STORAGE", default)
 
     @property
     def tool_secret(self) -> str:

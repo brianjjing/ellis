@@ -1,7 +1,7 @@
 """End-to-end flow evals F1–F4 (Phase 1: stages 0–4), driven through the real liaison, Case API services,
 agent runner (skeleton backend) and packet builder.
 
-    ELLIS_TODAY=2026-10-23 uv run python -m evals.flows f1 -v
+    ELLIS_TODAY=2026-10-23 python -m evals.flows f1 -v
 """
 
 from __future__ import annotations

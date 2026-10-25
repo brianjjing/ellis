@@ -1,6 +1,6 @@
 """Staff-agent runner: dispatcher (events → debounced jobs) + workers (claim → context → run → validate → apply).
 
-    uv run python -m ellis.agents.runner      # standalone worker; the API also runs one in-process by default
+    python -m ellis.agents.runner             # standalone worker; the API also runs one in-process by default
 
 Debounce: events are folded into one pending job per (case, agent); the job runs ~3 s after the last event.
 Claiming uses FOR UPDATE SKIP LOCKED on Postgres. One run per (case, agent) at a time; max 2 per case.

@@ -1,7 +1,8 @@
-"""Database models (SQLAlchemy 2). Postgres 16 in production; SQLite works for zero-setup dev and tests.
+"""Database models (SQLAlchemy 2). Postgres (Supabase) in production, schema managed by Alembic in
+backend/migrations; SQLite works for zero-setup dev and tests.
 
 Every case-scoped table carries clinic_id and case_id; row-level filters are enforced in the API layer.
-The event table is append-only (the API never updates or deletes it; on Postgres, revoke update/delete).
+The event table is append-only (the API never updates or deletes it; on Postgres a trigger rejects both).
 """
 
 from __future__ import annotations
@@ -17,7 +18,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker, Session
 
-from .config import settings
+from .config import BACKEND_DIR, settings
 
 JSONType = JSON().with_variant(JSONB(), "postgresql")
 
@@ -454,27 +455,27 @@ def is_postgres() -> bool:
 
 
 def create_all() -> None:
-    Base.metadata.create_all(engine())
-    if is_postgres():
-        with engine().begin() as con:
-            con.execute(text("ALTER TABLE cases ADD COLUMN IF NOT EXISTS account_id VARCHAR(40)"))
-            con.execute(text("CREATE INDEX IF NOT EXISTS ix_cases_account_id ON cases (account_id)"))
-            # NOTIFY case_events on every event insert (LISTEN case_events for cross-process consumers).
-            con.execute(text("""
-                create or replace function notify_event() returns trigger as $$
-                begin
-                  perform pg_notify('case_events', json_build_object(
-                    'case', new.case_id, 'kind', new.kind, 'id', new.id)::text);
-                  return new;
-                end $$ language plpgsql;
-            """))
-            con.execute(text("drop trigger if exists t_notify on event"))
-            con.execute(text(
-                "create trigger t_notify after insert on event for each row execute function notify_event()"))
+    """Bring the schema up to date: Alembic migrations on Postgres (backend/migrations), create_all on SQLite."""
+    if not is_postgres():
+        Base.metadata.create_all(engine())
+        return
+    from alembic import command
+    from alembic.config import Config
+    from sqlalchemy import inspect
+    tables = inspect(engine()).get_table_names()
+    if "cases" in tables and "alembic_version" not in tables:
+        raise RuntimeError(
+            "This Postgres database was created before Alembic migrations (by the old create_all). Wipe and "
+            "rebuild it with `python -m seed.load --reset`, or, if it matches the current models, mark it "
+            "migrated with `alembic stamp head` from backend/.")
+    command.upgrade(Config(str(BACKEND_DIR / "alembic.ini")), "head")
 
 
 def drop_all() -> None:
     Base.metadata.drop_all(engine())
+    if is_postgres():
+        with engine().begin() as con:
+            con.execute(text("drop table if exists alembic_version"))
 
 
 @contextmanager

@@ -1,6 +1,6 @@
 """FastAPI app: the Case API. The only door into the data.
 
-    uv run uvicorn ellis.api.app:app --reload --port 8000
+    uvicorn ellis.api.app:app --reload --port 8000
 """
 
 from __future__ import annotations

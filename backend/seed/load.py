@@ -1,6 +1,8 @@
 """Load the synthetic demo data with one command:
 
-    uv run python -m seed.load            # drop + recreate all tables, then seed
+    python -m seed.load            # SQLite: drop + recreate all tables, then seed
+    python -m seed.load            # Postgres/Supabase: migrate, then seed only if the database is empty
+    python -m seed.load --reset    # Postgres/Supabase: wipe every table and the file bucket, then seed
 
 Clinic "Clínica Comunitaria del Valle (demo)", three staff users and the four flow applicants.
 Applicant links use fixed demo tokens (printed at the end); staff password for all demo users: ellis-demo
@@ -8,10 +10,15 @@ Applicant links use fixed demo tokens (printed at the end); staff password for a
 
 from __future__ import annotations
 
+import argparse
 import os
+import sys
 
-from ellis.db import Account, Case, Clinic, Document, StaffUser, create_all, drop_all, now, session_scope
-from ellis.services import auth
+from sqlalchemy import select
+
+from ellis.db import (Account, Case, Clinic, Document, StaffUser, create_all, drop_all, is_postgres, now,
+                      session_scope)
+from ellis.services import auth, storage
 from ellis.services import case_service as cs
 from ellis.services import documents as docs
 from ellis.services.demo import simulate_answers
@@ -39,6 +46,7 @@ def _briefing(s, case: Case, versions: int, queue: list[dict], **extra) -> None:
 def load(reset: bool = True, language: str = "en-US") -> dict[str, str]:
     if reset:
         drop_all()
+        storage.clear()
     create_all()
     specimens.build()
     with session_scope() as s:
@@ -124,8 +132,23 @@ def load(reset: bool = True, language: str = "en-US") -> dict[str, str]:
     return {cid: f"{base}/a/{tok}" for cid, tok in LINKS.items()}
 
 
+def already_seeded() -> bool:
+    create_all()
+    with session_scope() as s:
+        return s.scalar(select(Clinic.id).limit(1)) is not None
+
+
 if __name__ == "__main__":
-    links = load()
+    ap = argparse.ArgumentParser(description="Seed the synthetic demo clinic.")
+    ap.add_argument("--reset", action="store_true", help="on Postgres: drop all data and stored files first")
+    args = ap.parse_args()
+    # SQLite is a disposable dev file and always resets. A Postgres database (Supabase) has no backups on the
+    # free plan, so wiping it takes an explicit --reset.
+    reset = args.reset or not is_postgres()
+    if not reset and already_seeded():
+        print("Database already has data; leaving it alone. Run with --reset to wipe and reseed.")
+        sys.exit(0)
+    links = load(reset=reset)
     print("Seeded demo clinic. Staff logins (password: ellis-demo): admin@valle.demo, dana@valle.demo, sam@valle.demo")
     print("Applicant logins (password: ellis-demo): maria@valle.demo, jorge@valle.demo, ana@valle.demo, rosa@valle.demo")
     for cid, url in links.items():
