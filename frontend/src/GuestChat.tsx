@@ -11,6 +11,7 @@ type Msg = { who: 'you' | 'ellis'; text: string }
 // Module state: survives navigation, not a reload, and never touches storage or the server.
 let guest: { msgs: Msg[]; answers: Record<string, unknown> } = { msgs: [], answers: {} }
 let guestLang: Lang = 'en'
+let guestLocale = 'en-US' // the picker's choice; the guide itself answers in English or Spanish
 export const guestSnapshot = () => ({ answers: guest.answers, transcript: guest.msgs })
 
 const greeting = () => { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening' }
@@ -41,7 +42,7 @@ export default function GuestChat() {
     setMsgs(guest.msgs)
     setBusy(false)
   }
-  const pick = (code: string) => { guestLang = code.startsWith('es') ? 'es' : 'en'; setLang(guestLang) }
+  const pick = (code: string) => { guestLocale = code; guestLang = code.startsWith('es') ? 'es' : 'en'; setLang(guestLang) }
   const empty = msgs.length === 0
   return (
     <Shell active="chat" guest>
@@ -89,7 +90,7 @@ export default function GuestChat() {
                 {empty && <GuideStart lang={lang} onChip={send} />}
               </div>
             </div>
-            {empty && <GuideFoot lang={lang} onLocale={pick} />}
+            {empty && <GuideFoot lang={lang} locale={guestLocale} onLocale={pick} />}
           </section>
         </div>
       </main>

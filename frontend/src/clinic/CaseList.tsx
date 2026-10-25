@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { api, fmtTime, relTime } from '../api'
 import type { Me } from './ClinicApp'
+import { localeName, useLanguages } from '../applicant/i18n'
 
 // Sort: stop-now first → blocking → inactive → active by last_activity descending
 function sortRows(rows: any[]): any[] {
@@ -101,15 +102,10 @@ export default function CaseList({ me, tick }: { me: Me; tick: number }) {
   )
 }
 
-const LANGUAGE_OPTIONS = [
-  { value: 'en-US', label: 'English (US)' },
-  { value: 'en-GB', label: 'English (UK)' },
-  { value: 'es-MX', label: 'Spanish (Mexico)' },
-  { value: 'es-US', label: 'Spanish (US)' },
-  { value: 'es-ES', label: 'Spanish (Spain)' },
-]
-
 function NewCase({ reviewers, onClose }: { reviewers: any[]; me: Me; onClose: () => void }) {
+  // every language and accent Ellis talks in, in English (the clinic side's language)
+  const langs = useLanguages()
+  const options = langs.flatMap((l) => l.locales.map((loc) => ({ value: loc.code, label: localeName(langs, loc.code, false) })))
   const [v, setV] = useState({ first_name: '', last_name: '', phone: '', language: 'en-US', patient_mode: false, assigned_reviewer: reviewers[0]?.id ?? '' })
   const [link, setLink] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
@@ -128,7 +124,7 @@ function NewCase({ reviewers, onClose }: { reviewers: any[]; me: Me; onClose: ()
         <label className="field">Phone (optional)<input className="input" value={v.phone} onChange={(e) => setV({ ...v, phone: e.target.value })} /></label>
         <label className="field">Language <span className="soft">(the applicant can change this themselves before talking)</span>
           <select className="input" value={v.language} onChange={(e) => setV({ ...v, language: e.target.value })}>
-            {LANGUAGE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            {(options.length ? options : [{ value: 'en-US', label: 'English (United States)' }]).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         </label>
         <label className="check"><input type="checkbox" checked={v.patient_mode} onChange={(e) => setV({ ...v, patient_mode: e.target.checked })} /> Extra support mode (slower voice, longer pauses)</label>

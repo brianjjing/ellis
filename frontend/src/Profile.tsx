@@ -1,10 +1,11 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import Shell from './Shell'
 import { Flag, Icon } from './icons'
 import { api } from './api'
 import { signOut, useAuth } from './auth'
 import { fact, useCase } from './applicant/ApplicantApp'
-import { LANGUAGES, langOf, type Lang } from './applicant/i18n'
+import { langOf, localeName, useLanguages, type Lang } from './applicant/i18n'
+import { LanguagePicker } from './applicant/LanguagePicker'
 import { DOCS_EN } from './applicant/Sheets'
 
 const tabs = [
@@ -14,12 +15,55 @@ const tabs = [
 ]
 
 const docName = Object.fromEntries(DOCS_EN)
-const dialects = LANGUAGES.flatMap((l) => l.dialects.map((d) => ({ ...d, label: `${l.label} (${d.label})` })))
 
 function docNote(d: any): [string, boolean] {
   if (d.status === 'extracting' || d.status === 'uploaded') return ['Reading it…', false]
   if (d.status === 'extracted') return d.quality === 'low' ? ["The photo isn't clear. Can you take another?", true] : ['Read · used for your form', false]
   return ["We couldn't read it. Try another photo.", true]
+}
+
+type Voice = { id: string; name: string; description?: string | null; gender?: string | null; preview_url?: string | null; accent?: string | null }
+
+// The Sonic voice Ellis speaks with: Cartesia's voices for the applicant's accent, or Ellis's own pick.
+function VoiceChoice({ locale }: { locale: string }) {
+  const [d, setD] = useState<{ available: boolean; chosen: string | null; voices: Voice[] } | null>(null)
+  const [open, setOpen] = useState(false)
+  const audio = useRef<HTMLAudioElement | null>(null)
+  const load = () => api('/api/a/voices').then(setD).catch(() => setD({ available: false, chosen: null, voices: [] }))
+  useEffect(() => { load() }, [locale])
+  useEffect(() => () => audio.current?.pause(), [])
+  const choose = async (id: string | null) => { await api('/api/a/voice', { body: { voice_id: id } }); load() }
+  const listen = (url: string) => {
+    audio.current?.pause()
+    audio.current = new Audio(url)
+    audio.current.play().catch(() => undefined)
+  }
+  const chosen = d?.voices.find((v) => v.id === d.chosen)
+  const note = !d ? 'Loading…' : !d.available ? "Ellis's voice can't be chosen right now."
+    : chosen ? `${chosen.name}. You chose this voice; it applies the next time Ellis speaks.` : 'Chosen by Ellis for your language and accent.'
+  return (
+    <>
+      <Setting name={<><Icon name="speaker" />Ellis's voice</>} note={note}>
+        {d?.available && <button type="button" className="btn" aria-expanded={open} onClick={() => setOpen(!open)}>Change</button>}
+      </Setting>
+      {open && d?.available && (
+        <div className="stack enter" style={{ paddingTop: 12, gap: 8 }}>
+          <div className="btns">
+            <button type="button" className={`btn md ${d.chosen ? '' : 'primary'}`} aria-pressed={!d.chosen} onClick={() => choose(null)}>Let Ellis choose</button>
+          </div>
+          {d.voices.map((v) => (
+            <div key={v.id} className="btns" style={{ alignItems: 'center' }}>
+              <button type="button" className={`btn md ${v.id === d.chosen ? 'primary' : ''}`} aria-pressed={v.id === d.chosen} onClick={() => choose(v.id)}>
+                {v.name}{v.accent ? ` · ${v.accent.replace(/-/g, ' ')}` : ''}
+              </button>
+              {v.preview_url && <button type="button" className="btn sm" aria-label={`Listen to ${v.name}`} onClick={() => listen(v.preview_url!)}>Listen</button>}
+            </div>
+          ))}
+          {!d.voices.length && <p className="small soft">No voices are listed for this language yet; Ellis picks one.</p>}
+        </div>
+      )}
+    </>
+  )
 }
 
 function Setting({ name, note, children }: { name: ReactNode; note: string; children?: ReactNode }) {
@@ -58,7 +102,8 @@ export default function Profile() {
   const flags = data.referrals.length + data.reviewer_notes.length + (data.case_blocked ? 1 : 0)
 
   const decline = async (id: string) => { await api(`/api/a/gaps/${id}/decline`, { body: {} }); reload() }
-  const setLanguage = async (locale: string) => { await api('/api/a/language', { body: { locale } }); setPicking(false); reload() }
+  const langs = useLanguages()
+  const setLanguage = async (locale: string) => { await api('/api/a/language', { body: { locale } }); reload() }
   const setConsent = async (agree: boolean) => { await api('/api/a/consent', { body: { agree } }); reload() }
   const { refresh } = useAuth()
   const logOut = () => signOut(refresh)
@@ -95,16 +140,15 @@ export default function Profile() {
               <button type="button" className={`btn${data.consent_given ? '' : ' primary'}`} onClick={() => setConsent(!data.consent_given)}>{data.consent_given ? 'Withdraw' : 'I agree'}</button>
             </Setting>
             <Setting name="Sensitive numbers" note="You type them; they are never spoken. The AI only sees a placeholder." />
-            <Setting name={<><Icon name="globe" />Language</>} note={`${dialects.find((d) => d.code === data.language)?.label ?? data.language}. Ellis talks with you in this language.`}>
+            <Setting name={<><Icon name="globe" />Language</>} note={`${localeName(langs, data.language)}. Ellis talks with you in this language and accent.`}>
               <button type="button" className="btn" aria-expanded={picking} onClick={() => setPicking(!picking)}>Change</button>
             </Setting>
             {picking && (
-              <div className="btns enter" style={{ paddingTop: 12 }}>
-                {dialects.map((d) => (
-                  <button key={d.code} type="button" className={`btn md ${d.code === data.language ? 'primary' : ''}`} aria-pressed={d.code === data.language} onClick={() => setLanguage(d.code)}>{d.label}</button>
-                ))}
+              <div className="enter" style={{ paddingTop: 12, maxWidth: 360 }}>
+                <LanguagePicker value={data.language} lang={langOf(data)} onChange={setLanguage} />
               </div>
             )}
+            <VoiceChoice locale={data.language} />
             <Setting name="Ellis's replies" note={`${{ short: 'Short', normal: 'Normal', detailed: 'Detailed' }[data.settings.reply_length as string] ?? data.settings.reply_length}. To change it, ask Ellis in the chat.`} />
             <Setting name="Ellis's voice speed" note={`${data.settings.voice_speed === 'slow' ? 'Slower' : 'Normal'}. To change it, ask Ellis in the chat.`} />
             <div className="btns" style={{ paddingTop: 20 }}>

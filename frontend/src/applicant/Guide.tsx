@@ -1,5 +1,6 @@
 import { Icon } from '../icons'
-import { LANGUAGES, t, type Lang } from './i18n'
+import { t, type Lang } from './i18n'
+import { LanguagePicker } from './LanguagePicker'
 
 // First screen of a chat, under the centered box: suggested questions.
 export function GuideStart({ lang, onChip }: { lang: Lang; onChip: (text: string) => void }) {
@@ -12,7 +13,7 @@ export function GuideStart({ lang, onChip }: { lang: Lang; onChip: (text: string
 }
 
 // First screen's footer, last in .convo: what to have ready (bottom middle) and the language picker (bottom right, opens upward).
-export function GuideFoot({ lang, onLocale }: { lang: Lang; onLocale: (code: string) => void }) {
+export function GuideFoot({ lang, locale, onLocale }: { lang: Lang; locale: string; onLocale: (code: string) => void }) {
   return (
     <div className="guide-foot">
       <p className="small">
@@ -20,10 +21,8 @@ export function GuideFoot({ lang, onLocale }: { lang: Lang; onLocale: (code: str
       </p>
       <details className="more-menu lang-menu">
         <summary className="btn strong"><Icon name="globe" size={18} />{t(lang, 'chooseLanguage')}</summary>
-        <div className="more-menu-body">
-          {LANGUAGES.flatMap((l) => l.dialects.map((d) => (
-            <button key={d.code} type="button" lang={d.code} className="btn" onClick={(e) => { onLocale(d.code); e.currentTarget.closest('details')?.removeAttribute('open') }}>{l.label} · {d.label}</button>
-          )))}
+        <div className="more-menu-body lang-picker">
+          <LanguagePicker value={locale} lang={lang} onChange={onLocale} />
         </div>
       </details>
     </div>
