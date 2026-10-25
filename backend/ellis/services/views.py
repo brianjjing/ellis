@@ -14,7 +14,7 @@ from ..db import (
     StaffUser, Task, Utterance,
 )
 from ..extraction.schemas import LABELS_EN
-from . import activity, auth, case_service as cs, catalog
+from . import activity, auth, case_service as cs, catalog, languages
 from .flags import STOP_NOW
 from .values import display_value
 
@@ -335,7 +335,7 @@ def agent_context(s: Session, case: Case, focus: dict[str, Any]) -> dict[str, An
     task = focus.get("task", "general")
     ctx: dict[str, Any] = {
         "today": cs.today().isoformat(),
-        "reply_language": "English" if lang == "en" else "Spanish",
+        "reply_language": languages.name(case.language),  # e.g. "French (Canada)": the language and accent
         "applicant": {"first_name": case.first_name, "case_state": case.state,
                       "consent_given": cs.consent_given(s, case)},
         "settings": cs.applicant_settings(case),

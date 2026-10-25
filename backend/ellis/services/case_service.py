@@ -19,7 +19,7 @@ from ..db import (
     Signoff, Task, Utterance, VaultValue, new_id, now,
 )
 from ..rules import engine as rules
-from . import catalog, keywords, vault
+from . import catalog, keywords, languages, vault
 from .bus import queue_after_commit
 from .flags import CATEGORIES, FLAG_CONTINUE, RULE_TRIGGERS, STOP_NOW, category as cat_info
 from .values import ValueError_, equal, normalize
@@ -60,7 +60,13 @@ def today() -> date:
 
 
 def case_lang(case: Case) -> str:
-    return "en" if (case.language or "").startswith("en") else "es"
+    """The language of Ellis's own text for this case: 'es' or 'en' (every language but Spanish reads English)."""
+    return languages.copy_lang(case.language)
+
+
+def case_language(case: Case) -> str:
+    """The language Ellis talks in with this applicant: any supported base code ('fr', 'vi', ...)."""
+    return languages.base(case.language)
 
 
 def _aware(dt: datetime | None) -> datetime | None:
@@ -895,8 +901,7 @@ def flag_for_review(s: Session, case: Case, category: str, field: str | None = N
 # Settings the applicant may change by asking Ellis (value -> how it reads on screen). The chat only ever
 # asks; set_setting runs once the applicant taps Allow.
 APPLICANT_SETTINGS = {
-    "language": {"en-US": "English (United States)", "en-GB": "English (United Kingdom)",
-                 "es-MX": "Español (México)", "es-US": "Español (Estados Unidos)", "es-ES": "Español (España)"},
+    "language": languages.options(),  # every language and accent Ellis talks in (config/languages.yaml)
     "reply_length": {"short": "Short", "normal": "Normal", "detailed": "Detailed"},
     "voice_speed": {"normal": "Normal", "slow": "Slower"},
 }

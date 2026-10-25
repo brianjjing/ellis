@@ -14,7 +14,7 @@ from sqlalchemy import select
 
 from ...config import settings
 from ...db import Case, Gap, Packet, session_scope
-from ...services import auth, bus, case_service as cs, documents as docsvc, review, signoff, storage, views
+from ...services import auth, bus, case_service as cs, documents as docsvc, languages, review, signoff, storage, views
 from ...services.flags import STOP_NOW
 from ..deps import APPLICANT_COOKIE, applicant_case, err
 
@@ -60,19 +60,17 @@ class LanguageReq(BaseModel):
     locale: str
 
 
-SUPPORTED_LOCALE_PREFIXES = ("es", "en")
-
-
 @router.post("/language")
 def set_language(body: LanguageReq, request: Request) -> dict[str, Any]:
     """Persists the applicant's chosen conversation language/dialect on the case, so a returning session
     (or the review/sign-off screens) uses it instead of silently reverting to Spanish."""
-    if not body.locale.split("-")[0] in SUPPORTED_LOCALE_PREFIXES:
+    locale = languages.normalize(body.locale)
+    if locale is None:
         raise err(400, "unsupported_language", "unsupported language")
     with session_scope() as s:
         case = applicant_case(request, s)
-        case.language = body.locale
-        cs.emit(s, case, "case.language_changed", {"language": body.locale}, "applicant", "applicant")
+        case.language = locale
+        cs.emit(s, case, "case.language_changed", {"language": locale}, "applicant", "applicant")
         return {"language": case.language}
 
 

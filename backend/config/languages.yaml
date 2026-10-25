@@ -1,0 +1,65 @@
+# The languages Ellis can talk in: what Cartesia's Sonic TTS speaks (sonic-3.6, 44 languages) and the locales
+# (accents) it lists, from docs.cartesia.ai (tts-models/latest, capability-guides/advanced-capabilities), Oct 2026.
+# This file is the only language list: the API serves it to the language pickers on both sides.
+#
+#   name / native  English name (for the model's reply_language and clinic screens) / the language's own name
+#   locales        Cartesia locale codes; the first is Ellis's default for the language. A label is shown
+#                  only when a language has more than one locale.
+#   stt            speech-to-text: ink-2 (turn detection; en es fr hi ja), ink-whisper (no turn detection),
+#                  or none (Ellis listens by typing only)
+#   rtl            written right to left
+#
+# Ellis's own screen text exists in English and Spanish; every other language sees English screen text while
+# Ellis talks in the chosen language. The fixed legal lines (disclosure, stop, secure entry) for languages other
+# than English and Spanish are machine-translated drafts (see voice/scripts_<code>.yaml, reviewed: false).
+en: {name: English, native: English, stt: ink-2, locales: [
+  {code: en-US, label: United States}, {code: en-GB, label: United Kingdom}, {code: en-CA, label: Canada},
+  {code: en-AU, label: Australia}, {code: en-IN, label: India}, {code: en-IE, label: Ireland},
+  {code: en-NZ, label: New Zealand}, {code: en-SG, label: Singapore}, {code: en-ZA, label: South Africa}]}
+es: {name: Spanish, native: Español, stt: ink-2, locales: [
+  {code: es-MX, label: México}, {code: es-US, label: Estados Unidos}, {code: es-ES, label: España}]}
+fr: {name: French, native: Français, stt: ink-2, locales: [
+  {code: fr-FR, label: France}, {code: fr-CA, label: Canada}]}
+pt: {name: Portuguese, native: Português, stt: ink-whisper, locales: [
+  {code: pt-BR, label: Brasil}, {code: pt-PT, label: Portugal}]}
+nl: {name: Dutch, native: Nederlands, stt: ink-whisper, locales: [
+  {code: nl-NL, label: Nederland}, {code: nl-BE, label: België}]}
+zh: {name: Chinese, native: 中文, stt: ink-whisper, locales: [{code: zh-CN}]}
+hi: {name: Hindi, native: हिन्दी, stt: ink-2, locales: [{code: hi-IN}]}
+ja: {name: Japanese, native: 日本語, stt: ink-2, locales: [{code: ja-JP}]}
+de: {name: German, native: Deutsch, stt: ink-whisper, locales: [{code: de-DE}]}
+it: {name: Italian, native: Italiano, stt: ink-whisper, locales: [{code: it-IT}]}
+ko: {name: Korean, native: 한국어, stt: ink-whisper, locales: [{code: ko-KR}]}
+pl: {name: Polish, native: Polski, stt: ink-whisper, locales: [{code: pl-PL}]}
+ru: {name: Russian, native: Русский, stt: ink-whisper, locales: [{code: ru-RU}]}
+sv: {name: Swedish, native: Svenska, stt: ink-whisper, locales: [{code: sv-SE}]}
+tr: {name: Turkish, native: Türkçe, stt: ink-whisper, locales: [{code: tr-TR}]}
+tl: {name: Tagalog, native: Tagalog, stt: ink-whisper, locales: [{code: tl-PH}]}
+bg: {name: Bulgarian, native: Български, stt: ink-whisper, locales: [{code: bg-BG}]}
+ro: {name: Romanian, native: Română, stt: ink-whisper, locales: [{code: ro-RO}]}
+ar: {name: Arabic, native: العربية, stt: ink-whisper, rtl: true, locales: [{code: ar}]}
+cs: {name: Czech, native: Čeština, stt: ink-whisper, locales: [{code: cs-CZ}]}
+el: {name: Greek, native: Ελληνικά, stt: ink-whisper, locales: [{code: el-GR}]}
+fi: {name: Finnish, native: Suomi, stt: ink-whisper, locales: [{code: fi-FI}]}
+hr: {name: Croatian, native: Hrvatski, stt: ink-whisper, locales: [{code: hr-HR}]}
+ms: {name: Malay, native: Bahasa Melayu, stt: ink-whisper, locales: [{code: ms-MY}]}
+sk: {name: Slovak, native: Slovenčina, stt: ink-whisper, locales: [{code: sk-SK}]}
+da: {name: Danish, native: Dansk, stt: ink-whisper, locales: [{code: da-DK}]}
+ta: {name: Tamil, native: தமிழ், stt: ink-whisper, locales: [{code: ta-IN}]}
+uk: {name: Ukrainian, native: Українська, stt: ink-whisper, locales: [{code: uk-UA}]}
+hu: {name: Hungarian, native: Magyar, stt: ink-whisper, locales: [{code: hu-HU}]}
+"no": {name: Norwegian, native: Norsk, stt: ink-whisper, locales: [{code: no-NO}]}
+vi: {name: Vietnamese, native: Tiếng Việt, stt: ink-whisper, locales: [{code: vi-VN}]}
+bn: {name: Bengali, native: বাংলা, stt: ink-whisper, locales: [{code: bn-IN}]}
+th: {name: Thai, native: ไทย, stt: ink-whisper, locales: [{code: th-TH}]}
+he: {name: Hebrew, native: עברית, stt: ink-whisper, rtl: true, locales: [{code: he-IL}]}
+ka: {name: Georgian, native: ქართული, stt: ink-whisper, locales: [{code: ka-GE}]}
+id: {name: Indonesian, native: Bahasa Indonesia, stt: ink-whisper, locales: [{code: id-ID}]}
+te: {name: Telugu, native: తెలుగు, stt: ink-whisper, locales: [{code: te-IN}]}
+gu: {name: Gujarati, native: ગુજરાતી, stt: ink-whisper, locales: [{code: gu-IN}]}
+kn: {name: Kannada, native: ಕನ್ನಡ, stt: ink-whisper, locales: [{code: kn-IN}]}
+ml: {name: Malayalam, native: മലയാളം, stt: ink-whisper, locales: [{code: ml-IN}]}
+mr: {name: Marathi, native: मराठी, stt: ink-whisper, locales: [{code: mr-IN}]}
+pa: {name: Punjabi, native: ਪੰਜਾਬੀ, stt: ink-whisper, locales: [{code: pa-IN}]}
+ur: {name: Urdu, native: اردو, stt: ink-whisper, rtl: true, locales: [{code: ur-IN}]}
+or: {name: Odia, native: ଓଡ଼ିଆ, stt: none, locales: [{code: or-IN}]}

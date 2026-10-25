@@ -13,7 +13,7 @@ from sqlalchemy import select
 
 from ...db import CallSession, Case, now, session_scope
 from ...services import case_service as cs
-from ...services import catalog
+from ...services import catalog, languages
 from ...services.flags import STOP_NOW
 from ..deps import tool_case
 
@@ -61,10 +61,11 @@ def call_config(s, case: Case) -> dict[str, Any]:
     from ...services.clinic_service import clinic_of
     patient = bool((case.settings or {}).get("patient_mode"))
     locale = case.language or "en-US"
-    lang = "en" if locale.startswith("en") else "es"
+    lang = languages.base(locale)  # the conversation's language; Ellis's own text is cs.case_lang(case)
     return {"case_state": case.state, "first_name": case.first_name, "clinic_name": clinic_of(s, case).name,
             "consent_given": cs.consent_given(s, case), "patient_mode": patient, "language": lang, "locale": locale,
-            "stt": {"language": lang, "turn_profile": "patient" if patient else "default"},
+            "stt": {"language": lang, "model": languages.stt_model(locale),
+                    "turn_profile": "patient" if patient else "default"},
             "tts": {"language": lang, "locale": locale, "add_timestamps": True,
                     "speed": 0.85 if patient or cs.applicant_settings(case)["voice_speed"] == "slow" else 1.0},
             # seconds of silence before a check-in: long enough that they've really drifted off, not just thinking
