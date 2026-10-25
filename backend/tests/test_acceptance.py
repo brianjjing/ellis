@@ -445,3 +445,12 @@ def test_flows_end_to_end(seeded, flow, expected):
     x = FLOWS[flow]()
     assert x.state() == expected
     assert x.gate()["passes"]
+
+
+def test_interview_stage_waits_for_every_part():
+    from types import SimpleNamespace
+    from ellis.services.views import roadmap_index
+    done, partial = {"state": "done"}, {"state": "partial"}
+    assert roadmap_index(SimpleNamespace(state="intake"), [done] * 12 + [partial]) == 1  # 12 of 13: still Eligibility
+    assert roadmap_index(SimpleNamespace(state="intake"), [done] * 13) == 2  # all done: Interview
+    assert roadmap_index(SimpleNamespace(state="review"), [done] * 12 + [partial]) == 1

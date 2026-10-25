@@ -40,15 +40,12 @@ STAGE_NAMES = {"consent_pending": "Consent", "intake": "Intake", "evidence": "Ev
                "ready": "Ready for sign-off", "signed": "Signed", "referred_out": "Referred out", "closed": "Closed"}
 
 
-def roadmap_index(s: Session, case: Case) -> int:
+def roadmap_index(case: Case, progress: list[dict[str, Any]]) -> int:
     if case.state == "consent_pending":
         return 0
-    if case.state == "intake":
-        lpr = cs.current_facts(s, case.id).get("lpr_since")
-        return 1 if lpr is None or lpr.status != "confirmed" else 2
-    if case.state == "evidence":
-        return 3
-    return 4
+    if any(p["state"] != "done" for p in progress):
+        return 1  # the interview stage, and everything after it, waits until every part of the form is done
+    return {"intake": 2, "evidence": 3}.get(case.state, 4)
 
 
 CHIP_LABELS = {
@@ -206,16 +203,17 @@ def applicant_case(s: Session, case: Case) -> dict[str, Any]:
         filing = {"earliest_filing": der.data["earliest_filing"], "window_open": der.data.get("window_open"),
                   "rule_config_version": der.rule_config_version}
     b = cs.latest_briefing(s, case.id)
+    progress = section_progress(s, case)
     return {
         "case_id": case.id, "first_name": case.first_name, "state": case.state, "sub_mode": case.sub_mode,
         "language": case.language,
         "clinic": {"name": clinic.name, "phone": (clinic.settings or {}).get("phone"), "is_demo": clinic.is_demo},
         "patient_mode": bool((case.settings or {}).get("patient_mode")),
-        "facts": facts_panel(s, case), "progress": section_progress(s, case), "team": team_cards(s, case),
+        "facts": facts_panel(s, case), "progress": progress, "team": team_cards(s, case),
         "referrals": referral_cards(s, case), "open_review_items": open_items, "gaps": gaps, "documents": docs,
         "reviewer_notes": notes, "case_blocked": blocked, "filing_window": filing,
         "roadmap": {"stages": ROADMAP_EN if case.language.split("-")[0] == "en" else ROADMAP_ES,
-                   "current": roadmap_index(s, case),
+                   "current": roadmap_index(case, progress),
                    "future": FUTURE_EN if case.language.split("-")[0] == "en" else FUTURE_ES},
         "briefing_version": b.version if b else 0,
         "packet_ready": s.scalars(select(Packet).where(Packet.case_id == case.id, Packet.status == "current")).first()
