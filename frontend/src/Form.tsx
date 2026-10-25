@@ -26,12 +26,11 @@ export default function Form() {
       <main className="main">
         <header className="bar">
           <div className="stack" style={{ gap: 4 }}>
-            <div className="mono" style={{ fontSize: 12, lineHeight: '16px' }}>N-400 · APPLICATION FOR CITIZENSHIP</div>
             <h1 className="h1">{done} of {parts.length} parts done</h1>
           </div>
           <div className="btns">
             <button type="button" className="btn" onClick={() => setView(question ? 'parts' : 'question')}>{question ? 'See all parts' : 'Back to my question'}</button>
-            <button type="button" className="btn" onClick={() => upload()}><Icon name="upload" />Fill from a document</button>
+            <button type="button" className="btn primary" onClick={() => upload()}><Icon name="upload" />Fill from a document</button>
           </div>
         </header>
         <div aria-hidden="true" className="progress" style={{ gridTemplateColumns: `repeat(${parts.length}, minmax(0, 1fr))` }}>
@@ -40,13 +39,13 @@ export default function Form() {
 
         {question && part ? (
           <div key={i} className="content enter" style={{ padding: '48px 24px', gap: 28 }}>
-            <div className="label">PART {i + 1} · {part.label.toUpperCase()} · {part.done} OF {part.total} CONFIRMED</div>
+            <div className="label">Part {i + 1} · {part.label} · {part.done} of {part.total} confirmed</div>
             <h2 className="display" style={{ marginTop: -14 }}>{part.label}</h2>
             <p className="lead soft pull">Ellis asks these questions in the chat, one at a time. Here is what you have so far.</p>
 
             <section aria-labelledby="answers" className="stack enter">
               <h3 id="answers" className="rule" style={{ fontSize: 17, lineHeight: '24px', fontWeight: 700 }}>
-                <span className="mono green">ELLIS</span> · {items.length ? `I have ${items.length} answer${items.length > 1 ? 's' : ''} for this part` : 'Nothing for this part yet'}
+                <span className="green" style={{ fontWeight: 700 }}>Ellis</span> · {items.length ? `I have ${items.length} answer${items.length > 1 ? 's' : ''} for this part` : 'Nothing for this part yet'}
               </h3>
               {items.map((t: any) => (
                 <div key={t.field} className="row" style={{ padding: '16px 0' }}>
@@ -63,7 +62,7 @@ export default function Form() {
               <a href="/" data-nav className="talk"><Icon name="mic" />Answer by talking to Ellis</a>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button type="button" className="btn lg" disabled={i === 0} onClick={() => open(i - 1)}>Back</button>
-                <button type="button" className="btn lg primary" style={{ padding: '0 32px' }} onClick={() => (i + 1 < parts.length ? open(i + 1) : setView('parts'))}>Continue</button>
+                <button type="button" className="btn lg primary" style={{ padding: '0 32px' }} onClick={() => (i + 1 < parts.length ? open(i + 1) : setView('parts'))}>{i + 1 < parts.length ? `Next: ${parts[i + 1].label}` : 'Done'}</button>
               </div>
             </div>
           </div>
