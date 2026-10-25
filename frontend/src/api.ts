@@ -62,3 +62,16 @@ export function debounce<F extends (...a: any[]) => void>(f: F, ms: number) {
 }
 
 export const fmtTime = (iso?: string | null) => (iso ? new Date(iso).toLocaleString() : '—')
+
+export function relTime(iso?: string | null): string {
+  if (!iso) return '—'
+  const diffMs = Date.now() - new Date(iso).getTime()
+  const diffMin = Math.floor(diffMs / 60000)
+  if (diffMin < 1) return 'just now'
+  if (diffMin < 60) return `${diffMin}m ago`
+  const diffH = Math.floor(diffMin / 60)
+  if (diffH < 24) return `${diffH}h ago`
+  const diffD = Math.floor(diffH / 24)
+  if (diffD < 7) return `${diffD}d ago`
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
