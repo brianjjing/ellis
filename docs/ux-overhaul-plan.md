@@ -260,33 +260,28 @@ Pages those tests touch: the happy path signs into `/clinic`, opens a case, clic
 
 ### Phase 2
 
-| Item | Files | Conflict or block |
+| Item | Files | Status |
 | --- | --- | --- |
-| Mobile nav, hide locked items, 18px body, sentence case | `Shell.tsx`, `styles.css`, `app.css`, every client page that uses `.label` | Sidebar becomes a bottom nav under 800px only if layout changes; today it stacks |
-| Save-conversation prompt once | `GuestChat.tsx` currently repeats "Create a free account…" under every Ellis message | |
-| Next-step after each answer | Signed-in: `llm_liaison.py` and the `focus` object already drive `.next-bar` in `Chat.tsx`. Guest: `guest.respond` has no progress count | "3 parts to go" needs a real count from `section_progress`, not a hardcoded 13 |
-| Chat labels and read-back values | `Chat.tsx` | Read-back text is one string. The value is inside it, not a separate visual field |
-| N-400 as a review list | `Form.tsx`, `views.section_progress` | **Not 13 parts.** `n400_fields.yaml` has 13 titled parts. The form uses catalog sections that have required fields, including Consent. Continue is not dead: it opens the next section, then the part list. Label it from `parts[i + 1].label` |
-| Interview uses form answers and QA flags | `Interview.tsx` | **Phase 2, not built now.** `GET /api/a/case` already returns facts with status (`applicant_case` → `facts_panel`). Show confirmed answers read-only then. Do not add an API. "Your clinic suggested practicing this one" still needs a QA flag the applicant payload does not carry; that stays later work |
-| Civics spoken first; hide 0 of 0; explain 12 of 20 | `Interview.tsx` | The "12 of 20" line is hardcoded and is not from a USCIS config. Leave the numbers, add a `[VERIFY against current USCIS source]` comment, and list them here when that phase starts. The practice set has 4 questions. Score starts at 0 of 0, so the empty score is visible today |
-| English test shows what was heard | `Interview.tsx` | Already shows "YOU SAID". Word-level diff does not exist |
-| Reminders next-step card and stepper | `Reminders.tsx`, `views.reminders`, `ROADMAP_EN` / `FUTURE_EN` | The roadmap on the case is Start / Eligibility / Interview / Documents / Review. The six future items are already "Coming soon" via `FUTURE_EN`. Filing date comes from the rules engine (`filing_window`). Do not invent other dates |
-| Empty and error states | Each client page | API errors today surface as `e.message` |
+| Mobile nav, hide locked items, 18px body, sentence case | `Shell.tsx`, `styles.css`, `app.css`, every client page that uses `.label` | **Done** (commits 87f44cb, 42fb55b) |
+| Save-conversation prompt once | `GuestChat.tsx` | **Done** (commit 42fb55b) |
+| Chat labels and read-back values | `Chat.tsx` | **Done** — sentence case throughout (commit 42fb55b) |
+| N-400 as a review list | `Form.tsx` | **Done** — mono header removed, part label sentence-cased, continue → "Next: {label}" / "Done", upload promoted to primary (commit 9a15fdc) |
+| Interview: civics spoken first; hide 0 of 0; explain 12 of 20; English word diff | `Interview.tsx` | **Done** — "Answer out loud" primary, choices behind toggle, score hidden until first answer, [VERIFY] comment added, word-level diff (commit 520a3b7) |
+| Reminders next-step card and stepper | `Reminders.tsx` | **Done** — roadmap stepper from `data.roadmap.stages/current`, future items replaced with one line (commit 2481e48) |
+| Profile sentence case | `Profile.tsx` | **Done** (commit d4fa61a) |
+| Empty and error states | Each client page | Not yet addressed beyond existing `e.message` surfaces |
 
 ### Phase 3
 
-| Item | Files | Conflict or block |
+| Item | Files | Status |
 | --- | --- | --- |
-| Cases sort, Needs you, severity, relative time, Client link, Extra support, blocking text | `CaseList.tsx`, `views.case_row`, `api.ts` `fmtTime` | Sort is server order today. `open_blocking` is a count, not a severity. Empty is an em dash. `fmtTime` is `toLocaleString()`, which includes seconds. `patient_mode` is the internal key; the UI says "Patient mode" and "patient". A rename of the visible words does not require a key rename |
-| Case header hierarchy and overflow close | `CaseDetail.tsx` | `window.confirm('Close this case?')` does not name the case. Mark ready is already disabled until `gate.passes` |
-| Ready gate labels and groups | `CaseDetail.tsx`, `gate_status` | Failures are codes and messages. Field lists are raw keys, capped at 50, and the UI prints 6 then an ellipsis |
-| Activity timeline | `CaseDetail.tsx` `Activity`, `views.clinic_case_detail` | Data is raw events. Plain sentences like "Paralegal checked the passport…" are not stored. Building them means formatting known `event.kind` values, not reading a new log. Agent display names differ from the playbook names |
-| Facts columns | `CaseDetail.tsx` `Facts` | Labels, value, status, and a provenance sentence already exist. "Assumed" is not a status. Statuses in the data are the fact statuses (`confirmed`, `proposed`, `disputed`, and so on). Source is a sentence, not a typed Voice / Document / Rule chip |
-| Documents checklist and gap labels | `CaseDetail.tsx` `Docs`, `views` gap payload | There is no expected-document checklist in the API. Gaps have `document_type`, `reason`, `status`. `label_es` exists on the `Gap` model and is not returned by `clinic_case_detail` |
-| Review item layout and queue empty state | `CaseDetail.tsx`, `ReviewQueue.tsx` | Queue items have category, speed, facts, evidence, agent notes, and decision buttons. "Send to client as a question" and "Write memo" are not actions on that screen |
-| Memos formatting and task cards | `CaseDetail.tsx` `Memos` | `body_md` is free text. Empty is "None yet." Task board is a flat list |
-| Transcript highlights | `CaseDetail.tsx` `Transcript` | Utterances have speaker, text, locked, redacted. No link from a correction to a fact |
-| Packet | `CaseDetail.tsx` `Packet` | Shows files after sign. Approve is only on the header today |
+| Client link column, "Extra support" pill+tooltip, "stop now" lowercase | `CaseList.tsx` | **Done** (commit 28916dd) |
+| Close dialog names case; "Extra support" toggle; transcript sentence case; stop-now lowercase | `CaseDetail.tsx` | **Done** (commit 28916dd) |
+| STOP-NOW and category uppercase → sentence case | `ReviewQueue.tsx` | **Done** (commit 28916dd) |
+| Cases sort, relative time, severity ordering | `CaseList.tsx`, `views.case_row`, `api.ts` | Not yet — `fmtTime` still uses `toLocaleString()` |
+| Ready gate labels and groups | `CaseDetail.tsx` | Not yet addressed |
+| Activity timeline | `CaseDetail.tsx` | Phase 1 (activity.py) done; UI display uses sentences already |
+| Facts columns, documents checklist, memos, transcript highlights, packet | `CaseDetail.tsx` | Not yet addressed |
 
 ### Phase 4
 
