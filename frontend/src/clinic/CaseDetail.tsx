@@ -23,12 +23,12 @@ export default function CaseDetail({ id, me, tick }: { id: string; me: Me; tick:
       <header className="bar">
         <div className="stack" style={{ gap: 4 }}>
           <a href="/clinic" data-nav className="small">← Cases</a>
-          <h1 className="h1">{c.full_name} <span className="pill">{c.stage}</span>{c.patient_mode && <span className="pill">patient mode</span>}</h1>
+          <h1 className="h1">{c.full_name} <span className="pill">{c.stage}</span>{c.patient_mode && <span className="pill" title="Slower voice and longer pauses.">Extra support</span>}</h1>
           <span className="small">Reviewer: {c.assigned_reviewer?.name ?? '—'} · link {c.link_status.replace('_', ' ')} · last activity {fmtTime(c.last_activity)}</span>
         </div>
         <div className="btns">
           <button className="btn" onClick={() => act(async () => `New link (old one revoked): ${(await api(`/api/clinic/cases/${id}/link`, { body: {} })).link}`, '')}>Resend link</button>
-          <button className="btn" onClick={() => act(() => api(`/api/clinic/cases/${id}`, { method: 'PATCH', body: { patient_mode: !c.patient_mode } }), 'Saved')}>{c.patient_mode ? 'Patient mode off' : 'Patient mode on'}</button>
+          <button className="btn" onClick={() => act(() => api(`/api/clinic/cases/${id}`, { method: 'PATCH', body: { patient_mode: !c.patient_mode } }), 'Saved')}>{c.patient_mode ? 'Extra support off' : 'Extra support on'}</button>
           <select className="input sm" value={c.assigned_reviewer?.id ?? ''} aria-label="Reassign reviewer" onChange={(e) => act(() => api(`/api/clinic/cases/${id}`, { method: 'PATCH', body: { assigned_reviewer: e.target.value } }), 'Reassigned')}>
             {reviewers.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
           </select>
@@ -39,7 +39,7 @@ export default function CaseDetail({ id, me, tick }: { id: string; me: Me; tick:
             </details>
           )}
           {(me.role === 'reviewer' || me.role === 'admin') && <button className="btn primary" disabled={!d.gate.passes || !['review', 'evidence', 'intake'].includes(c.state)} onClick={() => act(() => api(`/api/clinic/cases/${id}/ready`, { body: {} }), 'Marked ready: the applicant sees the sign-off screen on next visit')}>Mark ready</button>}
-          <button className="btn danger" onClick={() => confirm('Close this case?') && act(() => api(`/api/clinic/cases/${id}`, { method: 'PATCH', body: { close: true } }), 'Closed')}>Close case</button>
+          <button className="btn danger" onClick={() => confirm(`Close the case for ${c.full_name}?`) && act(() => api(`/api/clinic/cases/${id}`, { method: 'PATCH', body: { close: true } }), 'Closed')}>Close case</button>
         </div>
       </header>
       {msg && <div className="panel" role="status" style={{ margin: '12px 24px' }}>{msg}</div>}
@@ -128,7 +128,7 @@ function ReviewItems({ d }: { d: any }) {
       {d.review_items.map((r: any) => (
         <div key={r.id} className={`panel ${r.speed === 'stop_now' ? 'warn' : ''}`}>
           <div className="stack grow" style={{ gap: 4 }}>
-            <span className="label">{r.speed === 'stop_now' ? `STOP-NOW · ${r.category}` : `${r.category} · ${r.speed}`} · {r.status}{r.blocking ? ' · blocking' : ''}</span>
+            <span className="label">{r.speed === 'stop_now' ? `Stop now · ${r.category}` : `${r.category} · ${r.speed}`} · {r.status}{r.blocking ? ' · blocking' : ''}</span>
             <span>{r.speed === 'stop_now' ? r.banner : r.facts ?? r.field}</span>
             {r.decision && <span className="small">Decision: {r.decision} — {r.decision_note}</span>}
           </div>
@@ -224,7 +224,7 @@ function Transcript({ d }: { d: any }) {
     <div className="stack" style={{ gap: 6 }}>
       {d.transcript.map((u: any) => (
         <div key={u.id} className={`cap ${u.speaker === 'liaison' ? 'ellis' : 'usted'}`}>
-          <span className="label">{u.speaker === 'liaison' ? 'ELLIS' : 'APPLICANT'} · {fmtTime(u.ts)}{u.locked ? ' · locked' : ''}{u.redacted ? ' · redacted' : ''}</span>
+          <span className="label">{u.speaker === 'liaison' ? 'Ellis' : 'Applicant'} · {fmtTime(u.ts)}{u.locked ? ' · locked' : ''}{u.redacted ? ' · redacted' : ''}</span>
           <p>{u.text.startsWith('[STOP:') ? '[STOP]' : u.text}</p>
         </div>
       ))}

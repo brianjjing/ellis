@@ -45,7 +45,7 @@ export default function ReviewQueue({ me, tick }: { me: Me; tick: number }) {
           {data.items.length === 0 && <li className="soft" style={{ padding: 16 }}>Nothing to review.</li>}
           {data.items.map((it, i) => (
             <li key={it.id} role="option" aria-selected={i === sel} className={`q-row ${i === sel ? 'sel' : ''} ${it.speed === 'stop_now' ? 'stop' : ''}`} onClick={() => setSel(i)}>
-              <span className="label">{it.speed === 'stop_now' ? 'STOP-NOW' : it.category.replace(/_/g, ' ').toUpperCase()}</span>
+              <span className="label">{it.speed === 'stop_now' ? 'Stop now' : it.category.replace(/_/g, ' ')}</span>
               <span>{it.applicant}{it.self_report ? ' · applicant: "not about me"' : ''}</span>
               <span className="small">{fmtTime(it.ts)}{it.status === 'case_blocked' ? ' · case blocked' : ''}</span>
             </li>
@@ -70,7 +70,7 @@ function ItemDetail({ item, gate, noteRef, onDone }: { item: any; gate: any; not
   }
   return (
     <section className="q-detail">
-      <div className="label">{stop ? 'STOP-NOW' : `${item.category.replace(/_/g, ' ')} · ${item.speed.replace('_', ' ')}`}</div>
+      <div className="label">{stop ? 'Stop now' : `${item.category.replace(/_/g, ' ')} · ${item.speed.replace('_', ' ')}`}</div>
       <h2 className="h1"><a href={`/clinic/cases/${item.case_id}`} data-nav>{item.applicant}</a></h2>
       {stop ? (
         <div className="panel warn"><strong>{item.banner}</strong><span className="small">Category: {item.category} · {fmtTime(item.ts)} · {item.trigger}</span></div>

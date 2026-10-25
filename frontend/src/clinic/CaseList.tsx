@@ -33,14 +33,17 @@ export default function CaseList({ me, tick }: { me: Me; tick: number }) {
       </div>
       <div className="table-wrap">
         <table className="table">
-          <thead><tr><th>Applicant</th><th>Stage</th><th>Progress</th><th>Open review items</th><th>Assigned reviewer</th><th>Last activity</th><th>Link</th></tr></thead>
+          <thead><tr><th>Applicant</th><th>Stage</th><th>Progress</th><th>Open review items</th><th>Assigned reviewer</th><th>Last activity</th><th>Client link</th></tr></thead>
           <tbody>
             {rows.map((r) => (
               <tr key={r.id}>
-                <td><a href={`/clinic/cases/${r.id}`} data-nav><strong>{r.applicant}</strong></a>{r.patient_mode && <span className="pill">patient</span>}</td>
+                <td>
+                  <a href={`/clinic/cases/${r.id}`} data-nav><strong>{r.applicant}</strong></a>
+                  {r.patient_mode && <span className="pill" title="This client receives a slower voice and longer pauses.">Extra support</span>}
+                </td>
                 <td>{r.stage}</td>
                 <td><div className="bar-mini"><div style={{ width: `${(100 * r.progress.have) / Math.max(1, r.progress.total)}%` }} /></div><span className="small">{r.progress.have}/{r.progress.total}</span></td>
-                <td>{r.open_blocking > 0 ? <span className={`badge-count ${r.has_stop_now ? 'red' : ''}`}>{r.open_blocking}{r.has_stop_now ? ' · stop-now' : ''}</span> : '—'}</td>
+                <td>{r.open_blocking > 0 ? <span className={`badge-count ${r.has_stop_now ? 'red' : ''}`}>{r.open_blocking}{r.has_stop_now ? ' · stop now' : ''}</span> : '—'}</td>
                 <td>{r.assigned_reviewer?.name ?? '—'}</td>
                 <td className="small">{fmtTime(r.last_activity)}</td>
                 <td className="small">{r.link_status.replace('_', ' ')}</td>
@@ -84,7 +87,7 @@ function NewCase({ reviewers, onClose }: { reviewers: any[]; me: Me; onClose: ()
             {LANGUAGE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         </label>
-        <label className="check"><input type="checkbox" checked={v.patient_mode} onChange={(e) => setV({ ...v, patient_mode: e.target.checked })} /> Patient mode (slower voice, longer pauses)</label>
+        <label className="check"><input type="checkbox" checked={v.patient_mode} onChange={(e) => setV({ ...v, patient_mode: e.target.checked })} /> Extra support mode (slower voice, longer pauses)</label>
         <label className="field">Assigned reviewer
           <select className="input" value={v.assigned_reviewer} onChange={(e) => setV({ ...v, assigned_reviewer: e.target.value })}>
             {reviewers.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
